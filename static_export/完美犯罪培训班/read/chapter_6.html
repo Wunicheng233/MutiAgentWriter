@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>第6章 - “完美犯罪培训班” - 多Agent小说阅读器</title>
+    <style>
+        :root {
+            --bg-color: #f8f4e9;
+            --bg-paper: #fcf9f3;
+            --text-color: #2c2c2c;
+            --nav-bg: rgba(255, 255, 255, 0.96);
+            --border-color: #e6e2d8;
+            --link-color: #667eea;
+            --shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        }
+        [data-theme="dark"] {
+            --bg-color: #121212;
+            --bg-paper: #1a1a1a;
+            --text-color: #d4d4d4;
+            --nav-bg: rgba(26, 26, 26, 0.96);
+            --border-color: #333;
+            --link-color: #8b9eff;
+            --shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        html, body {
+            height: 100%;
+        }
+        body {
+            font-family: "PingFang SC", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Serif SC", serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.8;
+            transition: background-color 0.3s;
+        }
+        .top-nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: var(--nav-bg);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border-color);
+            padding: 10px 15px;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .nav-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .btn {
+            background: none;
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 8px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+        .btn:hover {
+            background: var(--link-color);
+            border-color: var(--link-color);
+            color: white;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        }
+        .btn-primary {
+            background: var(--link-color);
+            border-color: var(--link-color);
+            color: white;
+        }
+        .btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        .title {
+            font-size: 0.9rem;
+            font-weight: 500;
+            max-width: 50%;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .container {
+            max-width: 750px;
+            margin: 70px auto 80px;
+            padding: 0 20px 120px 20px;
+            min-height: calc(100vh - 150px);
+        }
+        .content {
+            font-size: 1.1rem;
+            background: var(--bg-paper);
+            padding: 40px 30px 120px 30px;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
+        }
+        .content pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: inherit;
+            margin: 0;
+        }
+        .content p {
+            margin-bottom: 1em;
+            text-indent: 2em;
+        }
+        .content h1 {
+            font-size: 1.5rem;
+            margin-bottom: 1em;
+            text-align: center;
+        }
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--nav-bg);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid var(--border-color);
+            padding: 10px 15px;
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .toc-btn {
+            flex: 1;
+            text-align: center;
+        }
+        .toc-btn button {
+            width: 80%;
+        }
+        .prev-btn, .next-btn {
+            flex: 1;
+        }
+        .prev-btn button, .next-btn button {
+            width: 90%;
+        }
+        .toc-panel {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--nav-bg);
+            z-index: 200;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+            overflow-y: auto;
+            padding-top: 60px;
+        }
+        .toc-panel.open {
+            transform: translateX(0);
+        }
+        .toc-panel .close-btn {
+            position: fixed;
+            top: 10px;
+            right: 15px;
+            z-index: 201;
+        }
+        .toc-list {
+            list-style: none;
+            padding: 10px 20px;
+        }
+        .toc-list li {
+            border-bottom: 1px solid var(--border-color);
+        }
+        .toc-list a {
+            display: block;
+            padding: 12px 0;
+            color: var(--text-color);
+            text-decoration: none;
+        }
+        .toc-list a:hover {
+            color: var(--link-color);
+        }
+        .toc-list .current {
+            color: var(--link-color);
+            font-weight: 500;
+        }
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 199;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s;
+        }
+        .overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        .font-size-controls {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+        }
+        @media (max-width: 600px) {
+            .content {
+                font-size: 1.05rem;
+                padding: 20px 16px 140px 16px;
+            }
+            .container {
+                padding: 0 12px 140px 12px;
+            }
+            .title {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="top-nav">
+        <div class="nav-left">
+            <button class="btn" onclick="window.location.href='../index.html'">📚 目录</button>
+            <button class="btn" id="themeToggle">🌓 换肤</button>
+            <div class="font-size-controls">
+                <button class="btn" onclick="changeFontSize(-1)">A-</button>
+                <button class="btn" onclick="changeFontSize(1)">A+</button>
+            </div>
+        </div>
+        <div class="title" id="pageTitle">第6章 走投无路的新猎物</div>
+    </div>
+
+    <div class="container">
+        <div class="content">
+            <pre>第6章 走投无路的新猎物
+
+陈峰刚放下茶杯，手机就震了一下。
+
+刚发出去的消息显示已读，对面回了个哭脸，接着转来一分钟语音。
+
+他调低音量点开放音，听筒里先飘出来医院走廊的广播声，混着消毒水特有的冷味，男人的嗓子哑得像磨过砂纸，每说几个字都要喘半天：“李老师，我是阿军介绍来的，我老婆手术费还差八万，家里能卖的都卖了，亲戚也借遍了。您说的项目，真不用本金吗？只要凑齐钱，我干什么都愿意。”
+
+陈峰指尖蹭过杯壁的冰裂纹，没急着回复。
+
+这套流程他玩了十几年，太清楚——越是走投无路急用钱的人，越容易上钩。
+
+之前的王强欠十万网贷，阿军缺老婆的手术费，这些人被现实逼得看不见路，哪怕只是一点鬼火似的假希望，他们也会毫不犹豫扑过来。
+
+他放下茶杯，对着手机镜头理了理新染的深棕色寸头。
+
+上一轮他是戴金丝眼镜的张老师，教保险诈骗。这一轮改留寸头，就成了李老师，接着招完美犯罪培训班的学员。下一轮换顶鸭舌帽改个姓，又能重新开骗。
+
+手机又叮咚响了一声。
+
+发消息的赵军，把身份证照片和网贷截图一起发了过来。
+
+身份证上的男人皮肤黝黑，眼角堆着晒出来的皱纹，职业写着长途卡车司机，头像和阿军一样，是那个卡通小孩，申请备注特意标了“朋友推荐，同病相怜”。
+
+陈峰划开他的朋友圈，从头翻到尾。
+
+全是跑长途的疲惫：深夜服务区泡涨的泡面桶，方向盘上磨出三个指尖洞的线手套，连续开十四小时高速后，脸贴脏玻璃补觉的自拍。
+
+往下翻三条，是他妻子躺在病床上的视频。
+
+女人插着氧气管，颧骨凹得能放下一枚硬币，眼睛半睁半闭，看向镜头的眼神带着股求生意志，看得人胸口发闷。
+
+最新一条是凌晨三点发的，只有一句话：“再赚不到钱，老婆就没救了。”下面只有一两个同行点赞，连句安慰都没有。
+
+陈峰关掉朋友圈，慢悠悠敲字，语气拿捏得刚好温和又实在：“赵兄弟，你的情况我懂，谁都有过不去的坎儿。咱们这个项目真不需要本金，只要你敢干，三个月凑够手术费还能剩点周转，半年下来十万不止。”
+
+消息发出去不到半分钟，手机弹出了到账提示。
+
+八千八百块，一分不少，稳稳落进那张用捡来的身份证办的银行卡里。
+
+陈峰盯着屏幕上的数字，指尖在屏幕上敲了敲。
+
+窗外是市中心最亮的CBD，霓虹漫过落地窗，把酒店房间染得碎光粼粼。马路上的车连成流动的光河，往前延伸得没头没尾。
+
+无数亮着灯的窗户后面，藏着无数个赵军、阿军、王强。要么欠着还不起的债，要么家里有人等救命钱，要么不甘心一辈子蹲在底层，疯了一样想抓根救命稻草。
+
+他换过无数个马甲，核心玩法从来没变。
+
+最早是线下传销，拉人头赚人头费，出事就换城市换名字，接着来。后来互联网起来，改做刷单诈骗，短视频火了，又搞起完美犯罪培训班。
+
+花点小钱投信息流广告，标题全是“零成本月入十万”“在家躺赚不用出门”，专门推给搜过“快速赚钱”“欠网贷怎么办”的精准人群，一抓一个准。
+
+猎物找上门，先甩一堆伪造的转账截图，再给几个编好脚本的成功案例语音，最后说两句“带兄弟一把”“救急如救火”的场面话，哄得人晕晕乎乎，八千八的报名费就乖乖转过来了。
+
+收完钱就教歪门邪道，比如教王强骗保险理赔，教阿军去碰瓷半挂车，全都是警察一查一个准的勾当。
+
+等猎物被抓，陈峰早就删光了所有聊天记录，把钱转到海外账户，换个城市换个身份，安安稳稳等下一波猎物上门。
+
+更稳的是二次收割。这些人蹲完牢出来，背着案底找工作没人要，家里钱也败光了，走投无路的时候，陈峰再换个新马甲上门。
+
+说可以当代理，拉一个下线给七成提成，还拿着之前的案底要挟：“你本来就犯过事，敢不听话，我直接把材料捅到派出所，够你再蹲三五年。”
+
+这些人怕再进去，只能甘心当帮凶，帮着拉新人骗更多人。等他们赚了点钱，日子刚有点起色，陈峰再换个陌生身份上门，把所有钱敲诈走，连本带利一毛不剩。
+
+他们背着案底，根本不敢报警，报警的话，拉了这么多下线，数罪并罚够再蹲几年，只能捏着鼻子吃哑巴亏。就算有人逼得没办法报了警，进去的也是王强这些代理，碰不到陈峰半根毫毛。
+
+陈峰端起凉透的茶，抿了一口，苦茶水滑进喉咙，居然尝出一点甜味来。
+
+手机屏幕亮了亮，赵军发来一张准备按照教程行动的现场照片——他已经把攒了三年的旧卡车开到了二手车市场，准备按教程做假事故骗保。
+
+陈峰笑着把照片存进了专门的文件夹，那个文件夹里，躺着几十张一模一样的照片，每张背后，都有一个走投无路的人。
+
+他端着茶杯走到落地窗前，看着脚下川流不息的车河，指尖轻轻叩着杯壁。
+
+商务酒店的门牌号今天刚换，前台登记的身份证是捡来的，手机号是买的不记名卡，连这头深棕色寸头，都是昨天刚染的。
+
+楼下沿街的广告牌，新的信息流广告刚刚上线，亮着醒目的红字：“零成本赚快钱，带你翻身改命。”
+
+风从落地窗缝钻进来，吹得桌角的新名片打了个转，落在地上，名片上印着新的名字：王老师。</pre>
+        </div>
+    </div>
+
+    <div class="bottom-nav">
+        <div class="prev-btn">
+            
+            <button class="btn btn-primary" onclick="window.location.href='../read/chapter_5.html'">← 上一章</button>
+            
+        </div>
+        <div class="toc-btn">
+            <button class="btn" id="openToc">📖 目录</button>
+        </div>
+        <div class="next-btn">
+            
+            <button class="btn" disabled>下一章 →</button>
+            
+        </div>
+    </div>
+
+    <div class="toc-panel" id="tocPanel">
+        <button class="btn close-btn" id="closeToc">✕ 关闭</button>
+        <ul class="toc-list">
+            
+            <li>
+                <a href="./chapter_1.html" >
+                    第1章 雨夜，我转了八千八赚快钱
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_2.html" >
+                    第2章 刚收割就被警察找上门
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_3.html" >
+                    第3章 雨夜的赚快钱邀约
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_4.html" >
+                    第4章 雨夜旧警官，U盘赌生路
+                </a>
+            </li>
+            
+            <li>
+                <a href="../read/chapter_5.html" >
+                    第5章 出狱后，所有钱被洗劫一空
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_6.html" class="current">
+                    第6章 走投无路的新猎物
+                </a>
+            </li>
+            
+        </ul>
+    </div>
+
+    <div class="overlay" id="overlay"></div>
+
+    <script>
+        // 主题切换
+        const themeToggle = document.getElementById('themeToggle');
+        const html = document.documentElement;
+        let currentTheme = localStorage.getItem('theme') || 'light';
+        html.setAttribute('data-theme', currentTheme);
+        themeToggle.addEventListener('click', () => {
+            const newTheme = html.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+        });
+
+        // 字号调整
+        let currentFontSize = parseFloat(localStorage.getItem('fontSize')) || 1.1;
+        document.querySelector('.content').style.fontSize = currentFontSize + 'rem';
+        function changeFontSize(delta) {
+            currentFontSize += delta * 0.05;
+            currentFontSize = Math.max(0.9, Math.min(1.4, currentFontSize));
+            document.querySelector('.content').style.fontSize = currentFontSize + 'rem';
+            localStorage.setItem('fontSize', currentFontSize);
+        }
+
+        // 目录面板
+        const tocPanel = document.getElementById('tocPanel');
+        const overlay = document.getElementById('overlay');
+        const openToc = document.getElementById('openToc');
+        const closeToc = document.getElementById('closeToc');
+
+        openToc.addEventListener('click', () => {
+            tocPanel.classList.add('open');
+            overlay.classList.add('show');
+        });
+
+        function closeTocPanel() {
+            tocPanel.classList.remove('open');
+            overlay.classList.remove('show');
+        }
+
+        closeToc.addEventListener('click', closeTocPanel);
+        overlay.addEventListener('click', closeTocPanel);
+
+        // 自动处理段落格式化（把换行转成p标签）
+        // 这里保持pre格式因为内容已经有正确换行了
+    </script>
+</body>
+</html>

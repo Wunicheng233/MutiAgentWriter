@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>第7章 - 我的手机连上了地府APP - 多Agent小说阅读器</title>
+    <style>
+        :root {
+            --bg-color: #f8f4e9;
+            --bg-paper: #fcf9f3;
+            --text-color: #2c2c2c;
+            --nav-bg: rgba(255, 255, 255, 0.96);
+            --border-color: #e6e2d8;
+            --link-color: #667eea;
+            --shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        }
+        [data-theme="dark"] {
+            --bg-color: #121212;
+            --bg-paper: #1a1a1a;
+            --text-color: #d4d4d4;
+            --nav-bg: rgba(26, 26, 26, 0.96);
+            --border-color: #333;
+            --link-color: #8b9eff;
+            --shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        html, body {
+            height: 100%;
+        }
+        body {
+            font-family: "PingFang SC", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Serif SC", serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.8;
+            transition: background-color 0.3s;
+        }
+        .top-nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: var(--nav-bg);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border-color);
+            padding: 10px 15px;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .nav-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .btn {
+            background: none;
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 8px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+        .btn:hover {
+            background: var(--link-color);
+            border-color: var(--link-color);
+            color: white;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        }
+        .btn-primary {
+            background: var(--link-color);
+            border-color: var(--link-color);
+            color: white;
+        }
+        .btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        .title {
+            font-size: 0.9rem;
+            font-weight: 500;
+            max-width: 50%;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .container {
+            max-width: 750px;
+            margin: 70px auto 80px;
+            padding: 0 20px 120px 20px;
+            min-height: calc(100vh - 150px);
+        }
+        .content {
+            font-size: 1.1rem;
+            background: var(--bg-paper);
+            padding: 40px 30px 120px 30px;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
+        }
+        .content pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: inherit;
+            margin: 0;
+        }
+        .content p {
+            margin-bottom: 1em;
+            text-indent: 2em;
+        }
+        .content h1 {
+            font-size: 1.5rem;
+            margin-bottom: 1em;
+            text-align: center;
+        }
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--nav-bg);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid var(--border-color);
+            padding: 10px 15px;
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .toc-btn {
+            flex: 1;
+            text-align: center;
+        }
+        .toc-btn button {
+            width: 80%;
+        }
+        .prev-btn, .next-btn {
+            flex: 1;
+        }
+        .prev-btn button, .next-btn button {
+            width: 90%;
+        }
+        .toc-panel {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--nav-bg);
+            z-index: 200;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+            overflow-y: auto;
+            padding-top: 60px;
+        }
+        .toc-panel.open {
+            transform: translateX(0);
+        }
+        .toc-panel .close-btn {
+            position: fixed;
+            top: 10px;
+            right: 15px;
+            z-index: 201;
+        }
+        .toc-list {
+            list-style: none;
+            padding: 10px 20px;
+        }
+        .toc-list li {
+            border-bottom: 1px solid var(--border-color);
+        }
+        .toc-list a {
+            display: block;
+            padding: 12px 0;
+            color: var(--text-color);
+            text-decoration: none;
+        }
+        .toc-list a:hover {
+            color: var(--link-color);
+        }
+        .toc-list .current {
+            color: var(--link-color);
+            font-weight: 500;
+        }
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 199;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s;
+        }
+        .overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        .font-size-controls {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+        }
+        @media (max-width: 600px) {
+            .content {
+                font-size: 1.05rem;
+                padding: 20px 16px 140px 16px;
+            }
+            .container {
+                padding: 0 12px 140px 12px;
+            }
+            .title {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="top-nav">
+        <div class="nav-left">
+            <button class="btn" onclick="window.location.href='../index.html'">📚 目录</button>
+            <button class="btn" id="themeToggle">🌓 换肤</button>
+            <div class="font-size-controls">
+                <button class="btn" onclick="changeFontSize(-1)">A-</button>
+                <button class="btn" onclick="changeFontSize(1)">A+</button>
+            </div>
+        </div>
+        <div class="title" id="pageTitle">第7章 阎王甩锅我不吃这套</div>
+    </div>
+
+    <div class="container">
+        <div class="content">
+            <pre>第7章 阎王甩锅我不吃这套
+
+那股凉意顺着后脊往上蹿，林默后颈的汗毛根根炸起。
+他攥紧手机稳定心神，对着虚掩的堂屋门喊：“请进吧，方案刚出初稿，等您过目呢。”
+
+堂屋门“吱呀”推开，忘川的湿冷风裹着细沙钻进来，桌上摊开的陈年案卷哗啦哗啦翻了几页。
+
+阎广揣着“为人民服务”的不锈钢保温杯，绣五爪黑龙的宽袍被圆肚子撑得发亮，进门就冲林默点头，慢悠悠跨进门槛。
+
+林默没动，指尖在手机屏上飞滑，先保存六星委托的截图，又把救济司鬼差违规霸业绩池的聊天记录，备份到设了三重锁的幽冥云端。
+
+做完这一切，他才抬眼，指了指对面缺腿垫半块青砖的破木椅。
+
+钟馗靠在青石门框上，黑铁靴子搭在阶沿，粗糙的指尖绕着斩鬼剑的红穗，沉沉盯着阎广的后背。
+
+阎广像没察觉，把保温杯往案卷堆上一放，一屁股坐进唯一的太师椅，椅子腿发出不堪重负的呻吟，晃了三晃才勉强稳住。
+
+杯盖拧开，滚热的水雾混着龙井香飘出来，瞬间压过了堂屋的霉味和炭火气息。
+
+“小林啊，别站着，坐。”
+
+他端起杯子抿了一口，砸吧砸吧嘴，一副享受的表情。
+
+林默坐下，盯着那杯冒气的茶，指尖无意识地敲着旧手机的塑料背壳：“您找我，应该不止送茶这么简单。”
+
+阎广放下杯子，用宽袖蹭蹭嘴角：“聪明。秘书处先看了方案，排查积压没问题，就是责任划分那块，能不能……调调？”
+
+林默心里透亮，这“调调”就是甩锅给几个死透的小鬼，摘干净上面人的干系。但他没戳破，抬了抬下巴：“您说具体改哪里？”
+
+阎广从袖子里摸出一张皱巴巴的宣纸，推到他面前：“这是秘书处拟的，把责任全归到投了胎的老鬼差身上，就说他们玩忽职守故意压件，天庭考核下来，有个书面东西就行。”
+
+林默快速扫了一遍，上面列了十七个两三百年前轮回的名字，全都是死无对证的主儿。
+
+他把纸放回桌上，指尖敲了敲纸边：“会不会太敷衍？三百万案卷堆五百年，天庭考核官不傻，十几个底层鬼差办不到。”
+
+阎广的笑意淡了，指尖敲着杯盖，发出哒哒的轻响：“你不管他们信不信，没人对质就行，糊弄过去拉倒。”
+
+林默没接话，低头点开手机调出存好的聊天记录，推到阎广面前。
+
+阎广扫了一眼，脸瞬间僵住，原本泛着油光的脸唰地沉了下来：“你从哪弄的？”
+
+“幽冥办公APP的内部监控，系统匹配六星委托时，自动推给我的权限信息。”
+
+林默靠在椅背上，语气平静：“记录写得明明白白，是高层授意，下面鬼差霸业绩池攒新任务抢积分，故意卡着陈年申诉。”
+
+阎广沉默了，指节一下一下敲着桌面，沉闷的声响在安静的堂屋里荡开。
+
+风顺着门缝吹进来，把那张调整稿吹到地上，刚好落在钟馗的黑铁靴边。
+
+钟馗弯腰捡起来，看都没看，直接撕成指甲盖大的碎片，扔进旁边的炭火盆。
+
+火舌“腾”地窜起来，瞬间把碎纸卷成了黑灰。
+
+“阎广，你这甩锅手段，真够下作的。”
+
+他的声音像敲铜钟，震得房梁积灰簌簌往下掉：“五百年积弊，三百万冤魂等着投胎，地府谁不清楚？当我们都是瞎的聋的？”
+
+阎广抬眼扫了钟馗一下，转回头盯着林默，语气冷得像忘川水：“那你想怎么样？”
+
+“我不想怎么样。”
+
+林默摊了摊手，依旧平静：“我就是个拿积分换还阳机会的临时办事员，只想按当初定的规则办事，解决问题，干净拿分。”
+
+“规则？”阎广冷笑出声，“规则是我定的！在地府，我说什么就是什么！”
+
+林默没跟他吵，直接点开幽冥办公APP，翻出绑定身份时阎广亲手签的电子授权条款，再次推过去。
+
+屏幕上的黑字红印清晰可见：临时办事员处理公开委托，有权自主决策，除天庭明文指令，任何人不得干涉。
+
+阎广盯着屏幕，腮帮子绷得紧紧的，嘴角抽了好几下，半天没说出话。
+
+堂屋里静得可怕，只有窗外老槐树被风吹得哗啦响，混着炭火盆的噼啪声。
+
+突然，林默的手机震了三下——是聂娇娇设的专属紧急提醒。
+
+他拿起手机点开，语音转文字弹了出来：
+【小林！奈何桥出事了！一队阴差押魂过桥，混进来个带新鲜活人血的！不是鬼魂，是实打实的阳间人！已经往忘川深处跑了！】
+
+林默猛地抬头，眼神扫过阎广，又落在钟馗脸上。
+
+钟馗一下站直身体，手按剑柄，“嗡”的一声拔剑出鞘，淡金色的灵光顺着剑身蔓延，逼退了周围的湿冷。
+
+阎广的脸一下子没了血色，抓起桌上的保温杯就往外冲，宽袍角扫掉半本案卷，滚落在地也顾不上捡。
+
+“钟逵！带上林默跟我走！”
+
+他声音发紧，一边跑一边低吼：“不管用什么办法，必须抓回来！绝不能让他乱闯！捅到天庭，咱们所有人考核都完！谁都跑不了！”
+
+钟馗收剑入鞘，冲林默摆了摆手，率先跟着阎广往院门外走。
+
+林默跟在后面，刚跨出门槛，突然想起什么，回头往堂屋看了一眼。
+
+风卷着槐树叶吹进堂屋，吹得桌上的旧案卷不停翻页，最后刚好停在王二牛那一页。
+
+画像上年轻的脸被阴影盖住，原本带着笑意的嘴角，此刻看着说不出的僵硬。
+
+赶到奈何桥时，远远就看见桥头挤了密密麻麻的鬼魂，原本分时段排队的队伍全乱了，阴差举着锁链拦都拦不住。
+
+淡淡的血腥味混着忘川河的腐腥气飘过来，闻着让人胃里翻江倒海。
+
+聂娇娇踩着鞋跟断了半截的粉色高跟鞋，站在翻了一半的孟婆汤摊边，她平时不离手的补妆镜摔在地上，裂成了密密麻麻的蜘蛛纹。
+
+她看见林默过来，连忙跑过去，指尖指着忘川上游雾气弥漫的地方，话都说不利索：“就是往那边跑了！我看见他衣服沾血，青石板留了脚印，一下子钻进雾里就没影了！”
+
+顺着她指的方向看过去，忘川河上的雾比平时浓了三倍，黑沉沉压在水面，连岸边鬼柳树的轮廓都看不清，血腥味顺着风，越来越浓。
+
+钟馗提着斩鬼剑往前走两步，剑身上的淡金色灵光，逼退了周围半尺的黑雾。
+
+没人说话，只有风卷着雾气扫过衣角。
+
+那串新鲜的血脚印清清楚楚印在雾气边缘的青石板上，每一步都渗着鲜活的暖意，和地府千年的冰凉格格不入。
+
+脚印歪歪扭扭往前延伸，在踏入浓雾前，最后一个脚印边，沾着半片不属于地府的东西——一片带着新鲜齿痕的阳间薯片碎片。
+
+那薯片的包装袋颜色，和王二牛案卷里夹着的阳间遗物碎片，一模一样。</pre>
+        </div>
+    </div>
+
+    <div class="bottom-nav">
+        <div class="prev-btn">
+            
+            <button class="btn btn-primary" onclick="window.location.href='../read/chapter_6.html'">← 上一章</button>
+            
+        </div>
+        <div class="toc-btn">
+            <button class="btn" id="openToc">📖 目录</button>
+        </div>
+        <div class="next-btn">
+            
+            <button class="btn btn-primary" onclick="window.location.href='../read/chapter_8.html'">下一章 →</button>
+            
+        </div>
+    </div>
+
+    <div class="toc-panel" id="tocPanel">
+        <button class="btn close-btn" id="closeToc">✕ 关闭</button>
+        <ul class="toc-list">
+            
+            <li>
+                <a href="./chapter_1.html" >
+                    第1章 失业猝死，我被地府招聘了？
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_2.html" >
+                    第2章 开张第一单，撞见鬼差黑幕
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_3.html" >
+                    第3章 积分商城出还阳兑换啦
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_4.html" >
+                    第4章 凶案沾血，接下地府五星委托
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_5.html" >
+                    第5章 查到黑账，忘川漂来人头
+                </a>
+            </li>
+            
+            <li>
+                <a href="../read/chapter_6.html" >
+                    第6章 灭口留下黑龙纹证据
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_7.html" class="current">
+                    第7章 阎王甩锅我不吃这套
+                </a>
+            </li>
+            
+            <li>
+                <a href="../read/chapter_8.html" >
+                    第8章 沾血的旧布鞋
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_9.html" >
+                    第9章 阳间活人闯地府
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_10.html" >
+                    第10章 越狱厉鬼堵上门
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_11.html" >
+                    第11章 恶鬼逃去阳间CBD
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_12.html" >
+                    第12章 五百年冤魂聚在同一块地
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_13.html" >
+                    第13章 攒了五代的旧案赃物
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_14.html" >
+                    第14章 龙纹布片牵出阎王殿旧案
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_15.html" >
+                    第15章 地道追凶撞见王判官
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_16.html" >
+                    第16章 废弃厂找出阎王殿密藏
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_17.html" >
+                    第17章 浦东符烟藏惊天秘辛
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_18.html" >
+                    第18章 查出暗卫营竟已复建
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_19.html" >
+                    第19章 密道尽头撞见暗卫集会
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_20.html" >
+                    第20章 塌殿逃生暗手找上门
+                </a>
+            </li>
+            
+        </ul>
+    </div>
+
+    <div class="overlay" id="overlay"></div>
+
+    <script>
+        // 主题切换
+        const themeToggle = document.getElementById('themeToggle');
+        const html = document.documentElement;
+        let currentTheme = localStorage.getItem('theme') || 'light';
+        html.setAttribute('data-theme', currentTheme);
+        themeToggle.addEventListener('click', () => {
+            const newTheme = html.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+        });
+
+        // 字号调整
+        let currentFontSize = parseFloat(localStorage.getItem('fontSize')) || 1.1;
+        document.querySelector('.content').style.fontSize = currentFontSize + 'rem';
+        function changeFontSize(delta) {
+            currentFontSize += delta * 0.05;
+            currentFontSize = Math.max(0.9, Math.min(1.4, currentFontSize));
+            document.querySelector('.content').style.fontSize = currentFontSize + 'rem';
+            localStorage.setItem('fontSize', currentFontSize);
+        }
+
+        // 目录面板
+        const tocPanel = document.getElementById('tocPanel');
+        const overlay = document.getElementById('overlay');
+        const openToc = document.getElementById('openToc');
+        const closeToc = document.getElementById('closeToc');
+
+        openToc.addEventListener('click', () => {
+            tocPanel.classList.add('open');
+            overlay.classList.add('show');
+        });
+
+        function closeTocPanel() {
+            tocPanel.classList.remove('open');
+            overlay.classList.remove('show');
+        }
+
+        closeToc.addEventListener('click', closeTocPanel);
+        overlay.addEventListener('click', closeTocPanel);
+
+        // 自动处理段落格式化（把换行转成p标签）
+        // 这里保持pre格式因为内容已经有正确换行了
+    </script>
+</body>
+</html>

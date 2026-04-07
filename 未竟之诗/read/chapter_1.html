@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>第1章 - 未竟之诗 - 多Agent小说阅读器</title>
+    <style>
+        :root {
+            --bg-color: #f8f4e9;
+            --bg-paper: #fcf9f3;
+            --text-color: #2c2c2c;
+            --nav-bg: rgba(255, 255, 255, 0.96);
+            --border-color: #e6e2d8;
+            --link-color: #667eea;
+            --shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        }
+        [data-theme="dark"] {
+            --bg-color: #121212;
+            --bg-paper: #1a1a1a;
+            --text-color: #d4d4d4;
+            --nav-bg: rgba(26, 26, 26, 0.96);
+            --border-color: #333;
+            --link-color: #8b9eff;
+            --shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        html, body {
+            height: 100%;
+        }
+        body {
+            font-family: "PingFang SC", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Serif SC", serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.8;
+            transition: background-color 0.3s;
+        }
+        .top-nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: var(--nav-bg);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border-color);
+            padding: 10px 15px;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .nav-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .btn {
+            background: none;
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 8px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+        .btn:hover {
+            background: var(--link-color);
+            border-color: var(--link-color);
+            color: white;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        }
+        .btn-primary {
+            background: var(--link-color);
+            border-color: var(--link-color);
+            color: white;
+        }
+        .btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        .title {
+            font-size: 0.9rem;
+            font-weight: 500;
+            max-width: 50%;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .container {
+            max-width: 750px;
+            margin: 70px auto 80px;
+            padding: 0 20px 80px 20px;
+            min-height: calc(100vh - 150px);
+        }
+        .content {
+            font-size: 1.1rem;
+            background: var(--bg-paper);
+            padding: 40px 30px;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
+        }
+        .content pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: inherit;
+            margin: 0;
+        }
+        .content p {
+            margin-bottom: 1em;
+            text-indent: 2em;
+        }
+        .content h1 {
+            font-size: 1.5rem;
+            margin-bottom: 1em;
+            text-align: center;
+        }
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--nav-bg);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid var(--border-color);
+            padding: 10px 15px;
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .toc-btn {
+            flex: 1;
+            text-align: center;
+        }
+        .toc-btn button {
+            width: 80%;
+        }
+        .prev-btn, .next-btn {
+            flex: 1;
+        }
+        .prev-btn button, .next-btn button {
+            width: 90%;
+        }
+        .toc-panel {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--nav-bg);
+            z-index: 200;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+            overflow-y: auto;
+            padding-top: 60px;
+        }
+        .toc-panel.open {
+            transform: translateX(0);
+        }
+        .toc-panel .close-btn {
+            position: fixed;
+            top: 10px;
+            right: 15px;
+            z-index: 201;
+        }
+        .toc-list {
+            list-style: none;
+            padding: 10px 20px;
+        }
+        .toc-list li {
+            border-bottom: 1px solid var(--border-color);
+        }
+        .toc-list a {
+            display: block;
+            padding: 12px 0;
+            color: var(--text-color);
+            text-decoration: none;
+        }
+        .toc-list a:hover {
+            color: var(--link-color);
+        }
+        .toc-list .current {
+            color: var(--link-color);
+            font-weight: 500;
+        }
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 199;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s;
+        }
+        .overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        .font-size-controls {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+        }
+        @media (max-width: 600px) {
+            .content {
+                font-size: 1.05rem;
+                padding: 20px 16px;
+            }
+            .container {
+                padding: 0 12px;
+            }
+            .title {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="top-nav">
+        <div class="nav-left">
+            <button class="btn" onclick="window.location.href='../index.html'">📚 目录</button>
+            <button class="btn" id="themeToggle">🌓 换肤</button>
+            <div class="font-size-controls">
+                <button class="btn" onclick="changeFontSize(-1)">A-</button>
+                <button class="btn" onclick="changeFontSize(1)">A+</button>
+            </div>
+        </div>
+        <div class="title" id="pageTitle">第1章 被追杀的旅人</div>
+    </div>
+
+    <div class="container">
+        <div class="content">
+            <pre>第1章 被追杀的旅人
+
+九月的风顺着小镇石板路打旋，卷着街角面包房的烤苹果香，混着老鞋油的皮革味，钻进半开的店门。
+
+艾拉蹲在七十一岁的托比脚边，指尖扫过他手背上交错的皱纹。一点粉尘似的灰屑落在掌心，碎得像揉开的半片月光。
+
+五十年前，托比的女儿攥着攒了三年钱才买到的船票，说要去南方海岛看鲸鱼，回来穿新做的皮鞋嫁去邻村。那艘船出海后再也没回来，托比这一等，就是半个世纪。
+
+那双留在鞋楦上没缝完的小牛皮鞋，硬得跟门口青石板一样，歪歪扭扭的针脚停在鞋帮处，半个世纪没动过。
+
+艾拉是补叙者，能读懂残碎记忆灰屑里藏着的情绪——那是托比压了半辈子，连邻人都没说过的念想。
+
+她轻轻抬掌，那片碎月光似的灰屑慢慢飘向硬邦邦的皮鞋。
+
+“其实你女儿走后的第三年，船遇了海难，她被老船长救了。攒了半辈子路费，腿上受了风寒落下病根，养好后拼了命往回赶，最后还是陪你走完了最后一程。”
+
+僵硬的皮革慢慢软下来，缝了一半的歪针脚渐渐变整齐，米白色鞋头上，慢慢浮起一朵淡蓝色海葵花——那是托比女儿小时候总摘了别在他衣襟上的花。
+
+一点暖金色碎光，慢慢钻进托比浑浊的眼睛。
+
+老鞋匠坐在藤椅上，枯瘦的手缓缓抬起，指向空无一人的门槛。蒙着灰白翳子的瞳孔亮得像攒了五十年的星光，嘴角微动，气音轻得听不清，口型分明是在叫女儿的名字。
+
+暖光散后，托比的眼睛重新蒙上浑浊，皱了一辈子的眉头，却彻底舒展开了。
+
+“砰！”
+
+半旧的木门被猛地踹开，干裂的碎木片溅得满店都是，落在摊开的鞋楦和皮料上。
+
+三个穿亮银色铠甲的圣光骑士冲进来，领头人腰间长剑还沾着路边青草屑，剑刃淬过教会圣水，泛着淡冷光。
+
+“异端的气息，就在这里。”
+
+艾拉往老旧鞋柱后面缩了缩。
+
+她记得清清楚楚，三个小时前，这三个人还坐在店门口长凳上，喝了托比温的热苹果酒，夸她补好的靴底结实，走十里山路都不硌脚。
+
+不过三个小时，他们什么都忘了。
+
+圣光教会只能感知到叙事漏洞的波动，补叙者补好漏洞后，哪怕前一秒刚见过面，转脸就会彻底忘掉补叙者的样子。
+
+“搜。”
+
+领头话音刚落，墙角堆的鞋盒就被扫得满地都是，刚补好的皮靴滚了一只，顺着门槛落到街面上。
+
+艾拉慢慢退到窗边，指尖还沾着补叙留下的暖金色余温。
+
+她能对付这三个骑士，但她不想破坏托比好不容易等来的安宁。
+
+五十年的等待，才刚补上这个遗憾，该让老人走得安心。
+
+“咔嚓！”
+
+靠墙摆了几十年的老橡木桌被骑士一剑劈成两半，托比攥了半辈子的锥子从桌面滚下来，“当啷”砸在石板地上，脆响扎得人耳朵发紧。
+
+艾拉的眼睛慢慢眯起来。
+
+一股带着暖香的风突然撞在领头骑士的剑刃上。
+
+一声脆响，那柄淬过圣水、受过教会赐福的圣剑，直接碎成好几块，落在地上叮当作响。
+
+三个骑士瞬间僵在原地。
+
+他们从小到大见过的魔法，不是喷火就是冻冰，全是带着蛮力的攻击性魔法，从没见过这种软乎乎的光，连温度都没有，就碎了教会的赐福武器。
+
+“异端！果然是异端！”
+
+领头骑士慌慌张张抽出腰后备用短剑，手都在抖。
+
+“抓住她！”
+
+艾拉没跟他们纠缠，转身踩着窗沿一跳，稳稳落在店后排水沟的石板上，转身往镇子外的黑森林跑。
+
+黑森林橡树枝叶浓密，阳光从叶缝漏下来，在草地上铺得亮一块暗一块。
+
+粗糙树枝刮过脸颊，拉出一道细血口，火辣辣地疼，她没停。
+
+风顺着领口灌进来，带着松针的清苦和野蔷薇的甜香，吹得后颈发凉。
+
+她脑子里只有一个念头：不能往回跑，不能连累托比。
+
+跑了大概十分钟，身后的马蹄声和搜索声慢慢远了，听不到了。
+
+她扶着一棵半抱粗的老槐树弯腰喘气，抬手摸脸颊，才发现那道细伤口已经长平，连一点印子都没留下。
+
+这是补叙者天生的副作用——身体会自动修复所有伤口，却永远留不下任何疤痕，就像那些被补上的叙事漏洞，从来没存在过一样。
+
+一个冰冷的声音突然从前面阴影里飘出来，没有马蹄踩断树枝的声响，也没有呼吸的震动，平平淡淡的，却像冰碴子顺着后颈往骨头里钻。
+
+“你跑不掉的。”
+
+艾拉猛地抬头。
+
+前面橡树阴影里站着个灰衣男人，额前头发垂下来遮了半张脸，衣服洗得发白，却没有补丁，看着跟山里砍柴的农夫没两样。
+
+可他的眼神不一样，像刚磨好的匕首，冷得锋利，冰碴子直戳后颈，艾拉浑身汗毛瞬间都竖了起来。
+
+他身上没有教会那种闷人的神圣气息，也没有废弃叙事碎片散出的执念浊气。
+
+那是规则本身的气息。
+
+冷得像冬天封冻河底的冰，裹得她浑身发僵，连手指都快动不了了。
+
+圣光教会记不住补叙者的样子，可他不一样。
+
+他清清楚楚记得她是谁，记得她在这里。
+
+艾拉攥紧袖子里藏着的小折刀，冰凉刀刃贴在手臂皮肤上，金属凉意顺着皮肤往血管里钻。
+
+她能听见自己心脏狂跳，撞得肋骨发疼。
+
+男人抬了抬脚，一步一步，不紧不慢朝她走过来。
+
+鞋底踩过地上的干树叶，发出细碎的沙沙声，每一声都踩在她的心跳上。
+
+艾拉指尖扣紧折刀的刀柄，已经做好了动手的准备，可直到男人走到离她三步远的地方停下，她才看清他垂在身侧的手里，捏着半张卷边的旧纸——那是五十年前，托比女儿那张船票的残片。</pre>
+        </div>
+    </div>
+
+    <div class="bottom-nav">
+        <div class="prev-btn">
+            
+            <button class="btn" disabled>← 上一章</button>
+            
+        </div>
+        <div class="toc-btn">
+            <button class="btn" id="openToc">📖 目录</button>
+        </div>
+        <div class="next-btn">
+            
+            <button class="btn btn-primary" onclick="window.location.href='../read/chapter_2.html'">下一章 →</button>
+            
+        </div>
+    </div>
+
+    <div class="toc-panel" id="tocPanel">
+        <button class="btn close-btn" id="closeToc">✕ 关闭</button>
+        <ul class="toc-list">
+            
+            <li>
+                <a href="./chapter_1.html" class="current">
+                    第1章 被追杀的旅人
+                </a>
+            </li>
+            
+            <li>
+                <a href="../read/chapter_2.html" >
+                    第2章 黑森林里的娃娃
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_3.html" >
+                    第3章 老槐树下的等待
+                </a>
+            </li>
+            
+        </ul>
+    </div>
+
+    <div class="overlay" id="overlay"></div>
+
+    <script>
+        // 主题切换
+        const themeToggle = document.getElementById('themeToggle');
+        const html = document.documentElement;
+        let currentTheme = localStorage.getItem('theme') || 'light';
+        html.setAttribute('data-theme', currentTheme);
+        themeToggle.addEventListener('click', () => {
+            const newTheme = html.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+        });
+
+        // 字号调整
+        let currentFontSize = parseFloat(localStorage.getItem('fontSize')) || 1.1;
+        document.querySelector('.content').style.fontSize = currentFontSize + 'rem';
+        function changeFontSize(delta) {
+            currentFontSize += delta * 0.05;
+            currentFontSize = Math.max(0.9, Math.min(1.4, currentFontSize));
+            document.querySelector('.content').style.fontSize = currentFontSize + 'rem';
+            localStorage.setItem('fontSize', currentFontSize);
+        }
+
+        // 目录面板
+        const tocPanel = document.getElementById('tocPanel');
+        const overlay = document.getElementById('overlay');
+        const openToc = document.getElementById('openToc');
+        const closeToc = document.getElementById('closeToc');
+
+        openToc.addEventListener('click', () => {
+            tocPanel.classList.add('open');
+            overlay.classList.add('show');
+        });
+
+        function closeTocPanel() {
+            tocPanel.classList.remove('open');
+            overlay.classList.remove('show');
+        }
+
+        closeToc.addEventListener('click', closeTocPanel);
+        overlay.addEventListener('click', closeTocPanel);
+
+        // 自动处理段落格式化（把换行转成p标签）
+        // 这里保持pre格式因为内容已经有正确换行了
+    </script>
+</body>
+</html>

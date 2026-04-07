@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>第10章 - 不言道 - 多Agent小说阅读器</title>
+    <style>
+        :root {
+            --bg-color: #f8f4e9;
+            --bg-paper: #fcf9f3;
+            --text-color: #2c2c2c;
+            --nav-bg: rgba(255, 255, 255, 0.96);
+            --border-color: #e6e2d8;
+            --link-color: #667eea;
+            --shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        }
+        [data-theme="dark"] {
+            --bg-color: #121212;
+            --bg-paper: #1a1a1a;
+            --text-color: #d4d4d4;
+            --nav-bg: rgba(26, 26, 26, 0.96);
+            --border-color: #333;
+            --link-color: #8b9eff;
+            --shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        html, body {
+            height: 100%;
+        }
+        body {
+            font-family: "PingFang SC", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Serif SC", serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.8;
+            transition: background-color 0.3s;
+        }
+        .top-nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: var(--nav-bg);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border-color);
+            padding: 10px 15px;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .nav-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .btn {
+            background: none;
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 8px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+        .btn:hover {
+            background: var(--link-color);
+            border-color: var(--link-color);
+            color: white;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        }
+        .btn-primary {
+            background: var(--link-color);
+            border-color: var(--link-color);
+            color: white;
+        }
+        .btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        .title {
+            font-size: 0.9rem;
+            font-weight: 500;
+            max-width: 50%;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .container {
+            max-width: 750px;
+            margin: 70px auto 80px;
+            padding: 0 20px 120px 20px;
+            min-height: calc(100vh - 150px);
+        }
+        .content {
+            font-size: 1.1rem;
+            background: var(--bg-paper);
+            padding: 40px 30px 120px 30px;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
+        }
+        .content pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: inherit;
+            margin: 0;
+        }
+        .content p {
+            margin-bottom: 1em;
+            text-indent: 2em;
+        }
+        .content h1 {
+            font-size: 1.5rem;
+            margin-bottom: 1em;
+            text-align: center;
+        }
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--nav-bg);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid var(--border-color);
+            padding: 10px 15px;
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .toc-btn {
+            flex: 1;
+            text-align: center;
+        }
+        .toc-btn button {
+            width: 80%;
+        }
+        .prev-btn, .next-btn {
+            flex: 1;
+        }
+        .prev-btn button, .next-btn button {
+            width: 90%;
+        }
+        .toc-panel {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--nav-bg);
+            z-index: 200;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+            overflow-y: auto;
+            padding-top: 60px;
+        }
+        .toc-panel.open {
+            transform: translateX(0);
+        }
+        .toc-panel .close-btn {
+            position: fixed;
+            top: 10px;
+            right: 15px;
+            z-index: 201;
+        }
+        .toc-list {
+            list-style: none;
+            padding: 10px 20px;
+        }
+        .toc-list li {
+            border-bottom: 1px solid var(--border-color);
+        }
+        .toc-list a {
+            display: block;
+            padding: 12px 0;
+            color: var(--text-color);
+            text-decoration: none;
+        }
+        .toc-list a:hover {
+            color: var(--link-color);
+        }
+        .toc-list .current {
+            color: var(--link-color);
+            font-weight: 500;
+        }
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 199;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s;
+        }
+        .overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        .font-size-controls {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+        }
+        @media (max-width: 600px) {
+            .content {
+                font-size: 1.05rem;
+                padding: 20px 16px 140px 16px;
+            }
+            .container {
+                padding: 0 12px 140px 12px;
+            }
+            .title {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="top-nav">
+        <div class="nav-left">
+            <button class="btn" onclick="window.location.href='../index.html'">📚 目录</button>
+            <button class="btn" id="themeToggle">🌓 换肤</button>
+            <div class="font-size-controls">
+                <button class="btn" onclick="changeFontSize(-1)">A-</button>
+                <button class="btn" onclick="changeFontSize(1)">A+</button>
+            </div>
+        </div>
+        <div class="title" id="pageTitle">第10章 外门大比，广场崩塌</div>
+    </div>
+
+    <div class="container">
+        <div class="content">
+            <pre>第10章 外门大比，广场崩塌
+
+青云宗把三天前的异动捂得严实，验灵石碎裂、看台塌陷只对外说是年久失修的意外。
+
+没人真信这套说辞，尤其是站在外门广场前排的刘虎。
+
+三天前他掉进去磕断两根肋骨，脸上缠满厚绷带，说话都扯得倒吸凉气，视线一刻不停地钉在后山柴房的方向。
+
+他要亲手把苏玄踩进泥里，讨回这口气。
+
+初夏的太阳慢慢爬过青云主峰，把广场的青石板晒得发烫。
+
+外门广场挤得水泄不通，连老槐树最粗的枝桠上都蹲满了看热闹的人。
+
+十年一度的外门大比，第一项就是重新验灵，根骨不合格者当场逐出宗门，谁都不想占着位置最后落个扫地出门的下场。
+
+钟声准时敲了三下，白发管事扶着老花镜跳上台，扯着嗓子喊完规矩，刘虎第一个挤了出来。
+
+作为这次大比公认的种子选手，他根本不用排队，径直走到新换的验灵石前，伸手就按了上去。
+
+千年灵石冰凉的触感顺着指尖蔓延，瞬间亮起淡蓝色灵光，顺着灵纹爬满整面石，一直漫到顶端都没停下。
+
+“中级木灵根！我的天，刘虎这次稳进内门了！”
+
+“那可不，人家刘哥三个月前就拿了苏玄那废人的聚气散，早就攒够灵气冲关了！”
+
+台下起哄混着掌声炸开，刘虎绷着的脸终于松弛下来。
+
+他挺着胸脯转过身，指着柴房方向破口大骂。
+
+“苏玄！废物滚出来！占着宗门位置浪费粮食，今天给我磕头认错，我留你一条小命滚下山！”
+
+骂声落了半分钟，柴房方向没半点动静，只有山风卷着树叶晃了晃。
+
+刘虎面子挂不住，嗓门又提了八度，脚往台面上狠狠一跺，震得台边碎石往下滚。
+
+“躲什么躲！有种毁石头没种出来见人？今天你缩在里面当乌龟，我就拆了那破柴房把你拖出来！”
+
+柴房的木门吱呀一声，从里面被推开。
+
+苏玄穿着洗得发白的杂役道袍，袖口领口磨出了细绒，慢慢从阴影里走出来。
+
+他身形挺拔，手掌虎口留着劈柴磨出的薄茧，面容温和，眼神通透得像山涧泉水，没有半点儿被当众叫骂的慌乱。
+
+这三天长老们翻来覆去审他是不是修了邪术，他什么都没说，照常劈柴扫院，该吃饭吃饭，该睡觉睡觉。
+
+今天重新测灵，本就没打算躲。
+
+他沿着台阶慢慢走上台，全程没看跳脚的刘虎，径直走到验灵石前，抬起手按了上去。
+
+指尖刚碰到石面，原本平静的验灵石突然轻轻一颤。
+
+细碎冰纹从接触点炸开，比三天前裂得更快，像蜘蛛网一样疯长，眨眼间爬满了整面千年灵石。
+
+石头内部传出脆响，整面验灵石从中心往四周炸开，碎成一地白碴，粉末飘得满台都是。
+
+台下的喧闹猛地停在半空，空气瞬间凝住。
+
+紧接着嘈杂声炸开，有人往后缩着尖叫“妖物！这废物修邪术了！”，有人拍大腿喊“肯定是提前凿坏石头作弊！”
+
+刘虎最先反应过来，扒开挡在身前的弟子跳上台，指节攥得咯吱响，沙包大的拳头直接砸向苏玄的脸。
+
+“好你个妖邪！毁了第一块不够，今天又毁一块，我替宗门清理门户！”
+
+苏玄站在原地没动，目光落在刘虎脚下，声音依旧平静。
+
+“你脚下的验灵台，地基早就空了。”
+
+“百年前开山留下的暗裂缝，后来填的黄土泡了一百年雨，早松了，撑不住你这么大力气冲。”
+
+刘虎哪里听得进去。三天前他掉坑丢尽脸面，满脑子都是把苏玄砸成肉酱出这口恶气，只当苏玄是吓破了胆，故意编瞎话拦他。
+
+他攥着拳狠狠发力往前踏，脚下青石板突然发出一声沉闷的崩响。
+
+整块青石板从中间断开，碎石混着黄土往下陷，刘虎脚下一空，整个人栽进去，半个身子埋在松垮的黄土里，扬起漫天尘土。
+
+他连滚带爬地往外挣，绷带被碎石刮掉一半，露出泛着淤青的脸，疼得龇牙咧嘴，骂声都变了调。
+
+台下原本往前挤的弟子，瞬间往后退了一大圈，谁都不敢再靠近台边。
+
+高台上的大长老，龙头拐杖对着地面狠狠一敲，咚咚闷响压过了全场喧闹。
+
+“妖言惑众！公然毁我宗门重器，毁我大比场地！执法队，立刻上台，拿下这异端！”
+
+守在广场两边的执法弟子，提着剑应声往台上冲，白色道服拉开整齐阵型，剑尖全指向台中央的苏玄。
+
+青云掌门端着茶杯，手指摩挲杯沿，没说话，眼睛冷沉沉盯着苏玄，默认了大长老的命令。
+
+苏玄没看冲过来的执法队，只是抬起头，目光扫过席上的长老掌门，声音不大，却清晰传到每一个人耳朵里。
+
+“我没有毁任何东西，我只是说出了本来就存在的理。”
+
+“这块验灵石本身到了年份，内里早有裂纹，一碰就碎。这块广场地基也早就松了，今天就算我不来，它也塌定了。”
+
+话音刚落，整个外门广场的地面突然轻轻震动起来。
+
+最初只是脚下发麻，没等人们反应过来，震动越来越强，裂缝从验灵台位置开始，顺着青石板往四周扩散，飞快漫过半个广场。
+
+一块接一块的青石板往下陷，灰尘泥土卷着风往上冲，迷得人睁不开眼睛。
+
+不到半柱香功夫，原本平整开阔的外门广场，中心直接塌成一个巨大凹坑，掉下去的碎石泥土砸在坑底，震得人耳朵嗡嗡发疼。
+
+所有弟子都惊叫着往山门跑，哭喊声惊呼声混在一起，整齐的队伍乱成一锅粥，连刚才冲上台的执法队都慌了，扔了剑往台下逃。
+
+高台上的长老们也坐不住，纷纷起身跃到廊下，隔着灰尘远远盯着凹坑中央，连大长老的拐杖都拿不稳了。
+
+苏玄站在凹坑边缘一块没塌的青石上，没动。
+
+初夏阳光透过扬起的灰尘洒下来，在他身上裹了一层淡金纱。他看着四周惊慌逃窜的人群，眼神里没有得意，也没有慌乱，只有一片沉静。
+
+没人注意到，凹坑深处的裂缝里，正慢慢渗出来淡金色雾气。
+
+那雾气带着鲜活的草木清香，顺着塌陷的泥土飘出来，绕着苏玄的脚踝缓缓打转，顺着他道袍袖口往身体里钻。
+
+雾气越来越浓，很快把整个人都裹在了里面。
+
+青云山千百年来的草木都悄悄动了起来，后山的柴树抽了新枝，山门的石缝里冒出了新芽，连青云主峰顶那棵枯死三百年的古松，树皮里都渗出来嫩绿的汁液。
+
+谁也不知道，这块塌了的广场底下，埋着千万年来被天道封死的，青云山最密集的一汪未言之理。
+
+此刻它顺着塌陷的裂缝溢出来，顺着苏玄的呼吸往天地间散，连整座青云宗的灵脉，都跟着轻轻跳了一下。</pre>
+        </div>
+    </div>
+
+    <div class="bottom-nav">
+        <div class="prev-btn">
+            
+            <button class="btn btn-primary" onclick="window.location.href='../read/chapter_9.html'">← 上一章</button>
+            
+        </div>
+        <div class="toc-btn">
+            <button class="btn" id="openToc">📖 目录</button>
+        </div>
+        <div class="next-btn">
+            
+            <button class="btn btn-primary" onclick="window.location.href='../read/chapter_11.html'">下一章 →</button>
+            
+        </div>
+    </div>
+
+    <div class="toc-panel" id="tocPanel">
+        <button class="btn close-btn" id="closeToc">✕ 关闭</button>
+        <ul class="toc-list">
+            
+            <li>
+                <a href="./chapter_1.html" >
+                    第1章 青云废徒，万理初鸣
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_2.html" >
+                    第2章 验灵台上
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_3.html" >
+                    第3章 石碎山动，玉佩藏踪
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_4.html" >
+                    第4章 银杏叶随人影来
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_5.html" >
+                    第5章 银杏灵语
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_6.html" >
+                    第6章 红衣闯殿
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_7.html" >
+                    第7章 天罚停在青云顶
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_8.html" >
+                    第8章 天罚留痕，正道来哨
+                </a>
+            </li>
+            
+            <li>
+                <a href="../read/chapter_9.html" >
+                    第9章 灵叶引理玄甲至
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_10.html" class="current">
+                    第10章 外门大比，广场崩塌
+                </a>
+            </li>
+            
+            <li>
+                <a href="../read/chapter_11.html" >
+                    第11章 淡金裹身
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_12.html" >
+                    第12章 天罚认输，正道来兵
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_13.html" >
+                    第13章 正道兵临异香起
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_14.html" >
+                    第14章 异类归山路
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_15.html" >
+                    第15章 灵脉藏凶
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_16.html" >
+                    第16章 石人语 天罚临
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_17.html" >
+                    第17章 天道盟来截杀
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_18.html" >
+                    第18章 惊雷落处听地语
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_19.html" >
+                    第19章 碎理木牌出地脉
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_20.html" >
+                    第20章 黑云压峰理自在
+                </a>
+            </li>
+            
+        </ul>
+    </div>
+
+    <div class="overlay" id="overlay"></div>
+
+    <script>
+        // 主题切换
+        const themeToggle = document.getElementById('themeToggle');
+        const html = document.documentElement;
+        let currentTheme = localStorage.getItem('theme') || 'light';
+        html.setAttribute('data-theme', currentTheme);
+        themeToggle.addEventListener('click', () => {
+            const newTheme = html.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+        });
+
+        // 字号调整
+        let currentFontSize = parseFloat(localStorage.getItem('fontSize')) || 1.1;
+        document.querySelector('.content').style.fontSize = currentFontSize + 'rem';
+        function changeFontSize(delta) {
+            currentFontSize += delta * 0.05;
+            currentFontSize = Math.max(0.9, Math.min(1.4, currentFontSize));
+            document.querySelector('.content').style.fontSize = currentFontSize + 'rem';
+            localStorage.setItem('fontSize', currentFontSize);
+        }
+
+        // 目录面板
+        const tocPanel = document.getElementById('tocPanel');
+        const overlay = document.getElementById('overlay');
+        const openToc = document.getElementById('openToc');
+        const closeToc = document.getElementById('closeToc');
+
+        openToc.addEventListener('click', () => {
+            tocPanel.classList.add('open');
+            overlay.classList.add('show');
+        });
+
+        function closeTocPanel() {
+            tocPanel.classList.remove('open');
+            overlay.classList.remove('show');
+        }
+
+        closeToc.addEventListener('click', closeTocPanel);
+        overlay.addEventListener('click', closeTocPanel);
+
+        // 自动处理段落格式化（把换行转成p标签）
+        // 这里保持pre格式因为内容已经有正确换行了
+    </script>
+</body>
+</html>

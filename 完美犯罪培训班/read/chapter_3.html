@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>第3章 - “完美犯罪培训班” - 多Agent小说阅读器</title>
+    <style>
+        :root {
+            --bg-color: #f8f4e9;
+            --bg-paper: #fcf9f3;
+            --text-color: #2c2c2c;
+            --nav-bg: rgba(255, 255, 255, 0.96);
+            --border-color: #e6e2d8;
+            --link-color: #667eea;
+            --shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        }
+        [data-theme="dark"] {
+            --bg-color: #121212;
+            --bg-paper: #1a1a1a;
+            --text-color: #d4d4d4;
+            --nav-bg: rgba(26, 26, 26, 0.96);
+            --border-color: #333;
+            --link-color: #8b9eff;
+            --shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        html, body {
+            height: 100%;
+        }
+        body {
+            font-family: "PingFang SC", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Serif SC", serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.8;
+            transition: background-color 0.3s;
+        }
+        .top-nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: var(--nav-bg);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border-color);
+            padding: 10px 15px;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .nav-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .btn {
+            background: none;
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 8px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+        .btn:hover {
+            background: var(--link-color);
+            border-color: var(--link-color);
+            color: white;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        }
+        .btn-primary {
+            background: var(--link-color);
+            border-color: var(--link-color);
+            color: white;
+        }
+        .btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        .title {
+            font-size: 0.9rem;
+            font-weight: 500;
+            max-width: 50%;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .container {
+            max-width: 750px;
+            margin: 70px auto 80px;
+            padding: 0 20px 120px 20px;
+            min-height: calc(100vh - 150px);
+        }
+        .content {
+            font-size: 1.1rem;
+            background: var(--bg-paper);
+            padding: 40px 30px 120px 30px;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
+        }
+        .content pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: inherit;
+            margin: 0;
+        }
+        .content p {
+            margin-bottom: 1em;
+            text-indent: 2em;
+        }
+        .content h1 {
+            font-size: 1.5rem;
+            margin-bottom: 1em;
+            text-align: center;
+        }
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--nav-bg);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid var(--border-color);
+            padding: 10px 15px;
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .toc-btn {
+            flex: 1;
+            text-align: center;
+        }
+        .toc-btn button {
+            width: 80%;
+        }
+        .prev-btn, .next-btn {
+            flex: 1;
+        }
+        .prev-btn button, .next-btn button {
+            width: 90%;
+        }
+        .toc-panel {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--nav-bg);
+            z-index: 200;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+            overflow-y: auto;
+            padding-top: 60px;
+        }
+        .toc-panel.open {
+            transform: translateX(0);
+        }
+        .toc-panel .close-btn {
+            position: fixed;
+            top: 10px;
+            right: 15px;
+            z-index: 201;
+        }
+        .toc-list {
+            list-style: none;
+            padding: 10px 20px;
+        }
+        .toc-list li {
+            border-bottom: 1px solid var(--border-color);
+        }
+        .toc-list a {
+            display: block;
+            padding: 12px 0;
+            color: var(--text-color);
+            text-decoration: none;
+        }
+        .toc-list a:hover {
+            color: var(--link-color);
+        }
+        .toc-list .current {
+            color: var(--link-color);
+            font-weight: 500;
+        }
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 199;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s;
+        }
+        .overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        .font-size-controls {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+        }
+        @media (max-width: 600px) {
+            .content {
+                font-size: 1.05rem;
+                padding: 20px 16px 140px 16px;
+            }
+            .container {
+                padding: 0 12px 140px 12px;
+            }
+            .title {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="top-nav">
+        <div class="nav-left">
+            <button class="btn" onclick="window.location.href='../index.html'">📚 目录</button>
+            <button class="btn" id="themeToggle">🌓 换肤</button>
+            <div class="font-size-controls">
+                <button class="btn" onclick="changeFontSize(-1)">A-</button>
+                <button class="btn" onclick="changeFontSize(1)">A+</button>
+            </div>
+        </div>
+        <div class="title" id="pageTitle">第3章 雨夜的赚快钱邀约</div>
+    </div>
+
+    <div class="container">
+        <div class="content">
+            <pre>第3章 雨夜的赚快钱邀约
+
+王强发送完“什么项目”，指尖悬在湿冷的手机屏幕上，缩着脖子站在雨里搓手等回复。
+裤脚早就被浸透，贴在小腿上，凉得骨头缝都发疼。
+他没躲进旁边亮着灯的便利店，口袋里只剩七个钢镚，进去不买东西尴尬，买了又舍不得。
+
+几乎半分钟不到，手机就震了一下。
+
+“加盟代理，不用出本金，只需要帮我发广告拉人。收的八千八学费你拿七成，我拿三成。新人出事，也找不到你头上。”
+
+王强盯着屏幕，拇指无意识摩挲着磨花的手机壳边缘，湿冷的手心很快焐出一片潮气。
+八千八的七成是六千一百六，拉一个就赚这么多，拉十个就是六万，比跑外卖累死累活强十倍不止。
+
+可半年前牢里的糙米饭还噎在喉咙里，当初那个穿西装的陈老师也是拍着胸脯说“完美犯罪零风险”，最后他蹲了半年，出来连个正经活都找不到。
+他本应该直接删掉短信，踏踏实实找份出力的活活下去。
+
+但指尖碰到口袋里皱巴巴的五十块纸钞，想到老母亲等着手术的三万医药费，想到征信上永远抹不掉的逾期记录，刚冒出来的那点清醒，又被欲望压得严严实实。
+
+他都已经这样了，还有什么可输的？
+
+“在哪里见面？”
+
+按下发送键的瞬间，王强就清楚自己又跳了火坑。可火坑至少还有点温度，总比站在雨里冻死饿死强。
+
+“城南老城区的沙县小吃，晚上七点。那里都是换班的底层打工人，没人会注意两个陌生人的谈话。”
+
+下午，王强去了车站旁十块钱一位的公共澡堂，好好搓了个澡。
+换上同监室室友出狱前送的干净外卖服——领口磨出了毛边，洗得发灰，可总比自己那件臭烘烘的强。
+
+室友当初也是骗保进来的，临走前攥着他的手反复劝：“出去别碰赚快钱的鬼话，找个稳当的，哪怕摆地摊。”
+
+王强当时只能苦笑。稳当活哪那么好找？背着诈骗案底，正规公司连面试机会都不给，外卖平台租车都卡逾期，摆地摊连菜市场摊位费都交不起。
+
+六点二十，王强提前十分钟到了地方。
+张老师坐在最里面的角落，戴黑框眼镜，穿洗得发白的蓝衬衫，手里攥着本旧文摘，看着像个退了休的中学老师。
+
+王强拉过塑料椅坐下，塑料椅腿在水泥地上蹭出一声轻响。
+
+“来了？想吃什么随便点，我请，这里不贵。”
+
+“不用了，喝点免费茶水就行。”
+
+王强盯着他的脸，总觉得在哪儿见过，可黑框眼镜遮了半张脸，声音也比之前的陈老师哑，明显是刻意压了声。他没多问，直接切入正题：“说项目吧，我没时间耽误。”
+
+张老师放下杂志，掏出一张折得方方正正的打印纸推过来：“先看看加盟协议。”
+
+协议写得很简单：王强做本地代理，推广“快速致富精英班”，收的八千八学费，王强拿七成；所有线上操作和收款都走张老师的渠道，王强只负责发广告、接新人咨询。
+
+“新人操作被抓，我会不会受牵连？”
+
+“放心，都是他们自己动手的事，跟你没关系。”
+张老师喝了口面前的紫菜蛋花汤，语气轻描淡写，顿了顿又补了句，“咱们是一条船上的人，互相都有把柄在手里，只要安分做事，谁也不会害谁。”
+
+王强捏着协议的指尖瞬间凉透。对方早就把他的底摸得清清楚楚，根本不是随便在街上抓的人。
+
+“为什么选我？”
+
+“因为你走投无路，会安分做事。”
+张老师指尖敲了敲桌面，不紧不慢说，“新人拉到几个就想着单干跑掉，你不一样，你知道规矩，也知道破釜沉舟的道理。好好干，大家都赚钱。”
+
+王强没说话。
+对方说的全对，他现在连饭都吃不起，根本没得选。何况当初自己被骗了八千八，现在拉别人赚回来，也算扯平了。
+
+“我什么时候能开始？”
+
+张老师牵了牵嘴角，从帆布包里掏出个黑色U盘递过来：“这里面有广告模板和聊天话术，明天就能发。拉到第一个人，立刻打钱，绝不拖欠。”
+
+王强接过U盘握在手里，硬塑料边缘硌着掌心，像攥了块沾了冰的碎玻璃。
+他清楚得很，这刀现在割别人，早晚也会割到自己身上。
+
+“对了，”张老师收了笑，语气严肃起来，“不能拉本地的亲戚朋友。我给你准备了新手机号新微信号，只能用这个联系，不准用自己的号，记住了？”
+
+“嗯。”
+
+离开沙县小吃时已经八点半，雨又下大了，噼里啪啦砸在脸上。
+王强没带伞，只能把外套领子立起来，缩着脖子往出租屋走。
+
+他住的出租屋在城中村，回巷子要经过一家二十四小时便利店。
+刚走到巷口，就听见有人喊他名字。
+
+阿军蹲在便利店台阶上，手里攥着半瓶冰啤酒，脚边扔了好几个空瓶，眼神发直盯着雨幕发呆。
+
+“强哥？真的是你！你出来了？”看见王强，阿军赶紧撑着墙站起来，啤酒沫顺着瓶口滴在洗得发白的外卖裤上。
+
+“嗯，刚出来没几天。”王强顺着墙根站住，把U盘往口袋深处按了按。
+
+“最近找到好活了？看着比之前精神点。”
+
+“凑活过呗。”
+
+阿军灌了一大口冰啤，重重叹了口气，酒气混着雨腥飘过来。
+“我最近熬不住了，老婆查出来子宫肌瘤要手术，住院押金五万，孩子马上开学学费也没着落。前后欠了五万网贷，三天内必须还清，催收说不还就上门找我爸妈。我真没路走了。”
+
+王强的心跳猛地漏了一拍。
+阿军这不就是送上门的第一个下线吗？拉他进来，立刻就能拿六千多，刚好能帮他填一部分押金，而且阿军一向信他，不会怀疑。
+
+可看着阿军熬得发黑的眼圈，满脸胡茬掩不住的憔悴，那点烧得慌的欲望又卡在了喉咙里。
+都是底层摸爬滚打的苦命人，何苦把人往自己刚爬出来的火坑里推？
+
+“强哥，你有没有赚快钱的路子？只要能还清钱，让我做什么都行。大不了蹲几年，总好过看着我老婆等死。”阿军往前凑了一步，粗糙的手抓住了王强的胳膊，语气抖得不成样子。
+
+王强的舌尖顶了顶腮帮子，指尖反复蹭着口袋里U盘冰冷的外壳，心里翻来覆去打了好几个架。一边是救命的提成，一边是一起跑了大半年单的兄弟，天平左右晃，就是落不下来。
+
+他深吸一口气，刚要开口——
+
+便利店的玻璃门被推开，暖黄色的灯光顺着雨幕流出来，卷着一股热烘烘的暖气。
+穿藏青色便装的男人走出来，手里卷着份印着警徽的文件袋，脚步在看到王强的瞬间，稳稳停住了。
+
+男人的视线扫过王强攥紧的口袋，又落在他沾了泥点的外卖服上，没出声，就那么站在暖光里，静静地看着他。
+
+王强认出来，那是当初抓他的李刑警。
+雨幕把两人隔开，那道视线像冰一样，顺着领口钻进来，冻得他浑身肌肉都绷成了石头，连动一下手指都做不到。</pre>
+        </div>
+    </div>
+
+    <div class="bottom-nav">
+        <div class="prev-btn">
+            
+            <button class="btn btn-primary" onclick="window.location.href='../read/chapter_2.html'">← 上一章</button>
+            
+        </div>
+        <div class="toc-btn">
+            <button class="btn" id="openToc">📖 目录</button>
+        </div>
+        <div class="next-btn">
+            
+            <button class="btn btn-primary" onclick="window.location.href='../read/chapter_4.html'">下一章 →</button>
+            
+        </div>
+    </div>
+
+    <div class="toc-panel" id="tocPanel">
+        <button class="btn close-btn" id="closeToc">✕ 关闭</button>
+        <ul class="toc-list">
+            
+            <li>
+                <a href="./chapter_1.html" >
+                    第1章 雨夜，我转了八千八赚快钱
+                </a>
+            </li>
+            
+            <li>
+                <a href="../read/chapter_2.html" >
+                    第2章 刚收割就被警察找上门
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_3.html" class="current">
+                    第3章 雨夜的赚快钱邀约
+                </a>
+            </li>
+            
+            <li>
+                <a href="../read/chapter_4.html" >
+                    第4章 雨夜旧警官，U盘赌生路
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_5.html" >
+                    第5章 出狱后，所有钱被洗劫一空
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_6.html" >
+                    第6章 走投无路的新猎物
+                </a>
+            </li>
+            
+        </ul>
+    </div>
+
+    <div class="overlay" id="overlay"></div>
+
+    <script>
+        // 主题切换
+        const themeToggle = document.getElementById('themeToggle');
+        const html = document.documentElement;
+        let currentTheme = localStorage.getItem('theme') || 'light';
+        html.setAttribute('data-theme', currentTheme);
+        themeToggle.addEventListener('click', () => {
+            const newTheme = html.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+        });
+
+        // 字号调整
+        let currentFontSize = parseFloat(localStorage.getItem('fontSize')) || 1.1;
+        document.querySelector('.content').style.fontSize = currentFontSize + 'rem';
+        function changeFontSize(delta) {
+            currentFontSize += delta * 0.05;
+            currentFontSize = Math.max(0.9, Math.min(1.4, currentFontSize));
+            document.querySelector('.content').style.fontSize = currentFontSize + 'rem';
+            localStorage.setItem('fontSize', currentFontSize);
+        }
+
+        // 目录面板
+        const tocPanel = document.getElementById('tocPanel');
+        const overlay = document.getElementById('overlay');
+        const openToc = document.getElementById('openToc');
+        const closeToc = document.getElementById('closeToc');
+
+        openToc.addEventListener('click', () => {
+            tocPanel.classList.add('open');
+            overlay.classList.add('show');
+        });
+
+        function closeTocPanel() {
+            tocPanel.classList.remove('open');
+            overlay.classList.remove('show');
+        }
+
+        closeToc.addEventListener('click', closeTocPanel);
+        overlay.addEventListener('click', closeTocPanel);
+
+        // 自动处理段落格式化（把换行转成p标签）
+        // 这里保持pre格式因为内容已经有正确换行了
+    </script>
+</body>
+</html>

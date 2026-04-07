@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>第6章 - 未竟之诗 - 多Agent小说阅读器</title>
+    <style>
+        :root {
+            --bg-color: #f8f4e9;
+            --bg-paper: #fcf9f3;
+            --text-color: #2c2c2c;
+            --nav-bg: rgba(255, 255, 255, 0.96);
+            --border-color: #e6e2d8;
+            --link-color: #667eea;
+            --shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        }
+        [data-theme="dark"] {
+            --bg-color: #121212;
+            --bg-paper: #1a1a1a;
+            --text-color: #d4d4d4;
+            --nav-bg: rgba(26, 26, 26, 0.96);
+            --border-color: #333;
+            --link-color: #8b9eff;
+            --shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        html, body {
+            height: 100%;
+        }
+        body {
+            font-family: "PingFang SC", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Serif SC", serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.8;
+            transition: background-color 0.3s;
+        }
+        .top-nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: var(--nav-bg);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border-color);
+            padding: 10px 15px;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .nav-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .btn {
+            background: none;
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 8px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+        .btn:hover {
+            background: var(--link-color);
+            border-color: var(--link-color);
+            color: white;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        }
+        .btn-primary {
+            background: var(--link-color);
+            border-color: var(--link-color);
+            color: white;
+        }
+        .btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        .title {
+            font-size: 0.9rem;
+            font-weight: 500;
+            max-width: 50%;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .container {
+            max-width: 750px;
+            margin: 70px auto 80px;
+            padding: 0 20px;
+            min-height: calc(100vh - 150px);
+        }
+        .content {
+            font-size: 1.1rem;
+            background: var(--bg-paper);
+            padding: 40px 30px;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
+        }
+        .content pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: inherit;
+            margin: 0;
+        }
+        .content p {
+            margin-bottom: 1em;
+            text-indent: 2em;
+        }
+        .content h1 {
+            font-size: 1.5rem;
+            margin-bottom: 1em;
+            text-align: center;
+        }
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--nav-bg);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid var(--border-color);
+            padding: 10px 15px;
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .toc-btn {
+            flex: 1;
+            text-align: center;
+        }
+        .toc-btn button {
+            width: 80%;
+        }
+        .prev-btn, .next-btn {
+            flex: 1;
+        }
+        .prev-btn button, .next-btn button {
+            width: 90%;
+        }
+        .toc-panel {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--nav-bg);
+            z-index: 200;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+            overflow-y: auto;
+            padding-top: 60px;
+        }
+        .toc-panel.open {
+            transform: translateX(0);
+        }
+        .toc-panel .close-btn {
+            position: fixed;
+            top: 10px;
+            right: 15px;
+            z-index: 201;
+        }
+        .toc-list {
+            list-style: none;
+            padding: 10px 20px;
+        }
+        .toc-list li {
+            border-bottom: 1px solid var(--border-color);
+        }
+        .toc-list a {
+            display: block;
+            padding: 12px 0;
+            color: var(--text-color);
+            text-decoration: none;
+        }
+        .toc-list a:hover {
+            color: var(--link-color);
+        }
+        .toc-list .current {
+            color: var(--link-color);
+            font-weight: 500;
+        }
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 199;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s;
+        }
+        .overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        .font-size-controls {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+        }
+        @media (max-width: 600px) {
+            .content {
+                font-size: 1.05rem;
+                padding: 20px 16px;
+            }
+            .container {
+                padding: 0 12px;
+            }
+            .title {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="top-nav">
+        <div class="nav-left">
+            <button class="btn" onclick="window.location.href='../index.html'">📚 目录</button>
+            <button class="btn" id="themeToggle">🌓 换肤</button>
+            <div class="font-size-controls">
+                <button class="btn" onclick="changeFontSize(-1)">A-</button>
+                <button class="btn" onclick="changeFontSize(1)">A+</button>
+            </div>
+        </div>
+        <div class="title" id="pageTitle">第75章 墓碑上的名字</div>
+    </div>
+
+    <div class="container">
+        <div class="content">
+            <pre>第75章 墓碑上的名字
+
+剑尖离艾拉后颈只剩半寸，那柄缺了刃的断剑突然自己低低嗡鸣起来。
+
+浅金色微光顺着剑柄慢慢往上漫，悄无声息爬过她的脊背，最后在颈侧凝出半透明的薄盾。
+
+“锵——”
+
+圣光剑结结实实撞在盾上，巨大的反震力把整把剑弹出去老远，骑士队长虎口崩得发麻，差点没握住剑柄。
+
+周围的骑士齐齐往后退了两步，长矛杆被掌心的汗浸得发滑，攥得木头咯吱直响。
+
+艾拉握着断剑，慢慢转过身。
+
+方才漫在她眼底的悲伤已经散了，只剩下沉甸甸的坚定——那是无数被世界遗忘遗弃的存在，一点点攒起来送给她的信任。
+
+灰袍人侧过身，目光牢牢钉在她手里发光的断剑上。
+
+规则力量和废弃叙事天生就是天敌，他活了这么久，还是第一次见叙事碎片主动选守护者，共情融合得这样完整，连一丝裂痕都找不到。
+
+艾拉深吸一口气，压下胸口翻涌的情绪，把刚才没织完的情绪线，一点点续进断剑的叙事核心里。
+
+“后来，国王侄子抢你战功的事败露了。”
+
+“史官重新翻了当年埋在仓库里的战场记录，把你的名字写回了史册。”
+
+“你的家乡给你立了新墓碑，刻着你的名字和生卒年月，还有‘塔林镇汤姆·米勒，边境抗敌英雄’。”
+
+“你娘活到去世那天，天天都坐在村口老槐树下，手里攥着你小时候穿的粗布衣裳，逢人就说，我儿子是英雄，不是逃兵。”
+
+断剑上的浅金色微光猛地暴涨，一下子掀开来，把整个广场的夜空都照得透亮。
+
+光亮拆成无数细碎的光点，慢悠悠飘下来，落在广场上每一个人的肩头。
+
+原本空空荡荡的无名墓碑上，忽然浮起一层清晰的刻痕：塔林镇汤姆·米勒，1368年生，1386年战死边境，抗敌英雄。
+
+笼着广场大半天的灰色叙事雾瞬间退得干干净净，墓碑周围裹着一层淡淡的鹅黄色暖光，像极了老妇人院墙边，晒了一辈子太阳的旧土墙。
+
+人群里突然炸开一声惊呼。
+
+“这不是我爹跟我讲过的那个无名英雄吗？”
+说话的是个穿粗麻短衫的少年，手里还攥着半块没吃完的黑麦面包，面包屑沾在嘴角都忘了擦。
+
+站在少年旁边的中年男人，是小镇唯一的史官，他忽然抱着头闷哼一声，额角暴起青筋。
+
+好半天他才睁开眼，眼里全是压不住的震愕，连声音都发颤。
+
+“我……我刚才好像忽然想起了什么。塔林镇广场的无名墓碑，原来本来就有名字？我怎么会忘了？”
+
+街角面包店的老板也看呆了，他挠挠后脑勺，蹲下来伸出粗糙的手掌，轻轻摸向墓碑上的刻痕。
+
+手指在“塔林镇”三个字上蹭了一遍又一遍，满脸都是不可思议。
+
+“奇了怪了，我昨天清早擦广场石板的时候，这儿还光溜溜的什么都没有呢……怎么睡一觉就出来字了？”
+
+骑士队长盯着墓碑上的名字，脸色黑得像锅底，连鬓角的青筋都跳个不停。
+
+他手里的圣光剑还在不停颤抖，剑刃抖得越来越厉害，明显正在被废弃叙事的力量一点点往外排斥。
+
+“就算有名字又怎么样？废弃叙事就是废弃叙事，是干扰完美主线的异端！”
+
+他对着身后的骑士猛地挥了挥手，盔甲碰撞出哗啦啦的响。
+
+“给我上，把她抓起来，送到圣城接受审判！”
+
+灰袍人往前跨了一步，周身的规则之力再次散开，地面上结的白霜爬得更快，已经漫过了骑士们的靴面，冰得人脚腕发疼。
+
+“她还没做完该做的事，你不能抓她。”
+声音还是淡淡的，听不出太多情绪，可无形的压迫感压得在场的骑士没人敢再往前挪一步。
+
+艾拉摇了摇头，把断剑轻轻往墓碑前的泥土里插进去。
+
+散在空气里的微光慢慢收回到剑身上，剑身重新变回带着缺口的铁锈色，安安静静卧在松软的泥土里，像终于回到家的旅人。
+
+“不用拦，我跟你们走。”
+
+灰袍人突然抓住她的手腕，力道不大，却稳得像钉死在地上的木桩，牢牢扣着她，不让她往前迈一步。
+
+“规则说废弃叙事要抹除，但没说守护者也要抹除。你不是世界的漏洞，你是在补全漏洞。”
+
+这是他第一次说出和规则相悖的话，话音出口，他自己都愣了愣。周身翻涌的规则之力轻轻波动，像是在无声抗议，没一会儿又重新平复下来，顺着他的骨骼慢慢流开。
+
+就在这时，远处街口飘来舒缓的圣歌声音，唱诗班的和声顺着晚风飘过来，听得人心里发沉。
+
+一辆装饰华丽的马车，由四匹通体雪白的马拉着，缓缓驶进广场。马车上插着圣光教会的大旗，金色十字架在月光下亮得晃眼，刺得人睁不开眼睛。
+
+车门被侍从从里面推开，一个穿红色主教袍的老人慢慢走下来，手里捧着一本封皮烫金的厚厚的圣经，皮鞋踩在青石板上，踏出稳稳的声响。
+
+他脸上挂着和蔼慈祥的笑，眼角的皱纹堆起来，可眼神深处藏着抹不去的狂热，像燃着不熄的火。
+
+“这位女士，我们怀疑你使用了恶魔的叙事魔法，扰乱了世界的完美秩序。请跟我回圣城，接受教皇陛下的审判。”
+
+灰袍人攥着艾拉手腕的手更紧了，指节都绷得微微泛出白色，周身的寒气又重了几分。
+
+艾拉看着马车上悬着的金色十字架，深吸一口气，慢慢闭上了眼。
+
+她能清楚感觉到，马车上还藏着其他更强大的力量，远不是刚才那个骑士队长能比的。如果灰袍人硬拦在这里，说不定会吃大亏。
+
+她轻轻挣开灰袍人的手，对着他摇了摇头，往前走了两步。
+
+“我跟你走。”
+
+话音刚落，插在泥土里的断剑突然再次嗡鸣起来，猛地从泥土里飞出来，掠过一道浅金的光痕，稳稳落回她的掌心。
+
+马车上下来的红衣老人看清那柄断剑，脸上的慈祥笑意瞬间僵住，脸色唰地一下变得惨白。
+
+“这是……成型的废弃叙事核心！快，动手把她抓起来，绝对不能让她带着核心走！”
+
+灰袍人再次挡在了艾拉身前，宽大衣袖被风掀得猎猎作响。
+
+他周身翻涌的规则之力，和马车里透出来的圣光力量狠狠撞在一起，空气里发出嗡嗡的低鸣，震得人耳朵发疼。
+
+广场铺的青石板开始微微震动，脚边蔓延的白霜和金色圣光缠在一起，织出一道诡异扭曲的光影，在两人中间翻涌不停。</pre>
+        </div>
+    </div>
+
+    <div class="bottom-nav">
+        <div class="prev-btn">
+            
+            <button class="btn btn-primary" onclick="window.location.href='../read/chapter_5.html'">← 上一章</button>
+            
+        </div>
+        <div class="toc-btn">
+            <button class="btn" id="openToc">📖 目录</button>
+        </div>
+        <div class="next-btn">
+            
+            <button class="btn btn-primary" onclick="window.location.href='../read/chapter_7.html'">下一章 →</button>
+            
+        </div>
+    </div>
+
+    <div class="toc-panel" id="tocPanel">
+        <button class="btn close-btn" id="closeToc">✕ 关闭</button>
+        <ul class="toc-list">
+            
+            <li>
+                <a href="./chapter_1.html" >
+                    第1章 废弃教堂的布娃娃
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_2.html" >
+                    第2章 墙里的布娃娃
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_3.html" >
+                    第3章 密道里的鹅黄色光
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_4.html" >
+                    第17章 残痕
+                </a>
+            </li>
+            
+            <li>
+                <a href="../read/chapter_5.html" >
+                    第5章 无名墓碑的遗言
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_6.html" class="current">
+                    第75章 墓碑上的名字
+                </a>
+            </li>
+            
+            <li>
+                <a href="../read/chapter_7.html" >
+                    第57章 断剑余温
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_8.html" >
+                    第12章 磨坊草堆里的冷光
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_9.html" >
+                    第11章 磨坊地窖的狼
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_10.html" >
+                    第52章 残片与母狼
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_11.html" >
+                    第27章 地窖冰痕与银狼牙
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_12.html" >
+                    第37章 森林里的木牌
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_13.html" >
+                    第67章 海边贝壳
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_14.html" >
+                    第18章 林间的等待
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_15.html" >
+                    第72章 银狼牙坠
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_16.html" >
+                    第17章 林间三眼狼
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_17.html" >
+                    第72章 老林冰缝
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_18.html" >
+                    冰缝下的冰原
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_19.html" >
+                    老林深处的风刮得脸生疼，树叶沙沙揉成噪浪，细碎的马蹄铁脆响像针似的，从出口方向钻进来。
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_20.html" >
+                    第78章 冰缝人影
+                </a>
+            </li>
+            
+        </ul>
+    </div>
+
+    <div class="overlay" id="overlay"></div>
+
+    <script>
+        // 主题切换
+        const themeToggle = document.getElementById('themeToggle');
+        const html = document.documentElement;
+        let currentTheme = localStorage.getItem('theme') || 'light';
+        html.setAttribute('data-theme', currentTheme);
+        themeToggle.addEventListener('click', () => {
+            const newTheme = html.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+        });
+
+        // 字号调整
+        let currentFontSize = parseFloat(localStorage.getItem('fontSize')) || 1.1;
+        document.querySelector('.content').style.fontSize = currentFontSize + 'rem';
+        function changeFontSize(delta) {
+            currentFontSize += delta * 0.05;
+            currentFontSize = Math.max(0.9, Math.min(1.4, currentFontSize));
+            document.querySelector('.content').style.fontSize = currentFontSize + 'rem';
+            localStorage.setItem('fontSize', currentFontSize);
+        }
+
+        // 目录面板
+        const tocPanel = document.getElementById('tocPanel');
+        const overlay = document.getElementById('overlay');
+        const openToc = document.getElementById('openToc');
+        const closeToc = document.getElementById('closeToc');
+
+        openToc.addEventListener('click', () => {
+            tocPanel.classList.add('open');
+            overlay.classList.add('show');
+        });
+
+        function closeTocPanel() {
+            tocPanel.classList.remove('open');
+            overlay.classList.remove('show');
+        }
+
+        closeToc.addEventListener('click', closeTocPanel);
+        overlay.addEventListener('click', closeTocPanel);
+
+        // 自动处理段落格式化（把换行转成p标签）
+        // 这里保持pre格式因为内容已经有正确换行了
+    </script>
+</body>
+</html>

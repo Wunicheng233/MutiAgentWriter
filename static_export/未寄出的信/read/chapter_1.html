@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>第1章 - 未寄出的信 - 多Agent小说阅读器</title>
+    <style>
+        :root {
+            --bg-color: #f8f4e9;
+            --bg-paper: #fcf9f3;
+            --text-color: #2c2c2c;
+            --nav-bg: rgba(255, 255, 255, 0.96);
+            --border-color: #e6e2d8;
+            --link-color: #667eea;
+            --shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        }
+        [data-theme="dark"] {
+            --bg-color: #121212;
+            --bg-paper: #1a1a1a;
+            --text-color: #d4d4d4;
+            --nav-bg: rgba(26, 26, 26, 0.96);
+            --border-color: #333;
+            --link-color: #8b9eff;
+            --shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        html, body {
+            height: 100%;
+        }
+        body {
+            font-family: "PingFang SC", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Serif SC", serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.8;
+            transition: background-color 0.3s;
+        }
+        .top-nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: var(--nav-bg);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border-color);
+            padding: 10px 15px;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .nav-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .btn {
+            background: none;
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 8px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+        .btn:hover {
+            background: var(--link-color);
+            border-color: var(--link-color);
+            color: white;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        }
+        .btn-primary {
+            background: var(--link-color);
+            border-color: var(--link-color);
+            color: white;
+        }
+        .btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        .title {
+            font-size: 0.9rem;
+            font-weight: 500;
+            max-width: 50%;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .container {
+            max-width: 750px;
+            margin: 70px auto 80px;
+            padding: 0 20px 120px 20px;
+            min-height: calc(100vh - 150px);
+        }
+        .content {
+            font-size: 1.1rem;
+            background: var(--bg-paper);
+            padding: 40px 30px 120px 30px;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
+        }
+        .content pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: inherit;
+            margin: 0;
+        }
+        .content p {
+            margin-bottom: 1em;
+            text-indent: 2em;
+        }
+        .content h1 {
+            font-size: 1.5rem;
+            margin-bottom: 1em;
+            text-align: center;
+        }
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--nav-bg);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid var(--border-color);
+            padding: 10px 15px;
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .toc-btn {
+            flex: 1;
+            text-align: center;
+        }
+        .toc-btn button {
+            width: 80%;
+        }
+        .prev-btn, .next-btn {
+            flex: 1;
+        }
+        .prev-btn button, .next-btn button {
+            width: 90%;
+        }
+        .toc-panel {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--nav-bg);
+            z-index: 200;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+            overflow-y: auto;
+            padding-top: 60px;
+        }
+        .toc-panel.open {
+            transform: translateX(0);
+        }
+        .toc-panel .close-btn {
+            position: fixed;
+            top: 10px;
+            right: 15px;
+            z-index: 201;
+        }
+        .toc-list {
+            list-style: none;
+            padding: 10px 20px;
+        }
+        .toc-list li {
+            border-bottom: 1px solid var(--border-color);
+        }
+        .toc-list a {
+            display: block;
+            padding: 12px 0;
+            color: var(--text-color);
+            text-decoration: none;
+        }
+        .toc-list a:hover {
+            color: var(--link-color);
+        }
+        .toc-list .current {
+            color: var(--link-color);
+            font-weight: 500;
+        }
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 199;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s;
+        }
+        .overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        .font-size-controls {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+        }
+        @media (max-width: 600px) {
+            .content {
+                font-size: 1.05rem;
+                padding: 20px 16px 140px 16px;
+            }
+            .container {
+                padding: 0 12px 140px 12px;
+            }
+            .title {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="top-nav">
+        <div class="nav-left">
+            <button class="btn" onclick="window.location.href='../index.html'">📚 目录</button>
+            <button class="btn" id="themeToggle">🌓 换肤</button>
+            <div class="font-size-controls">
+                <button class="btn" onclick="changeFontSize(-1)">A-</button>
+                <button class="btn" onclick="changeFontSize(1)">A+</button>
+            </div>
+        </div>
+        <div class="title" id="pageTitle">第1章 母亲衣柜底的秘密铁盒</div>
+    </div>
+
+    <div class="container">
+        <div class="content">
+            <pre>第1章 母亲衣柜底的秘密铁盒
+
+南方小镇的丧事，向来讲究速办。
+三天烧完头七纸，帮忙张罗的亲戚邻居吃过谢饭，一个个提着染红的喜蛋走了。
+
+巷口往常坐着几个纳凉聊天的老人，今天也都空了位置。
+九月的太阳把青石板路晒得发烫，连风卷过来都带着闷味，没留住半分刚才的喧闹。
+
+阿杰靠在自家院门的木框上，看着最后一个远房婶子挎着篮子拐过巷口的青砖墙。
+指尖捏着半盒刚从村口小卖部买的烟，一根被攥得皱成一团，始终没点。
+
+母亲陈桂兰走了半个月，肺癌。
+从查出来癌细胞扩散，到最后闭眼，才撑了八个月。
+
+他今年二十五，刚在县城找了份稳定的公路养护工作，入职才半年。
+转正的第一笔工资发下来，还没捂热，打算周末带母亲去县城吃碗她念叨好久的牛腩粉，家里最后一个长辈就没了。
+
+院子里一下子静得能听见自己的呼吸。
+只有院角那棵跟他同岁的老梧桐树，叶子被风扫得哗啦哗啦响。
+晒了一上午的热气裹着闷躁的风卷过来，吹得后颈发沉，连后衣领都洇出了一层薄汗。
+
+阿杰直了直站得发麻的腿，转过身扫了眼住了二十多年的老房子。
+打算慢慢整理母亲的东西，还能用的留给村里帮衬过咱家的远亲，舍不得丢的，打包带去县城的出租屋。
+
+堂屋摆着掉漆的八仙桌，还是当年父亲在世时打的，西屋靠墙放着一张旧双人床，墙角立着个棕红色的老衣柜。
+这柜子是母亲当年攒了三年布票，咬着牙请镇上老木匠打的，原本打算给兄弟俩长大了放衣裳。
+后来阿明走了，他出去镇上读高中，再去城里读大学，这柜子就成了母亲自己用。
+
+上层堆着当年家里上下铺拆下来的旧棉被，母亲翻晒过，叠得整整齐齐，摸上去还带着太阳晒过的蓬松感，混着一股淡淡的樟脑丸气味。
+阿杰抱出来，打算摊在院坝里再晒一天，下午村口收旧棉花的李叔过来拉走，能换百八十块，留给巷口的五保户王奶奶买洗衣粉。
+
+他伸手往衣柜最深处掏，想把剩下的旧衣裳也抱出来晒，指尖蹭过棉被的垫底，忽然碰到个冰凉坚硬的玩意儿，不是木头纹理，也不是布料的软度。
+
+拨开堆在上面的几件母亲打了补丁的旧布衫，露出一小块深绿色的漆边。
+是个拳头大小的铁盒，边角磨得发乌，锁头锈得快烂成一团，钥匙孔早就被锈渣堵死了。
+
+阿杰盯着那个铁盒，愣了好几秒。
+他小时候确实见过这东西。
+
+那时候家里还住村头的老米房，这铁盒天天藏在米缸最底下。
+母亲每次舀米都特别小心，轻手轻脚的，生怕碰着铁盒发出声响。
+
+后来翻修房子换了新的陶瓷米缸，这铁盒就没影了。
+他那时候才上小学，追着母亲问过一次，那盒子里藏了什么好东西。
+
+母亲当时正在后院的石板搓衣板上搓他的校服，满手都是肥皂泡。
+她抬头看了阿杰一眼，语气软乎乎的：“大人的事，小孩别管。”
+
+那双被农活磨得粗糙的眼睛里，压着点他当时看不懂的东西，小小的阿杰只知道，自己不该再问了。
+从那之后，他就再也没提过这盒子的事。
+
+没想到过了十几年，居然在母亲衣柜的最底层找着了。
+
+阿杰把铁盒抱出来，放到院中的青石板桌上，阳光直直晒在盒子上，那层乌漆更显得旧。
+他转身去杂物房找了把旧螺丝刀，又摸出墙角堆着的磨刀石，蹲在地上把螺丝刀头磨得尖尖的。
+
+蹲在石桌边，对着锈死的锁头撬了半天，锈渣掉了一地。
+忽然听见“咔哒”一声轻响，原本焊死的锁头弹开，滚到石桌上，晃了两三下，慢慢停住。
+
+阿杰伸出手，掀开铁盒的盖子。
+里面没有存折，没有父亲留下的旧军功章，也没有房产证这类值钱东西。
+
+只有一张泛黄发脆的A4纸压在盒底，上面叠着一叠用蓝布包好的信。
+那块蓝布，是母亲当年系了好多年的旧围裙剪的，布边磨得起了细毛，摸上去软乎乎的。
+
+他先拿起那张纸，指尖一碰，纸边脆得好像轻轻用力就会碎开。
+纸头上方印着黑体字：《器官捐献同意书》，日期清清楚楚写着二〇〇八年十月十二日。
+
+捐献人那一栏，签着两个歪歪扭扭的字——阿明。
+
+阿杰的脑子“嗡”一声炸了。
+血液一下子冲到头顶，又猛地一下子退回去，连手脚都跟着发凉。
+指尖控制不住地抖，那张薄薄的纸差点从手心滑到地上。
+
+他从小记到大的事，每一个细节都刻在脑子里：
+哥哥十八岁那年查出来尿毒症，撑了两年，二十岁那年没扛过去，走了。
+
+母亲哭了整整三个月，眼睛肿得像桃子，差点哭瞎。
+之后整整十年，从来不在他面前提阿明两个字。
+更从来没说过，阿明走之前，还签了这么一张器官捐献同意书。
+
+这十年，每年清明给哥哥上坟，都是安安静静跟着母亲去。
+母亲不说什么，他也不敢多问，两人都揣着同一个不敢碰的伤口，谁都不敢先戳破。
+
+阿杰贴着石桌慢慢蹲下来，后背靠着冰冷的桌腿。
+胸口闷得发疼，像被一只手攥住了心脏，闭着眼深呼吸了好半天，才缓过那股上来的眩晕。
+
+他把同意书轻轻折好，小心放回盒子原来的位置。
+
+拿起那叠蓝布包着的信，数了数，一共三十七封。
+信封都是最普通的牛皮纸，收信人栏全是母亲的字，一笔一划歪歪扭扭，写着“阿杰收”。
+
+母亲认的字不多，都是早年生产队扫盲班学的，这辈子除了他读大学时寄过几封报平安的信，就没怎么碰过笔。
+这些字，写的时候肯定攥着笔杆，费了不少劲，每一笔都用足了力气。
+
+阿杰抽出最上面那一封，封口粘得很牢，撕的时候扯破了一块毛边。
+信纸是最便宜的毛边纸，时间久了墨水洇了一点，有些笔画糊成了一团，但大部分字都能看清。
+
+开头第一句，像一块烧红的烙铁，狠狠砸在了心口。
+“阿杰，妈骗了你十年，你哥走之前，给一个小姑娘捐了肾。”
+
+闷疼顺着血管往四肢百骸钻，阿杰捂着胸口，半天喘不上一口气。
+
+第二行接着写：我们找了十年，没找到那个小姑娘，现在妈也要走了，这个任务，只能交给你了。
+
+铁盒深处还夹着一张揉得发皱的格子纸条，是从旧作业本上撕下来的。
+上面用铅笔歪歪扭扭写了三十七个地址，从南方小镇周边的村镇，一路延伸到邻省的南城。
+越往后的地址越潦草，笔画抖得厉害，看得出来写最后几个的时候，母亲的手已经因为肺癌疼得握不住笔了。
+
+阿杰的指尖顺着一个个地址慢慢划过去，最后停在最后一行。
+最后一个地址的外围，被母亲用铅笔反复描了三圈，画了个歪歪扭扭的粗圈。
+
+圈里写着：南城城郊，新建监狱门口。
+
+一阵风扫过院子，一片半黄的梧桐叶打着旋落下来，刚好飘进铁盒，盖住了那个粗圈的小半边。
+露出来的“监狱”两个字，在九月烫人的阳光下，泛着一层冷幽幽的铅灰色，静悄悄的躺在那里。
+阿杰捏着纸条的指尖，又开始不受控制地发凉。</pre>
+        </div>
+    </div>
+
+    <div class="bottom-nav">
+        <div class="prev-btn">
+            
+            <button class="btn" disabled>← 上一章</button>
+            
+        </div>
+        <div class="toc-btn">
+            <button class="btn" id="openToc">📖 目录</button>
+        </div>
+        <div class="next-btn">
+            
+            <button class="btn btn-primary" onclick="window.location.href='../read/chapter_2.html'">下一章 →</button>
+            
+        </div>
+    </div>
+
+    <div class="toc-panel" id="tocPanel">
+        <button class="btn close-btn" id="closeToc">✕ 关闭</button>
+        <ul class="toc-list">
+            
+            <li>
+                <a href="./chapter_1.html" class="current">
+                    第1章 母亲衣柜底的秘密铁盒
+                </a>
+            </li>
+            
+            <li>
+                <a href="../read/chapter_2.html" >
+                    第2章 三十七个未寻到的地址
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_3.html" >
+                    第3章 最后一个地址
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_4.html" >
+                    第4章 老槐树下的十年遗书
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_5.html" >
+                    第5章 遗书背面的隐秘铅笔字
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_6.html" >
+                    第6章 母亲藏了十年的谎言之网
+                </a>
+            </li>
+            
+        </ul>
+    </div>
+
+    <div class="overlay" id="overlay"></div>
+
+    <script>
+        // 主题切换
+        const themeToggle = document.getElementById('themeToggle');
+        const html = document.documentElement;
+        let currentTheme = localStorage.getItem('theme') || 'light';
+        html.setAttribute('data-theme', currentTheme);
+        themeToggle.addEventListener('click', () => {
+            const newTheme = html.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+        });
+
+        // 字号调整
+        let currentFontSize = parseFloat(localStorage.getItem('fontSize')) || 1.1;
+        document.querySelector('.content').style.fontSize = currentFontSize + 'rem';
+        function changeFontSize(delta) {
+            currentFontSize += delta * 0.05;
+            currentFontSize = Math.max(0.9, Math.min(1.4, currentFontSize));
+            document.querySelector('.content').style.fontSize = currentFontSize + 'rem';
+            localStorage.setItem('fontSize', currentFontSize);
+        }
+
+        // 目录面板
+        const tocPanel = document.getElementById('tocPanel');
+        const overlay = document.getElementById('overlay');
+        const openToc = document.getElementById('openToc');
+        const closeToc = document.getElementById('closeToc');
+
+        openToc.addEventListener('click', () => {
+            tocPanel.classList.add('open');
+            overlay.classList.add('show');
+        });
+
+        function closeTocPanel() {
+            tocPanel.classList.remove('open');
+            overlay.classList.remove('show');
+        }
+
+        closeToc.addEventListener('click', closeTocPanel);
+        overlay.addEventListener('click', closeTocPanel);
+
+        // 自动处理段落格式化（把换行转成p标签）
+        // 这里保持pre格式因为内容已经有正确换行了
+    </script>
+</body>
+</html>

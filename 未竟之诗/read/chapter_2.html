@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>第2章 - 未竟之诗 - 多Agent小说阅读器</title>
+    <style>
+        :root {
+            --bg-color: #f8f4e9;
+            --bg-paper: #fcf9f3;
+            --text-color: #2c2c2c;
+            --nav-bg: rgba(255, 255, 255, 0.96);
+            --border-color: #e6e2d8;
+            --link-color: #667eea;
+            --shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        }
+        [data-theme="dark"] {
+            --bg-color: #121212;
+            --bg-paper: #1a1a1a;
+            --text-color: #d4d4d4;
+            --nav-bg: rgba(26, 26, 26, 0.96);
+            --border-color: #333;
+            --link-color: #8b9eff;
+            --shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        html, body {
+            height: 100%;
+        }
+        body {
+            font-family: "PingFang SC", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Serif SC", serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.8;
+            transition: background-color 0.3s;
+        }
+        .top-nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: var(--nav-bg);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border-color);
+            padding: 10px 15px;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .nav-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .btn {
+            background: none;
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 8px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+        .btn:hover {
+            background: var(--link-color);
+            border-color: var(--link-color);
+            color: white;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        }
+        .btn-primary {
+            background: var(--link-color);
+            border-color: var(--link-color);
+            color: white;
+        }
+        .btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        .title {
+            font-size: 0.9rem;
+            font-weight: 500;
+            max-width: 50%;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .container {
+            max-width: 750px;
+            margin: 70px auto 80px;
+            padding: 0 20px 80px 20px;
+            min-height: calc(100vh - 150px);
+        }
+        .content {
+            font-size: 1.1rem;
+            background: var(--bg-paper);
+            padding: 40px 30px;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
+        }
+        .content pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: inherit;
+            margin: 0;
+        }
+        .content p {
+            margin-bottom: 1em;
+            text-indent: 2em;
+        }
+        .content h1 {
+            font-size: 1.5rem;
+            margin-bottom: 1em;
+            text-align: center;
+        }
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--nav-bg);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid var(--border-color);
+            padding: 10px 15px;
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .toc-btn {
+            flex: 1;
+            text-align: center;
+        }
+        .toc-btn button {
+            width: 80%;
+        }
+        .prev-btn, .next-btn {
+            flex: 1;
+        }
+        .prev-btn button, .next-btn button {
+            width: 90%;
+        }
+        .toc-panel {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--nav-bg);
+            z-index: 200;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+            overflow-y: auto;
+            padding-top: 60px;
+        }
+        .toc-panel.open {
+            transform: translateX(0);
+        }
+        .toc-panel .close-btn {
+            position: fixed;
+            top: 10px;
+            right: 15px;
+            z-index: 201;
+        }
+        .toc-list {
+            list-style: none;
+            padding: 10px 20px;
+        }
+        .toc-list li {
+            border-bottom: 1px solid var(--border-color);
+        }
+        .toc-list a {
+            display: block;
+            padding: 12px 0;
+            color: var(--text-color);
+            text-decoration: none;
+        }
+        .toc-list a:hover {
+            color: var(--link-color);
+        }
+        .toc-list .current {
+            color: var(--link-color);
+            font-weight: 500;
+        }
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 199;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s;
+        }
+        .overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        .font-size-controls {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+        }
+        @media (max-width: 600px) {
+            .content {
+                font-size: 1.05rem;
+                padding: 20px 16px;
+            }
+            .container {
+                padding: 0 12px;
+            }
+            .title {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="top-nav">
+        <div class="nav-left">
+            <button class="btn" onclick="window.location.href='../index.html'">📚 目录</button>
+            <button class="btn" id="themeToggle">🌓 换肤</button>
+            <div class="font-size-controls">
+                <button class="btn" onclick="changeFontSize(-1)">A-</button>
+                <button class="btn" onclick="changeFontSize(1)">A+</button>
+            </div>
+        </div>
+        <div class="title" id="pageTitle">第2章 黑森林里的娃娃</div>
+    </div>
+
+    <div class="container">
+        <div class="content">
+            <pre>第2章 黑森林里的娃娃
+
+九月的风钻过黑森林层层叠叠的枝叶，裹着山头上飘下来的霜露，凉丝丝拍在艾拉汗湿的颈窝。
+
+后颈的汗毛“唰”地一下全竖了起来，她忍不住打了个寒颤，攥着袖子的指节一下子绷得泛了白。
+
+灰衣男人就跟在三步外，像块浸了铅的湿抹布，甩不开，也躲不掉。
+
+她钻过齐腰深的荆棘灌木，胳膊被划得全是细碎的血痕，冷汗顺着伤口往下渗，又痒又疼。
+
+绕着三人合抱的老橡树兜了三圈，兜得她头昏脑胀，连方向都快分不清了，那男人还是能精准跟上，脚步不晃，半分不偏。
+
+艾拉早就确定，他不是圣光教会的人。
+
+教会那些骑士，哪怕面对面抓过她一次，不出三天就能忘干净她长什么模样，哪会追了整整两天两夜，还一口就叫破她补叙者的身份。
+
+亚麻袖管里的小折刀被她攥得死紧，指腹都磨得发疼。
+
+冰凉的刀身贴着掌心，刀把上还留着刚才托比故事里沾到的暖金色余温，是托比当水手时晒了半辈子太阳的温度。
+
+一冷一热搅在一起，浸得指尖都忍不住发颤。
+
+“不用躲了。”
+
+灰衣男人突然开口，声音哑得像从旧城墙缝里钻出来的风，平平静静，听不出半分情绪。
+
+“你的气息对我来说，是世界上最亮的光。”
+
+艾拉猛地刹住脚，转身盯住树荫里走出来的人。
+
+他右手捏着半张泛黄的船票残片，纸质脆得一碰就要碎，那是五十年前失踪的那艘跨洋客轮的船票。
+
+旧纸的边卷得像晒透了的干橘子皮，安安静静躺在他掌心里，真像被时光丢在这儿忘捡的东西，一丢就是半个世纪。
+
+“你是谁？”
+
+“叙事校对者。”
+
+男人抬了抬头，额前垂着的灰发晃开，露出半张没什么表情的侧脸。皮肤白得吓人，是常年不见天日的苍青色，摸起来大概和墓园立了几十年的大理石牌位没两样。
+
+“我的职责是抹除所有叙事漏洞，维持世界本身的稳定。”
+
+“我不是漏洞。”
+
+艾拉往后急退一步，脚后跟狠狠磕在一截枯树枝上，“咔嚓”一声脆响，在安静得掉根针都能听见的森林里，格外刺耳。
+
+“我只是给那些被主线抛弃的人，补完他们应得的结局。”
+
+“没有用的。”
+
+男人往前慢慢迈了一步，脚下积了大半年的枯树叶被踩得沙沙响，每一声都像直接踩在艾拉的神经上。
+
+“被删掉的设定，被废弃的剧情，全都是残卷上的瑕疵。只有抹除，世界才能回到完美。”
+
+他抬手抓向艾拉的肩膀，指尖带着说不清的寒意，那是规则本身冻出来的冷，隔着老远都能感觉到。
+
+还没碰到衣领，艾拉露在外面的皮肤已经起了一层密密麻麻的鸡皮疙瘩，凉意顺着毛孔往骨头里钻。
+
+她猛地拧腰躲开，同时抽出小折刀，直直划向男人的手腕。
+
+刀刃划破空气的轻响，在静得能听见心跳的森林里，像炸在耳边一样清晰。
+
+可那刀直接划空了。
+
+小小的折刀穿过他的手腕，就像切过一团空气，没有阻力，没有伤口，半滴血都没出来。
+
+艾拉的脸色一下子沉了下去。
+
+她的补叙能力，本来是用来撬动废弃叙事的，能给没走完人生的角色续完该有的结局。
+
+可眼前这个男人就是规则本身，全身上下找不到半分废弃痕迹，她攒了这么久的力量，对他根本没用。
+
+“你逃不掉的。”
+
+男人再次抬手，速度比刚才快了整整一倍。
+
+艾拉连拧腰躲开的机会都没有，冰冷的指尖已经碰到了她的锁骨，凉意顺着血管瞬间爬满了半个身子。
+
+就在这时，森林深处飘来了细细的哭声。
+
+声音软乎乎的，隔了一层厚厚的枝叶，听着像刚学话的小娃娃受了委屈，又像雪地里迷路的小猫在找主人，满是无依无靠的调子，绕在黑森林里散不开。
+
+艾拉几乎是下意识就挣开了男人的手。
+
+脑子还没反应过来要怎么做，脚已经朝着哭声飘过来的方向跑了。
+
+男人的手停在半空，指尖还留着艾拉皮肤的温度。
+
+他看着她拨开树丛跑远的背影，灰雾似的瞳仁第一次轻轻晃了晃。
+
+这不是人类那种喜怒哀乐的情绪波动，是他体内承载规则的感知，出了短暂的混乱——就像一张铺得平平整整的白纸，突然被人折出了一道不该有的印子。
+
+他站在原地顿了几秒，没有立刻追上去，只是顺着哭声飘来的方向，慢慢走了过去。
+
+哭声停在了一棵老槐树下。
+
+这棵老槐树得四个人合抱才抱得过来，枝桠铺展开比半个篮球场还大，深绿色的叶子密不透风，连阳光都漏不进来几缕，树底落了厚厚一层槐花瓣，踩上去软乎乎的，像踩了棉花垫。
+
+粗糙的树皮爬满了深深沟壑，有的地方还长了暗绿色的苔藓，那沟壑像是被岁月一口一口啃出来的，又像蹲在村口看了一辈子路人的老人，满脸都是皱纹。
+
+艾拉蹲在树下的落叶堆里，背对着走来的男人，肩膀轻轻绷着，一动也不动。
+
+哭声就是从她脚边那堆落叶里飘出来的。
+
+那堆深褐色的干落叶里，躺着一个巴掌大的破布娃娃。
+
+娃娃脖子的缝线开了一大半，白白的棉花漏出来一大团，沾了碎树叶和泥灰，胳膊肘的布料也磨破了，露出里面蓬松的棉絮。
+
+头发是用粗麻线缠的，这么多年过去，早就结成了硬邦邦的疙瘩，一撮一撮翘在头顶，乱得像鸟窝。
+
+眼睛是两颗黑玻璃弹珠，一颗已经松了，挂在布脸外面，只剩一根细细的棉线连着；另一颗嵌得好好的，直勾勾盯着头顶茂密的树冠，像在等着谁回来接它。
+
+男人走到老槐树下，站在艾拉身后，隔了一步远，看着那个破烂的小东西。
+
+他体内的规则感知又晃了起来，这一次比刚才那一下更明显，晃得核心都发涨。
+
+按照他的职责，这种废弃叙事碎片，感知到的瞬间就会自动抹除，连点灰都不会留下。
+
+可现在，他盯着看了半分钟，娃娃还好好躺在落叶堆里，细细的哭声断断续续飘出来，像小爪子一样，挠得他核心感知发颤。
+
+娃娃身上淡淡的执念，居然穿透了规则的屏障，实实在在撞在了他的核心上。
+
+这不是艾拉后来添加上去的，是从被丢在这儿那天起，就埋在棉絮里的，一埋就是快一百年。
+
+那半颗露在外面晃悠的弹珠，突然轻轻转了一下。
+
+正正对上了他的眼睛。</pre>
+        </div>
+    </div>
+
+    <div class="bottom-nav">
+        <div class="prev-btn">
+            
+            <button class="btn btn-primary" onclick="window.location.href='../read/chapter_1.html'">← 上一章</button>
+            
+        </div>
+        <div class="toc-btn">
+            <button class="btn" id="openToc">📖 目录</button>
+        </div>
+        <div class="next-btn">
+            
+            <button class="btn btn-primary" onclick="window.location.href='../read/chapter_3.html'">下一章 →</button>
+            
+        </div>
+    </div>
+
+    <div class="toc-panel" id="tocPanel">
+        <button class="btn close-btn" id="closeToc">✕ 关闭</button>
+        <ul class="toc-list">
+            
+            <li>
+                <a href="../read/chapter_1.html" >
+                    第1章 被追杀的旅人
+                </a>
+            </li>
+            
+            <li>
+                <a href="./chapter_2.html" class="current">
+                    第2章 黑森林里的娃娃
+                </a>
+            </li>
+            
+            <li>
+                <a href="../read/chapter_3.html" >
+                    第3章 老槐树下的等待
+                </a>
+            </li>
+            
+        </ul>
+    </div>
+
+    <div class="overlay" id="overlay"></div>
+
+    <script>
+        // 主题切换
+        const themeToggle = document.getElementById('themeToggle');
+        const html = document.documentElement;
+        let currentTheme = localStorage.getItem('theme') || 'light';
+        html.setAttribute('data-theme', currentTheme);
+        themeToggle.addEventListener('click', () => {
+            const newTheme = html.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+        });
+
+        // 字号调整
+        let currentFontSize = parseFloat(localStorage.getItem('fontSize')) || 1.1;
+        document.querySelector('.content').style.fontSize = currentFontSize + 'rem';
+        function changeFontSize(delta) {
+            currentFontSize += delta * 0.05;
+            currentFontSize = Math.max(0.9, Math.min(1.4, currentFontSize));
+            document.querySelector('.content').style.fontSize = currentFontSize + 'rem';
+            localStorage.setItem('fontSize', currentFontSize);
+        }
+
+        // 目录面板
+        const tocPanel = document.getElementById('tocPanel');
+        const overlay = document.getElementById('overlay');
+        const openToc = document.getElementById('openToc');
+        const closeToc = document.getElementById('closeToc');
+
+        openToc.addEventListener('click', () => {
+            tocPanel.classList.add('open');
+            overlay.classList.add('show');
+        });
+
+        function closeTocPanel() {
+            tocPanel.classList.remove('open');
+            overlay.classList.remove('show');
+        }
+
+        closeToc.addEventListener('click', closeTocPanel);
+        overlay.addEventListener('click', closeTocPanel);
+
+        // 自动处理段落格式化（把换行转成p标签）
+        // 这里保持pre格式因为内容已经有正确换行了
+    </script>
+</body>
+</html>
