@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ info.name }} - 章节列表</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(180deg, #f0f4ff 0%, #f5f5f5 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px 24px;
+            margin-bottom: 25px;
+            border-radius: 16px;
+            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.25);
+        }
+        .back-link {
+            color: white;
+            text-decoration: none;
+            font-size: 0.9rem;
+            opacity: 0.9;
+            display: inline-block;
+            margin-bottom: 10px;
+        }
+        .back-link:hover {
+            opacity: 1;
+            text-decoration: underline;
+        }
+        h1 {
+            font-size: 1.6rem;
+            margin-bottom: 8px;
+        }
+        .description {
+            opacity: 0.9;
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+        .section {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            border: 1px solid rgba(102, 126, 234, 0.1);
+        }
+        .chapter-list {
+            list-style: none;
+        }
+        .chapter-list li {
+            padding: 12px 15px;
+            border-bottom: 1px solid #f5f5f5;
+            transition: all 0.2s;
+            border-radius: 8px;
+            margin-bottom: 4px;
+        }
+        .chapter-list li:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+        .chapter-list li:hover {
+            background-color: #f8f9ff;
+            transform: translateX(4px);
+        }
+        .chapter-list a {
+            text-decoration: none;
+            color: #333;
+            display: block;
+        }
+        .chapter-title {
+            font-weight: 500;
+            font-size: 1rem;
+        }
+        .stats {
+            color: #666;
+            font-size: 0.85rem;
+            margin-top: 15px;
+            text-align: right;
+        }
+        .start-reading {
+            text-align: center;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+        .start-reading a {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-weight: 500;
+            transition: transform 0.2s;
+        }
+        .start-reading a:hover {
+            transform: translateY(-2px);
+        }
+        @media (max-width: 600px) {
+            .container {
+                padding: 10px;
+            }
+            header {
+                padding: 20px 15px;
+            }
+            h1 {
+                font-size: 1.3rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <a href="/" class="back-link">← 返回书架</a>
+            <h1>{{ info.name }}</h1>
+            {% if info.description %}
+            <p class="description">{{ info.description }}</p>
+            {% endif %}
+        </header>
+
+        <div class="section">
+            <ul class="chapter-list">
+                {% for chapter in chapters %}
+                <li>
+                    <a href="/read/{{ novel_dirname }}/{{ chapter.filename }}">
+                        <div class="chapter-title">{{ chapter.title }}</div>
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+            <div class="stats">共 {{ chapters|length }} 章</div>
+            {% if chapters %}
+            <div class="start-reading">
+                <a href="/read/{{ novel_dirname }}/{{ chapters[0].filename }}">从第一章开始阅读 →</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>
