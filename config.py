@@ -2,6 +2,22 @@ import os
 from pathlib import Path
 from datetime import datetime
 
+# 自动加载 .env 文件（如果存在）
+# 这样你只需要把 API Keys 写到 .env 文件，程序自动读取
+ENV_FILE = Path(__file__).parent / '.env'
+if ENV_FILE.exists():
+    with open(ENV_FILE, 'r', encoding='utf-8') as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith('#'):
+                continue
+            if '=' in line:
+                key, value = line.split('=', 1)
+                key = key.strip()
+                value = value.strip().strip('"\'')
+                if key not in os.environ:
+                    os.environ[key] = value
+
 # ====================== 核心配置：火山引擎Coding Plan Pro专属 ======================
 # 多Agent API Key配置
 # 从环境变量读取，请勿在代码中硬编码API Key
