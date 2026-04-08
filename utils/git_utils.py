@@ -32,6 +32,18 @@ def auto_commit_push_static_site(commit_message: str = "Update novel website") -
         text=True
     ).strip()
 
+    # 检查是否有未提交的修改，如果有，先stash
+    has_stashed = False
+    result = subprocess.run(
+        ["git", "status", "--porcelain"],
+        capture_output=True, text=True
+    )
+    if result.stdout.strip():
+        logger.info("📥 暂存当前未提交的修改...")
+        result = subprocess.run(["git", "stash", "push", "-m", "auto-stash before gh-pages deploy"], capture_output=True, text=True)
+        if result.returncode == 0:
+            has_stashed = True
+
     try:
         # 切换到gh-pages分支
         logger.info("🔄 切换到gh-pages分支...")
@@ -39,6 +51,10 @@ def auto_commit_push_static_site(commit_message: str = "Update novel website") -
         if result.returncode != 0:
             logger.error(f"切换到gh-pages分支失败: {result.stderr}")
             logger.error("请先确保gh-pages分支已存在")
+            # 恢复stash
+            if has_stashed:
+                logger.info("📤 恢复暂存的修改...")
+                subprocess.run(["git", "stash", "pop"], capture_output=True, text=True)
             return False
 
         # 删除旧的静态文件，但保留.git
@@ -103,6 +119,13 @@ def auto_commit_push_static_site(commit_message: str = "Update novel website") -
         if result.returncode != 0:
             logger.error(f"切回{original_branch}失败: {result.stderr}")
 
+        # 恢复之前stash的修改
+        if has_stashed:
+            logger.info("📤 恢复暂存的修改...")
+            result = subprocess.run(["git", "stash", "pop"], capture_output=True, text=True)
+            if result.returncode != 0:
+                logger.warning(f"恢复stash警告: {result.stderr}")
+
         return True
 
     except Exception as e:
@@ -112,6 +135,13 @@ def auto_commit_push_static_site(commit_message: str = "Update novel website") -
             subprocess.run(["git", "checkout", original_branch], capture_output=True, text=True)
         except:
             pass
+        # 恢复stash
+        if has_stashed:
+            try:
+                logger.info("📤 恢复暂存的修改...")
+                subprocess.run(["git", "stash", "pop"], capture_output=True, text=True)
+            except:
+                pass
         return False
     finally:
         os.chdir(original_cwd)
