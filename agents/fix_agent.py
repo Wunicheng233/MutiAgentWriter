@@ -6,9 +6,11 @@
 减少LLM调用次数，架构更简洁
 """
 
+import openai
 from utils.volc_engine import call_volc_api
 from utils.logger import logger
-from config import TEMPERATURES, PROMPTS_DIR
+from core.config import settings
+from config import PROMPTS_DIR
 
 
 def fix_all_issues(
@@ -17,7 +19,8 @@ def fix_all_issues(
     setting_bible: str,
     all_problems: str,
     chapter_num: int = None,
-    prev_chapter_end: str = ""
+    prev_chapter_end: str = "",
+    client: openai.OpenAI = None
 ) -> str:
     """
     汇总所有问题，一次性修复
@@ -82,7 +85,8 @@ def fix_all_issues(
 """
 
     logger.info("🔧 统一修复Agent正在修复所有问题...")
-    result = call_volc_api("quality", prompt, temperature=TEMPERATURES["quality"])
+    temperature = settings.get_temperature_for_agent("fix")
+    result = call_volc_api("quality", prompt, temperature=temperature, client=client)
 
     # 确保标题保留，章节号正确
     from agents.quality_agent import has_valid_title, fix_chapter_number

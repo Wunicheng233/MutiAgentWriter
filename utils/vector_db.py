@@ -1,25 +1,67 @@
-import chromadb
-from chromadb.utils import embedding_functions
+"""
+向量数据库工具 - 惰性加载版本
+解决 macOS + Celery prefork 下的 fork 安全问题
+所有重量级导入延迟到第一次使用时才进行
+"""
+
 from pathlib import Path
 from config import ROOT_DIR, CURRENT_OUTPUT_DIR
 from utils.logger import logger
+from typing import Optional, Any
 
-# ===================== 全局配置（统一管理） =====================
+# ===================== 全局配置（只存配置，不初始化） =====================
 # 向量库持久化路径
 CHROMA_DB_PATH = ROOT_DIR / "vector_db"
 CHROMA_DB_PATH.mkdir(exist_ok=True)
 
 # 嵌入模型配置
 DEFAULT_EMBEDDING_MODEL = "uer/sbert-base-chinese-nli"
-embedding_func = embedding_functions.SentenceTransformerEmbeddingFunction(
-    model_name=DEFAULT_EMBEDDING_MODEL
-)
 
-# ===================== 客户端初始化 =====================
-client = chromadb.PersistentClient(path=str(CHROMA_DB_PATH))
+# ===================== 惰性单例实例（初始化前都是None） =====================
+_chroma_client: Optional[Any] = None
+_embedding_func: Optional[Any] = None
 
-# ===================== 每本小说独立Collection =====================
-# 获取当前小说的章节collection名称
+
+def _get_chromadb():
+    """惰性导入 chromadb，第一次使用时才导入"""
+    global _chromadb
+    if '_chromadb' not in globals():
+        import chromadb
+        _chromadb = chromadb
+    return _chromadb
+
+
+def _get_embedding_functions():
+    """惰性导入 embedding_functions，第一次使用时才导入"""
+    global _embedding_functions
+    if '_embedding_functions' not in globals():
+        from chromadb.utils import embedding_functions
+        _embedding_functions = embedding_functions
+    return _embedding_functions
+
+
+def _get_client() -> Any:
+    """惰性获取 ChromaDB 客户端，第一次调用时才创建"""
+    global _chroma_client
+    if _chroma_client is None:
+        chromadb = _get_chromadb()
+        _chroma_client = chromadb.PersistentClient(path=str(CHROMA_DB_PATH))
+    return _chroma_client
+
+
+def _get_embedding_func() -> Any:
+    """惰性获取嵌入函数，第一次调用时才创建"""
+    global _embedding_func
+    if _embedding_func is None:
+        embedding_functions = _get_embedding_functions()
+        _embedding_func = embedding_functions.SentenceTransformerEmbeddingFunction(
+            model_name=DEFAULT_EMBEDDING_MODEL
+        )
+    return _embedding_func
+
+
+# ===================== 集合名称获取 =====================
+
 def _get_current_chapter_collection_name():
     """获取当前小说专属的章节collection名称"""
     if CURRENT_OUTPUT_DIR is None:
@@ -27,43 +69,53 @@ def _get_current_chapter_collection_name():
     # 用输出目录名作为collection名称，保证每本小说独立
     return f"chapters_{CURRENT_OUTPUT_DIR.name}"
 
-# 获取当前小说的设定collection名称
+
 def _get_current_setting_collection_name():
     """获取当前小说专属的设定collection名称"""
     if CURRENT_OUTPUT_DIR is None:
         return "novel_world_setting_default"
     return f"settings_{CURRENT_OUTPUT_DIR.name}"
 
-# 获取文风参考范例collection（全局，所有小说共享）
+
 def _get_reference_collection_name():
     """文风参考范例collection，全局共享"""
     return "style_references"
 
+
 def get_reference_collection():
+    client = _get_client()
+    embed = _get_embedding_func()
     return client.get_or_create_collection(
         name=_get_reference_collection_name(),
-        embedding_function=embedding_func,
+        embedding_function=embed,
         metadata={"description": "用户提供的优秀文风参考范例"}
     )
 
-# 懒加载获取当前collection
+
 def get_chapter_collection():
+    client = _get_client()
+    embed = _get_embedding_func()
     return client.get_or_create_collection(
         name=_get_current_chapter_collection_name(),
-        embedding_function=embedding_func,
+        embedding_function=embed,
         metadata={"description": f"章节内容 - {CURRENT_OUTPUT_DIR.name if CURRENT_OUTPUT_DIR else 'default'}"}
     )
 
+
 def get_setting_collection():
+    client = _get_client()
+    embed = _get_embedding_func()
     return client.get_or_create_collection(
         name=_get_current_setting_collection_name(),
-        embedding_function=embedding_func,
+        embedding_function=embed,
         metadata={"description": f"核心设定 - {CURRENT_OUTPUT_DIR.name if CURRENT_OUTPUT_DIR else 'default'}"}
     )
+
 
 def reset_current_db():
     """重置当前小说的向量数据库，新建小说时调用"""
     try:
+        client = _get_client()
         client.delete_collection(name=_get_current_chapter_collection_name())
         client.delete_collection(name=_get_current_setting_collection_name())
         logger.info("✅ 当前小说向量数据库已重置")
@@ -71,7 +123,9 @@ def reset_current_db():
         # collection不存在，不用删
         pass
 
+
 from config import VECTOR_CHUNK_SIZE
+
 
 # ===================== 标准化写入函数 =====================
 def add_chapter_to_db(
@@ -119,7 +173,8 @@ def add_chapter_to_db(
         logger.error(f"❌ 章节存入向量库失败：{str(e)}")
         raise
 
-# ===================== 安全检索函数 =====================
+
+# ===================== 安全检索 =====================
 def search_related_chapter_content(
     query: str,
     top_k: int = 5,
@@ -165,6 +220,7 @@ def search_related_chapter_content(
     logger.info(f"🔍 已检索到{len(documents)}条相关历史内容")
     return related_content
 
+
 # ===================== 设定圣经写入/检索 =====================
 def load_setting_bible_to_db():
     """把设定圣经存入向量库，标准化元数据，避免和章节内容混存"""
@@ -189,6 +245,7 @@ def load_setting_bible_to_db():
         logger.info("✅ 核心设定圣经已存入向量库")
     except Exception as e:
         logger.error(f"❌ 设定圣经存入失败：{str(e)}")
+
 
 def search_core_setting(query: str, top_k: int = 3) -> str:
     """检索核心设定内容，和章节检索隔离，避免混出无关内容"""

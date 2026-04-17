@@ -1,0 +1,415 @@
+"""
+小说生成异步任务
+封装 NovelOrchestrator 为 Celery 后台任务
+支持实时进度更新，通过 Celery 状态机制存储
+同时同步更新数据库 generation_tasks 表
+"""
+
+import re
+import json
+import yaml
+from pathlib import Path
+from datetime import datetime
+from celery import Task
+from celery.utils.log import get_task_logger
+from typing import Optional, Dict
+
+from celery_app import celery_app
+from core.orchestrator import NovelOrchestrator, WaitingForConfirmationError
+from backend.database import SessionLocal
+from backend.models import GenerationTask, Project, User, Chapter
+
+logger = get_task_logger(__name__)
+
+
+class GenerateNovelTask(Task):
+    """小说生成任务基类，自定义异常处理和状态更新"""
+
+    def on_failure(self, exc, task_id, args, kwargs, einfo):
+        """任务失败时的回调"""
+        logger.error(f"Task {task_id} failed: {exc}", exc_info=True)
+        super().on_failure(exc, task_id, args, kwargs, einfo)
+
+
+@celery_app.task(bind=True, name="generate_novel", base=GenerateNovelTask, max_retries=3)
+def generate_novel_task(
+    self,
+    project_dir: Optional[str] = None,
+    user_id: Optional[str] = None,
+) -> Dict:
+    """
+    生成小说异步任务
+    :param project_dir: 项目输出目录，如果为None则从user_requirements读取创建
+    :param user_id: 用户ID，用于追踪和权限控制
+    :return: 生成结果统计
+    """
+    logger.info(f"Starting generate_novel task, task_id={self.request.id}, project_dir={project_dir}, user_id={user_id}")
+
+    # 获取数据库会话，查找对应的GenerationTask记录
+    db = SessionLocal()
+    try:
+        # 根据celery_task_id查找任务记录
+        task_record = db.query(GenerationTask).filter(
+            GenerationTask.celery_task_id == self.request.id
+        ).first()
+        # 如果任务已经被取消（用户重置了项目），直接退出不执行
+        if task_record and task_record.status == "cancelled":
+            logger.info(f"Task {self.request.id} has been cancelled, skipping execution")
+            db.close()
+            return {
+                "success": False,
+                "task_id": self.request.id,
+                "cancelled": True,
+                "message": "Task has been cancelled",
+            }
+    except Exception:
+        task_record = None
+
+    def progress_callback(percent: int, message: str):
+        """
+        进度回调，更新到Celery任务状态 + 同步更新数据库
+        percent: 0-100 百分比
+        message: 当前步骤描述
+        """
+        # 计算小数进度（0-1）用于前端进度条
+        progress = percent / 100.0
+        current_chapter = None
+
+        # 解析当前步骤
+        if "正在生成第" in message and "章" in message:
+            match = re.search(r"第\s*(\d+)\s*章", message)
+            if match:
+                current_chapter = int(match.group(1))
+                self.update_state(
+                    state="PROGRESS",
+                    meta={
+                        "progress": progress,
+                        "percent": percent,
+                        "step": "generating_chapter",
+                        "message": message,
+                        "chapter": current_chapter,
+                    }
+                )
+            else:
+                self.update_state(
+                    state="PROGRESS",
+                    meta={
+                        "progress": progress,
+                        "percent": percent,
+                        "step": "generating_chapter",
+                        "message": message,
+                    }
+                )
+        elif "策划" in message:
+            self.update_state(
+                state="PROGRESS",
+                meta={
+                    "progress": progress,
+                    "percent": percent,
+                    "step": "planning",
+                    "message": message,
+                }
+            )
+        elif "设定圣经" in message:
+            self.update_state(
+                state="PROGRESS",
+                meta={
+                    "progress": progress,
+                    "percent": percent,
+                    "step": "generating_settings",
+                    "message": message,
+                }
+            )
+        elif "完成" in message and "🎉" in message:
+            self.update_state(
+                state="PROGRESS",
+                meta={
+                    "progress": 1.0,
+                    "percent": 100,
+                    "step": "completed",
+                    "message": message,
+                }
+            )
+        else:
+            # 默认状态更新
+            self.update_state(
+                state="PROGRESS",
+                meta={
+                    "progress": progress,
+                    "percent": percent,
+                    "step": "running",
+                    "message": message,
+                }
+            )
+
+        # 同步更新数据库记录（如果存在）
+        if task_record is not None:
+            try:
+                task_record.status = "progress"
+                task_record.progress = progress
+                task_record.current_step = message
+                task_record.current_chapter = current_chapter
+                db.commit()
+            except Exception as e:
+                logger.warning(f"Failed to update progress in database: {e}")
+
+        # 增量同步：章节生成完成后，立即同步该章节到数据库
+        # 这样前端可以实时看到已生成的内容，不需要等到全部完成
+        if task_record is not None and task_record.project_id and "第" in message and "章状态已提取" in message:
+            try:
+                match = re.search(r"第\s*(\d+)\s*章", message)
+                if match:
+                    chapter_index = int(match.group(1))
+                    project = db.query(Project).filter(Project.id == task_record.project_id).first()
+                    if project and project.file_path:
+                        project_dir = Path(project.file_path)
+                        chapter_file = project_dir / f"chapter_{chapter_index}.txt"
+                        if chapter_file.exists():
+                            with open(chapter_file, "r", encoding="utf-8") as f:
+                                content = f.read()
+                            # 提取标题和正文
+                            # 第一行是 "第X章 标题"，提取出来作为章节标题
+                            lines = content.split('\n')
+                            chapter_title = None
+                            body_lines = []
+                            for i, line in enumerate(lines):
+                                if i == 0 and line.strip() and '第' in line and '章' in line:
+                                    # 第一行是标题，提取
+                                    chapter_title = line.strip().lstrip('#').strip()
+                                else:
+                                    if line.strip():
+                                        body_lines.append(line)
+                            body = '\n'.join(body_lines).strip()
+                            # 将纯文本换行转换为正确的HTML格式
+                            # 空行分隔段落，每个段落用<p>包裹
+                            import re
+                            paragraphs = re.split(r'\n\s*\n', body)
+                            html_content = '\n'.join(f'<p>{p.strip()}</p>' for p in paragraphs if p.strip())
+                            # 计算字数：统计汉字数量（一个汉字算一个字，英文标点空格不算）
+                            import re
+                            chinese_chars = re.findall(r'[\u4e00-\u9fff]', html_content)
+                            word_count = len(chinese_chars)
+                            # 查找是否已有记录，有则更新，无则新建
+                            existing = db.query(Chapter).filter(
+                                Chapter.project_id == project.id,
+                                Chapter.chapter_index == chapter_index
+                            ).first()
+                            if existing:
+                                existing.content = html_content
+                                existing.word_count = word_count
+                                if chapter_title:
+                                    existing.title = chapter_title
+                                existing.status = "generated"
+                                logger.info(f"Incremental sync: updated chapter {chapter_index} to database")
+                            else:
+                                chapter = Chapter(
+                                    project_id=project.id,
+                                    chapter_index=chapter_index,
+                                    title=chapter_title,
+                                    content=html_content,
+                                    word_count=word_count,
+                                    status="generated"
+                                )
+                                db.add(chapter)
+                                logger.info(f"Incremental sync: added new chapter {chapter_index} to database")
+                            db.commit()
+            except Exception as e:
+                logger.warning(f"Failed to incremental sync chapter to database: {e}")
+
+    try:
+        # 更新任务状态为started
+        if task_record is not None:
+            task_record.status = "started"
+            db.commit()
+
+        # 从数据库读取项目配置，写入项目目录的user_requirements.yaml
+        # 因为orchestrator.run_planner需要从这个文件加载用户需求
+        if task_record is not None and task_record.project_id:
+            project = db.query(Project).filter(Project.id == task_record.project_id).first()
+            if project and project.config and project_dir:
+                project_dir_path = Path(project_dir)
+                req_file = project_dir_path / "user_requirements.yaml"
+                # 从project.config构造user_requirements格式
+                user_requirements = {
+                    "novel_name": project.config.get("novel_name", project.name),
+                    "novel_description": project.config.get("novel_description", project.description or ""),
+                    "core_requirement": project.config.get("core_requirement", ""),
+                    "target_platform": project.config.get("target_platform", "网络小说"),
+                    "chapter_word_count": project.config.get("chapter_word_count", 2000),
+                    "start_chapter": project.config.get("start_chapter", 1),
+                    "end_chapter": project.config.get("end_chapter", 10),
+                    "skip_plan_confirmation": project.config.get("skip_plan_confirmation", False),
+                    "skip_chapter_confirmation": project.config.get("skip_chapter_confirmation", False),
+                    "allow_plot_adjustment": project.config.get("allow_plot_adjustment", False),
+                    "content_type": project.content_type,
+                }
+                with open(req_file, "w", encoding="utf-8") as f:
+                    yaml.dump(user_requirements, f, allow_unicode=True, default_flow_style=False)
+                logger.info(f"Wrote user_requirements.yaml to project directory: {req_file}")
+
+        # 获取用户 API Key
+        # project -> user -> api_key
+        user = db.query(User).filter(User.id == int(user_id)).first()
+        user_api_key = user.api_key if user else None
+        # 如果用户设置了自己的 API Key，就用用户的，否则用系统配置的
+        api_key_to_use = None
+        if user_api_key and user_api_key.strip():
+            api_key_to_use = user_api_key.strip()
+
+        # 创建编排器，传入进度回调和用户 API Key
+        orchestrator = NovelOrchestrator(
+            project_dir=project_dir,
+            progress_callback=progress_callback,
+            user_api_key=api_key_to_use
+        )
+
+        # 执行完整生成流程，可能需要等待人工确认
+        try:
+            result = orchestrator.run_full_novel()
+
+            # 更新任务状态为success
+            if task_record is not None:
+                task_record.status = "success"
+                task_record.progress = 1.0
+                task_record.completed_at = datetime.utcnow()
+                # 更新项目状态为completed
+                if task_record.project_id:
+                    project = db.query(Project).filter(Project.id == task_record.project_id).first()
+                    if project:
+                        project.status = "completed"
+                        # 生成完成后，将所有章节从文件系统同步存入数据库
+                        if project.file_path:
+                            project_dir = Path(project.file_path)
+                            for chapter_file in sorted(project_dir.glob("chapter_*.txt")):
+                                match = chapter_file.name.split("_")[1].split(".")[0]
+                                chapter_index = int(match)
+                                if chapter_file.exists():
+                                    with open(chapter_file, "r", encoding="utf-8") as f:
+                                        content = f.read()
+                                # 提取标题和正文，转换HTML格式
+                                lines = content.split('\n')
+                                chapter_title = None
+                                body_lines = []
+                                for i, line in enumerate(lines):
+                                    if i == 0 and line.strip() and '第' in line and '章' in line:
+                                        chapter_title = line.strip().lstrip('#').strip()
+                                    else:
+                                        if line.strip():
+                                            body_lines.append(line)
+                                body = '\n'.join(body_lines).strip()
+                                # 纯文本转HTML
+                                import re
+                                paragraphs = re.split(r'\n\s*\n', body)
+                                html_content = '\n'.join(f'<p>{p.strip()}</p>' for p in paragraphs if p.strip())
+                                # 计算字数：统计汉字数量（一个汉字算一个字，英文标点空格不算）
+                                import re
+                                chinese_chars = re.findall(r'[\u4e00-\u9fff]', html_content)
+                                word_count = len(chinese_chars)
+                                existing = db.query(Chapter).filter(
+                                    Chapter.project_id == project.id,
+                                    Chapter.chapter_index == chapter_index
+                                ).first()
+                                if existing:
+                                    existing.content = html_content
+                                    existing.word_count = word_count
+                                    if chapter_title:
+                                        existing.title = chapter_title
+                                    existing.status = "generated"
+                                else:
+                                    chapter = Chapter(
+                                        project_id=project.id,
+                                        chapter_index=chapter_index,
+                                        title=chapter_title,
+                                        content=html_content,
+                                        word_count=word_count,
+                                        status="generated"
+                                    )
+                                    db.add(chapter)
+                            db.commit()
+                            logger.info(f"Final synchronization: all chapters to database")
+
+                            # 从info.json读取质量评分，更新到project和chapters
+                            info_path = project_dir / "info.json"
+                            if info_path.exists():
+                                try:
+                                    with open(info_path, "r", encoding="utf-8") as f:
+                                        info = json.load(f)
+                                    # 更新项目总体评分
+                                    project.overall_quality_score = info.get("overall_quality_score", 0)
+                                    project.dimension_average_scores = info.get("dimension_average_scores", {})
+                                    # 更新每个章节的quality_score
+                                    if "chapter_scores" in info:
+                                        for cs in info["chapter_scores"]:
+                                            chapter_db = db.query(Chapter).filter(
+                                                Chapter.project_id == project.id,
+                                                Chapter.chapter_index == cs["chapter"]
+                                            ).first()
+                                            if chapter_db:
+                                                chapter_db.quality_score = cs["total_score"]
+                                                db.flush()
+                                    db.commit()
+                                    logger.info(f"Quality scores updated to database: overall {project.overall_quality_score:.2f}")
+                                except Exception as e:
+                                    logger.warning(f"Failed to load quality scores from info.json: {e}")
+                        db.commit()
+                db.commit()
+
+            logger.info(f"Task {self.request.id} completed successfully: {result}")
+
+            # 返回结果（会存储在result backend）
+            return {
+                "success": True,
+                "task_id": self.request.id,
+                "result": result,
+                "completed": True,
+            }
+        except WaitingForConfirmationError as e:
+            # 需要等待用户人工确认
+            logger.info(f"Chapter {e.chapter_index} generated, waiting for user confirmation...")
+            if task_record is not None:
+                task_record.status = "waiting_confirm"
+                task_record.current_step = f"第{e.chapter_index}章生成完成，等待你审阅确认"
+                task_record.current_chapter = e.chapter_index
+                db.commit()
+            # 任务正常结束，等待用户确认后重启继续下一章
+            return {
+                "success": True,
+                "task_id": self.request.id,
+                "waiting_confirmation": True,
+                "chapter_index": e.chapter_index,
+                "completed": False,
+            }
+
+    except Exception as e:
+        logger.error(f"Task {self.request.id} failed: {str(e)}", exc_info=True)
+
+        # 更新数据库为failure
+        if task_record is not None:
+            try:
+                task_record.status = "failure"
+                task_record.error_message = str(e)
+                task_record.completed_at = datetime.utcnow()
+                db.commit()
+            except Exception:
+                pass
+
+        # 重试，最多3次
+        if self.request.retries < self.max_retries:
+            logger.info(f"Retrying task {self.request.id}, attempt {self.request.retries + 1}/{self.max_retries}")
+            self.retry(countdown=5)
+
+        # 重试失败，标记为失败并保存错误信息
+        self.update_state(
+            state="FAILURE",
+            meta={
+                "error": str(e),
+                "success": False,
+            }
+        )
+
+        # 关闭数据库会话
+        db.close()
+        raise
+
+    finally:
+        db.close()

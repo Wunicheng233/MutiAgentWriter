@@ -15,12 +15,12 @@ chapter_word_count: 2000
 
 # 6. 章节生成范围（必填）
 # 提示：设置 start_chapter: 0 会自动检测已有章节，从下一章节开始续写
-start_chapter: 7
+start_chapter: 6
 end_chapter: 8
 
 # 7. 是否跳过人工确认策划方案（可选，true/false，默认false）
 # true = 跳过确认直接生成，false = 生成后让你确认满意了再继续
-skip_plan_confirmation: true
+skip_plan_confirmation: false
 
 # 8. 是否跳过章节级人工确认（可选，true/false，默认false）
 # true = 跳过确认全自动生成，false = 每章生成完展示预览，你确认满意了再继续

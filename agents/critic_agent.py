@@ -7,20 +7,23 @@
 """
 
 import re
+import openai
 from utils.volc_engine import call_volc_api
 from utils.logger import logger
-from config import TEMPERATURES, PROMPTS_DIR, CRITIC_PASS_SCORE
+from core.config import settings
+from config import PROMPTS_DIR, CRITIC_PASS_SCORE
 
 
 def critic_chapter(
     chapter_text: str,
     target_word_count: int,
     current_chapter: int,
-    setting_bible: str
-) -> tuple[bool, str, int]:
+    setting_bible: str,
+    client: openai.OpenAI = None
+) -> tuple[bool, str, float, dict]:
     """
-    对抗性评论：给章节挑刺打分
-    返回：(是否通过, 问题清单, 总分)
+    对抗性评论：给章节挑刺打分，多维度评分
+    返回：(是否通过, 问题清单, 总分, 维度分数字典)
     """
     # 读取提示词
     prompt_path = PROMPTS_DIR / "critic.md"
@@ -47,40 +50,91 @@ def critic_chapter(
 """
 
     logger.info(f"🔍 Critic Agent正在评审第{current_chapter}章，寻找问题...")
-    result = call_volc_api("critic", full_prompt, temperature=TEMPERATURES["critic"])
+    temperature = settings.get_temperature_for_agent("critic")
+    result = call_volc_api("critic", full_prompt, temperature=temperature, client=client)
 
     # 解析结果
-    score = parse_score(result)
+    dimension_scores = parse_dimension_scores(result)
+    total_score = calculate_weighted_total(dimension_scores)
     issues = parse_issues(result)
-    passed = is_passed(result)
+    passed = is_passed(total_score)
 
     # 如果只是解析问题失败，但分数不算太低，就默认通过
     # 这通常是AI输出格式不对，不是真的质量问题
-    if "需要优化整体质量" in issues and score >= 5:
+    if "需要优化整体质量" in issues and total_score >= 5:
         passed = True
 
-    logger.info(f"📊 第{current_chapter}章评审完成，得分：{score}/10，是否通过：{'是' if passed else '否'}")
+    logger.info(f"📊 第{current_chapter}章评审完成，总分：{total_score:.1f}/10，是否通过：{'是' if passed else '否'}")
+    logger.info(f"   维度分数：剧情逻辑={dimension_scores.get('plot', 0)}, 人设一致性={dimension_scores.get('character', 0)}, 吸引力={dimension_scores.get('hook', 0)}, 文笔质量={dimension_scores.get('writing', 0)}, 设定一致性={dimension_scores.get('setting', 0)}")
     if not passed:
         logger.warning(f"⚠️  问题清单：{issues}")
 
-    return passed, issues, score
+    return passed, issues, total_score, dimension_scores
 
 
-def parse_score(result: str) -> int:
-    """解析总分 - 更宽松的匹配"""
-    # 多种格式匹配，容忍不同的输出
-    patterns = [
-        r'【总分】\s*[:：]\s*(\d+)\s*[\//]',
-        r'总分\s*[:：]\s*(\d+)',
-        r'得分[:：]\s*(\d+)',
-        r'(\d+)\s*\/\s*10'
+# 维度权重配置
+WEIGHTS = {
+    "plot": 0.30,      # 剧情逻辑
+    "character": 0.25, # 人设一致性
+    "hook": 0.20,      # 吸引力
+    "writing": 0.15,   # 文笔质量
+    "setting": 0.10    # 设定一致性
+}
+
+DIMENSION_NAMES = {
+    "plot": "剧情逻辑",
+    "character": "人设一致性",
+    "hook": "吸引力",
+    "writing": "文笔质量",
+    "setting": "设定一致性"
+}
+
+def parse_dimension_scores(result: str) -> dict:
+    """解析五个维度的分数"""
+    dimension_patterns = [
+        ("plot", [r'【剧情逻辑】\s*[:：]\s*(\d+)\s*[\//]', r'剧情逻辑\s*[:：]\s*(\d+)']),
+        ("character", [r'【人设一致性】\s*[:：]\s*(\d+)\s*[\//]', r'人设一致性\s*[:：]\s*(\d+)']),
+        ("hook", [r'【吸引力】\s*[:：]\s*(\d+)\s*[\//]', r'吸引力\s*[:：]\s*(\d+)']),
+        ("writing", [r'【文笔质量】\s*[:：]\s*(\d+)\s*[\//]', r'文笔质量\s*[:：]\s*(\d+)']),
+        ("setting", [r'【设定一致性】\s*[:：]\s*(\d+)\s*[\//]', r'设定一致性\s*[:：]\s*(\d+)']),
     ]
-    for pattern in patterns:
-        match = re.search(pattern, result)
-        if match:
-            score = int(match.group(1))
-            return max(1, min(10, score))  #  clamp 1-10
-    return 6  # 默认及格分
+
+    scores = {}
+    for dim_key, patterns in dimension_patterns:
+        score = 6  # 默认中等分数
+        found = False
+        for pattern in patterns:
+            match = re.search(pattern, result)
+            if match:
+                score = int(match.group(1))
+                score = max(1, min(10, score))
+                found = True
+                break
+        scores[dim_key] = score
+
+    # 如果解析失败尝试解析总分
+    if all(v == 6 for v in scores.values()):
+        # 尝试解析旧格式总分
+        total_match = re.search(r'【总分】\s*[:：]\s*(\d+)\s*[\//]', result)
+        if total_match:
+            total = int(total_match.group(1))
+            # 均匀分配
+            for key in scores:
+                scores[key] = max(1, min(10, total))
+    return scores
+
+
+def calculate_weighted_total(dimension_scores: dict) -> float:
+    """根据维度分数计算加权总分"""
+    total = 0.0
+    total_weight = 0.0
+    for key, score in dimension_scores.items():
+        weight = WEIGHTS.get(key, 0)
+        total += score * weight
+        total_weight += weight
+    if total_weight > 0:
+        total = total / total_weight * 10  # 归一化到 0-10
+    return max(1.0, min(10.0, total))
 
 
 def parse_issues(result: str) -> str:
@@ -104,8 +158,7 @@ def parse_issues(result: str) -> str:
     return "需要优化整体质量，提升故事吸引力和结尾悬念"
 
 
-def is_passed(result: str) -> bool:
-    """解析是否通过 - 严格按配置的及格线判断分数"""
-    # 不管 AI 怎么说，严格按分数判断，分数 >= 配置及格线就算通过
-    score = parse_score(result)
-    return score >= CRITIC_PASS_SCORE
+def is_passed(total_score: float) -> bool:
+    """判断是否通过 - 严格按配置的及格线判断分数"""
+    # 总分 >= 配置及格线就算通过
+    return total_score >= CRITIC_PASS_SCORE

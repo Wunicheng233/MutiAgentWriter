@@ -1,13 +1,14 @@
+import openai
 from utils.volc_engine import call_volc_api
 from utils.logger import logger
 from core.worldview_manager import worldview_manager
 import json
 
-def generate_setting_bible(plan: str) -> str:
+def generate_setting_bible(plan: str, client: openai.OpenAI = None) -> str:
     logger.info("🛡️  人设&世界观守矩Agent正在生成设定圣经...")
-    return call_volc_api("guardian", plan)
+    return call_volc_api("guardian", plan, client=client)
 
-def check_setting_consistency(setting_bible: str, draft: str) -> str:
+def check_setting_consistency(setting_bible: str, draft: str, client: openai.OpenAI = None) -> str:
     # 先通过向量检索找出本章涉及的相关设定，只给Guardian检查相关内容
     from utils.vector_db import search_core_setting
     related_settings = search_core_setting(draft, top_k=3)
@@ -23,9 +24,9 @@ def check_setting_consistency(setting_bible: str, draft: str) -> str:
 请检查本章内容是否和设定一致，特别是人设、时间线、科技水平。
 """
     logger.info("🛡️  人设&世界观守矩Agent正在检查设定一致性...")
-    return call_volc_api("guardian", user_input, temperature=0.1)
+    return call_volc_api("guardian", user_input, temperature=0.1, client=client)
 
-def extract_chapter_state(content: str, chapter_num: int) -> dict:
+def extract_chapter_state(content: str, chapter_num: int, client: openai.OpenAI = None) -> dict:
     """提取本章的状态信息，更新到世界观中枢"""
     prompt = f"""请从以下章节内容中提取关键信息，以JSON格式输出：
 {{
@@ -44,7 +45,7 @@ def extract_chapter_state(content: str, chapter_num: int) -> dict:
 
 章节内容：{content[:2000]}
 """
-    result = call_volc_api("guardian", prompt, temperature=0.1)
+    result = call_volc_api("guardian", prompt, temperature=0.1, client=client)
     try:
         # 清理结果，只保留JSON部分
         result = result.strip()

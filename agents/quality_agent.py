@@ -6,10 +6,11 @@
 """
 
 import re
+import openai
 from utils.volc_engine import call_volc_api
 from utils.logger import logger
+from core.config import settings
 from config import (
-    TEMPERATURES,
     WORD_COUNT_DEVIATION_ALLOWED,
     WORD_COUNT_DEVIATION_HARD,
     LONG_PARAGRAPH_THRESHOLD,
@@ -17,7 +18,14 @@ from config import (
 )
 
 
-def check_quality(original_text: str, target_word_count: int, setting_bible: str, chapter_num: int = None, prev_chapter_end: str = "") -> tuple[bool, str, str]:
+def check_quality(
+    original_text: str,
+    target_word_count: int,
+    setting_bible: str,
+    chapter_num: int = None,
+    prev_chapter_end: str = "",
+    client: openai.OpenAI = None
+) -> tuple[bool, str, str]:
     """
     检查章节质量（纯检查，不动笔修改）
     返回：(是否通过, 问题反馈/优化建议) - 如果不通过，feedback包含需要修正的问题
@@ -88,7 +96,15 @@ def check_quality(original_text: str, target_word_count: int, setting_bible: str
     return False, original_text, feedback.strip()
 
 
-def optimize_quality(original_text: str, target_word_count: int, setting_bible: str, feedback: str, chapter_num: int = None, prev_chapter_end: str = "") -> str:
+def optimize_quality(
+    original_text: str,
+    target_word_count: int,
+    setting_bible: str,
+    feedback: str,
+    chapter_num: int = None,
+    prev_chapter_end: str = "",
+    client: openai.OpenAI = None
+) -> str:
     """
     根据质量检查的反馈，执行优化修正
     职责：只做优化，不做检查
@@ -153,7 +169,8 @@ def optimize_quality(original_text: str, target_word_count: int, setting_bible: 
 请输出优化后的完整章节：
 """
     logger.info("quality优化Agent正在根据反馈重新优化...")
-    result = call_volc_api("quality", prompt, temperature=TEMPERATURES["quality"])
+    temperature = settings.get_temperature_for_agent("quality")
+    result = call_volc_api("quality", prompt, temperature=temperature, client=client)
 
     # 确保标题保留，并最后再检查一次章节号（最后一道关卡）
     original_first_line = original_text.split('\n')[0].strip()
@@ -255,7 +272,7 @@ def check_emotion_transition(text: str) -> str:
     return ""
 
 
-def generate_chapter_title(full_content: str, chapter_num: int) -> str:
+def generate_chapter_title(full_content: str, chapter_num: int, client: openai.OpenAI = None) -> str:
     """
     本章内容完整生成后，专门再起一个高质量标题
     输入：完整章节内容
@@ -288,7 +305,7 @@ def generate_chapter_title(full_content: str, chapter_num: int) -> str:
 请直接输出完整标题：
 """
     logger.info(f"正在为第{chapter_num}章生成高质量标题...")
-    result = call_volc_api("quality", prompt, temperature=0.3)
+    result = call_volc_api("quality", prompt, temperature=0.3, client=client)
 
     # 解析结果，提取标题
     result = result.strip()

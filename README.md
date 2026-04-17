@@ -1,6 +1,6 @@
 # 📖 Writer - 多Agent AI小说自动创作系统
 
-这是一个闲人做的**全自动多Agent协同小说创作系统**，从策划到生产全流程自动化。所有代码几乎全部依赖AI。
+这是一个**全自动多Agent协同小说创作系统**，从策划到生产全流程自动化。所有代码几乎全部依赖AI。
 
 ## ✨ 功能特点
 
@@ -11,13 +11,26 @@
 - 🔍 **向量语义检索** - ChromaDB存储相关历史内容，保证剧情连贯性
 - ✅ **多级质量控制** - 硬伤检查 → 统一修复 → 润色 → 对抗性终审，多重质量保证
 - 📱 **移动端友好阅读** - 自动短段落排版，适配手机阅读
-- 📦 **一键静态导出** - 导出静态网站，支持GitHub Pages部署
+- 📦 **多格式导出** - 支持 EPUB / DOCX / HTML 三种格式导出
+- 📜 **章节版本历史** - 每次保存自动创建版本，支持一键回滚
+- 🧮 **Token用量统计** - 自动统计每个项目的Token消耗和预估成本
+- 🔗 **只读分享链接** - 创建公开分享链接，无需登录即可阅读
+- 👥 **项目协作** - 支持添加协作者，共同浏览项目
 
-## 🏗️ 架构说明
+## 🏗️ 系统架构
+
+重构后采用**前后端分离 + 异步任务队列**架构：
 
 ```
 writer/
-├── agents/                 # 各专业Agent
+├── backend/                # FastAPI 后端 RESTful API
+│   ├── api/                # API 端点（认证/项目/章节/任务/分享）
+│   └── models.py           # SQLAlchemy ORM 数据模型
+├── frontend/               # React + TypeScript 前端
+│   └── src/
+│       ├── pages/          # 页面组件（登录/项目列表/编辑器/分析等）
+│       └── utils/          # API 封装和工具
+├── agents/                 # 各专业 Agent
 │   ├── planner_agent.py    # 小说策划
 │   ├── guardian_agent.py   # 设定一致性校验
 │   ├── writer_agent.py     # 章节生成
@@ -25,96 +38,129 @@ writer/
 │   ├── compliance_agent.py # 合规检查
 │   ├── quality_agent.py   # 质量格式检查
 │   ├── critic_agent.py     # 终审对抗性评审
-│   └── fix_agent.py       # 统一问题修复 (新增)
+│   └── fix_agent.py       # 统一问题修复
 ├── core/
+│   ├── config.py           # 配置中心（pydantic-settings）
+│   ├── orchestrator.py     # 主编排器
 │   └── worldview_manager.py # 世界观状态管理
-├── prompts/               # 各Agent提示词模板
-├── utils/                 # 工具函数
-│   ├── volc_engine.py     # 火山引擎API客户端 (连接复用优化)
-│   ├── vector_db.py       # ChromaDB向量检索
-│   └── ...
-├── templates/             # Flask Web阅读器模板
-├── main.py                # 主入口，小说生成流程
-├── app.py                 # Web阅读服务器
-├── export_static.py       # 静态网站导出
-├── config.py              # 配置文件 (API Key从环境变量读取)
-└── user_requirements.yaml # 用户需求配置
+├── tasks/                  # Celery 异步任务
+│   ├── writing_tasks.py    # 小说生成任务
+│   └── export_tasks.py     # 导出任务
+├── services/               # 业务服务层
+│   └── export_service.py   # 多格式导出服务
+├── prompts/                # 各 Agent 提示词模板
+├── utils/                  # 工具函数
+│   ├── volc_engine.py      # 火山引擎 API 客户端（自动记录 Token）
+│   └── vector_db.py        # ChromaDB 向量检索
+├── alembic/                # 数据库迁移
+├── main.py                 # CLI 入口（也可直接生成）
+├── requirements.txt        # Python 依赖
+└── TESTING.md              # 完整测试计划
 ```
 
 ## 🚀 快速开始
 
-### 1. 环境安装
+### 1. 环境准备
+
+需要预先安装：
+- Python 3.10+
+- Node.js 16+
+- PostgreSQL 12+
+- Redis
+
+**在 macOS 上安装（Homebrew）：**
+```bash
+# 安装 PostgreSQL
+brew install postgresql@14
+brew services start postgresql
+
+# 安装 Redis
+brew install redis
+brew services start redis
+```
+
+### 2. 安装依赖
 
 ```bash
-git clone https://github.com/your-username/writer.git
-cd writer
-
 # 创建虚拟环境
 conda create -n novel_agent python=3.10
 conda activate novel_agent
 
-# 安装依赖
+# 安装 Python 依赖
 pip install -r requirements.txt
+
+# 安装前端依赖
+cd frontend
+npm install
+cd ..
 ```
 
-### 2. 配置API Key
+### 3. 配置环境变量
 
-每个Agent使用独立的API Key接入火山引擎，设置环境变量：
+编辑 `.env` 文件：
+```env
+# ========== API Key（必需）==========
+WRITER_API_KEY=your-volcano-engine-api-key-here
+
+# ========== 数据库（默认本地开发可不用改）==========
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/mutiagent_writer
+
+# ========== Redis（默认本地开发可不用改）==========
+CELERY_BROKER_URL=redis://localhost:6379/0
+CELERY_RESULT_BACKEND=redis://localhost:6379/0
+```
+
+### 4. 初始化数据库
 
 ```bash
-# 在终端设置环境变量 (Linux/macOS)
-export WRITER_API_KEY_PLANNER=your-api-key-here
-export WRITER_API_KEY_GUARDIAN=your-api-key-here
-export WRITER_API_KEY_WRITER=your-api-key-here
-export WRITER_API_KEY_EDITOR=your-api-key-here
-export WRITER_API_KEY_COMPLIANCE=your-api-key-here
-export WRITER_API_KEY_QUALITY=your-api-key-here
-export WRITER_API_KEY_CRITIC=your-api-key-here
-export WRITER_API_KEY_FIX=your-api-key-here
+# 创建数据库
+createdb mutiagent_writer
+
+# 运行迁移建表
+alembic upgrade head
 ```
 
-> 你也可以创建 `.env` 文件存放这些环境变量，使用 `source .env` 加载。
+### 5. 启动所有服务
 
-### 3. 配置小说需求
+**需要打开 3 个终端，都激活 conda 环境：**
 
-编辑 `user_requirements.yaml`：
-
-```yaml
-novel_name: "我的小说"
-novel_description: "..."
-core_requirement: "..."
-target_platform: "番茄小说"
-chapter_word_count: 2000
-start_chapter: 1
-end_chapter: 10
-skip_plan_confirmation: false
-skip_chapter_confirmation: false
-allow_plot_adjustment: false
-auto_export_static: false
-```
-
-### 4. 开始生成
-
+#### 终端 1 - 启动 FastAPI 后端：
 ```bash
-python main.py
+conda activate novel_agent
+cd /path/to/writer
+uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-按照提示确认策划方案，系统会自动生成所有章节。
-
-### 5. 阅读生成的小说
-
+#### 终端 2 - 启动 Celery Worker（处理异步任务）：
 ```bash
-# 启动Web阅读器
-./start_server.sh
-# 访问 http://localhost:5000 阅读
+conda activate novel_agent
+cd /path/to/writer
+celery -A celery_app worker --loglevel=info
 ```
 
-### 6. 导出静态网站 (可选)
-
+#### 终端 3 - 启动前端开发服务器：
 ```bash
-python export_static.py
-# 自动推送到GitHub Pages (配置好git远程后)
+conda activate novel_agent
+cd /path/to/writer/frontend
+npm run dev
 ```
+
+### 6. 使用系统
+
+打开浏览器访问：`http://localhost:5173`
+
+1. 注册新用户账号
+2. 登录后点击"创建新项目"
+3. 填写小说需求
+4. 点击"开始生成"，生成在后台异步运行
+5. 刷新页面查看进度，生成完成后可以：
+   - 阅读/编辑章节
+   - 查看质量分析
+   - 导出 EPUB/DOCX/HTML
+   - 创建分享链接
+   - 添加协作者
+
+---
 
 ## 📊 工作流程
 
@@ -124,25 +170,56 @@ python export_static.py
 策划 → 生成设定圣经 → 存入向量数据库
     ↓
 对每一章：
-    1. writer生成初稿
-    ↓
-    2. 【并行同时】guardian设定检查 + quality硬伤检查 + compliance合规检查
-    ↓
-    3. 全部通过 → 下一步
-       有问题 → 汇总所有问题 → fix agent一次性修复 → 最多重试4轮
-    ↓
-    4. editor文笔润色
-    ↓
-    5. critic终审挑刺 → 有问题 → optimize修复 → 最多重试3轮
-    ↓
-    6. 生成标题 → 保存 → 更新世界观状态
-    ↓
-所有章节完成 → 可选：导出静态网站
+  1. writer 生成初稿
+  ↓
+  2. 【并行同时】guardian 设定检查 + quality 硬伤检查 + compliance 合规检查
+  ↓
+  3. 全部通过 → 下一步
+     有问题 → 汇总所有问题 → fix agent 一次性修复 → 最多重试 4 轮
+  ↓
+  4. editor 文笔润色
+  ↓
+  5. critic 终审挑刺 → 有问题 → optimize 修复 → 最多重试 3 轮
+  ↓
+  6. 生成标题 → 保存 → 更新世界观状态
+  ↓
+所有章节完成 → 可导出多种格式
 ```
+
+---
+
+## 🎯 新功能详解
+
+### 1. 多格式导出
+- **EPUB**: 可用于电子书阅读器
+- **DOCX**: 可用于 Word/Pages 编辑
+- **HTML**: 静态网页打包，适合分享
+
+### 2. 章节版本历史
+- 每次保存章节自动创建新版本
+- 保留最近 10 个版本
+- 在编辑器侧边栏可查看历史、预览、恢复任何版本
+
+### 3. Token 使用量统计
+- 每次 LLM 调用自动记录 Token 消耗
+- 项目概览显示总 Token 和预估美元成本
+- 设置页面显示用户月度统计
+
+### 4. 只读分享链接
+- 项目所有者可创建公开分享链接
+- 任何人打开链接都可以阅读，无需登录
+- 纯只读，无法编辑
+
+### 5. 项目协作
+- 项目所有者可以通过用户名添加协作者
+- 协作者有只读权限，可以查看项目和章节
+- 随时可以移除协作者
+
+---
 
 ## 🔧 配置参数
 
-所有可配置参数都在 `config.py`：
+所有可配置参数都在 `core/config.py`：
 
 | 参数 | 说明 | 默认值 |
 |------|------|--------|
@@ -150,13 +227,13 @@ python export_static.py
 | `MAX_PARALLEL_CHECKS` | 并行检查最大线程数 | 3 |
 | `WORD_COUNT_DEVIATION_ALLOWED` | 允许字数偏差比例 | 0.15 |
 | `LONG_PARAGRAPH_THRESHOLD` | 长段落判断阈值（字符） | 300 |
-| `AI_CLICHE_REPEAT_THRESHOLD` | AI套话多少次算重复 | 2 |
+| `AI_CLICHE_REPEAT_THRESHOLD` | AI 套话多少次算重复 | 2 |
 | `VECTOR_CHUNK_SIZE` | 向量数据库分块大小 | 500 |
-| `CRITIC_PASS_SCORE` | Critic及格线 | 8 |
+| `CRITIC_PASS_SCORE` | Critic 及格线 | 8 |
 
-## 📝 工作原理
+---
 
-### Agent职责分工
+## 🧑‍💼 Agent 职责分工
 
 | Agent | 职责 |
 |-------|------|
@@ -166,25 +243,17 @@ python export_static.py
 | Quality | 检查字数/标题/格式硬伤 |
 | Compliance | 内容合规检查 |
 | Fix | **统一修复所有问题**，一轮多个问题一次性修复 |
-| Editor | 文笔润色，去除AI刻板味 |
+| Editor | 文笔润色，去除 AI 刻板味 |
 | Critic | 终审挑刺打分，发现软问题 |
 | Worldview Manager | 追踪时间线/角色/伏笔，保证全局一致性 |
 
-## 🚀 部署到GitHub Pages
+---
 
-1. 在GitHub创建仓库
-2. 本地添加远程：
-   ```bash
-   git remote add origin https://github.com/你的用户名/writer.git
-   ```
-3. 添加并提交：
-   ```bash
-   git add .
-   git commit -m "Initial commit: Multi-agent AI novel writing system"
-   git push -u origin main
-   ```
+## 📝 说明
 
-> ⚠️ 注意：`config.py` 已经不再包含硬编码API Key，可以安全提交。`.gitignore` 已经配置好忽略 `outputs/`, `vector_db/`, `logs/` 等目录。
+- 所有 Agent 的 API Key 都使用火山引擎方舟平台
+- 默认配置使用统一 API Key，简单方便
+- 需要自己准备火山引擎账号和 API Key
 
 ## 📄 许可证
 
@@ -192,4 +261,4 @@ MIT License
 
 ## 🙏 致谢
 
-基于多Agent协作架构思想，使用火山引擎Doubao模型提供强大的AI生成能力。
+基于多 Agent 协作架构思想，使用火山引擎 Doubao 模型提供强大的 AI 生成能力。

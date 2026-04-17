@@ -1,6 +1,8 @@
 import re
+import openai
 from utils.volc_engine import call_volc_api
 from utils.logger import logger
+from utils.vector_db import search_reference_style, search_related_chapter_content, search_core_setting
 from config import WRITER_MAX_TOKENS
 
 
@@ -41,7 +43,9 @@ def generate_chapter(
     prev_chapter_end: str = "",
     related_content: str = "",
     constraints: dict = None,
-    target_word_count: int = 2000
+    target_word_count: int = 2000,
+    content_type: str = "full_novel",
+    client: openai.OpenAI = None,
 ) -> str:
     constraints_text = ""
     if constraints:
@@ -57,7 +61,6 @@ def generate_chapter(
 """
 
     # 检索文风参考范例（从用户提供的优秀参考文中找相似风格）
-    from utils.vector_db import search_reference_style
     style_ref = search_reference_style(plan, top_k=2)
 
     user_input = f"""
@@ -88,19 +91,31 @@ def generate_chapter(
     logger.info(f"启动内容生成Agent，生成第{chapter_num}章")
 
     # 第一次生成
-    result = call_volc_api("writer", user_input, max_tokens=WRITER_MAX_TOKENS)
+    if client:
+        result = call_volc_api("writer", user_input, max_tokens=WRITER_MAX_TOKENS, content_type=content_type, client=client)
+    else:
+        result = call_volc_api("writer", user_input, max_tokens=WRITER_MAX_TOKENS, content_type=content_type)
     fixed_result = _check_and_fix_title(result, chapter_num)
 
     if fixed_result != result:
         # 第一次没标题，重试一次
         logger.warning(f"第{chapter_num}章生成忘记写标题，自动重试...")
-        result = call_volc_api("writer", user_input, max_tokens=WRITER_MAX_TOKENS)
+        if client:
+            result = call_volc_api("writer", user_input, max_tokens=WRITER_MAX_TOKENS, content_type=content_type, client=client)
+        else:
+            result = call_volc_api("writer", user_input, max_tokens=WRITER_MAX_TOKENS, content_type=content_type)
         fixed_result = _check_and_fix_title(result, chapter_num)
 
     return fixed_result
 
 
-def rewrite_chapter(setting_bible: str, original_draft: str, feedback: str, chapter_num: int = None) -> str:
+def rewrite_chapter(
+    setting_bible: str,
+    original_draft: str,
+    feedback: str,
+    chapter_num: int = None,
+    client: openai.OpenAI = None,
+) -> str:
     # 从原文提取章节号（如果没传入）
     if chapter_num is None:
         first_line = original_draft.split('\n')[0].strip()
@@ -109,14 +124,12 @@ def rewrite_chapter(setting_bible: str, original_draft: str, feedback: str, chap
             chapter_num = int(match.group(1))
 
     # 检索相关历史章节和核心设定，保证修改不偏离前文
-    from utils.vector_db import search_related_chapter_content, search_core_setting
     max_chapter = chapter_num if chapter_num else 9999
     related_chapters = search_related_chapter_content(original_draft, top_k=2, max_chapter_num=max_chapter)
     related_settings = search_core_setting(original_draft, top_k=2)
     related_content = related_settings + "\n" + related_chapters
 
     # 也加上文风参考
-    from utils.vector_db import search_reference_style
     style_ref = search_reference_style(original_draft, top_k=1)
 
     user_input = f"""
@@ -143,7 +156,10 @@ def rewrite_chapter(setting_bible: str, original_draft: str, feedback: str, chap
 """
 
     logger.info("✍️  内容生成Agent正在修改章节...")
-    result = call_volc_api("writer", user_input)
+    if client:
+        result = call_volc_api("writer", user_input, client=client)
+    else:
+        result = call_volc_api("writer", user_input)
 
     # 检测并修复标题
     if chapter_num:

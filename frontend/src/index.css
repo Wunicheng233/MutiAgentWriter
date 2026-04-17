@@ -1,0 +1,49 @@
+/* 导入 Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400&family=Inter:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 全局基础样式 */
+@layer base {
+  body {
+    @apply bg-parchment font-sans text-body;
+  }
+
+  /* 叙事内容使用 Crimson Pro */
+  .prose-novel {
+    @apply font-serif text-body text-[16px] leading-relaxed;
+    line-height: 1.6;
+  }
+
+  /* 标题使用 Crimson Pro 字重 400 */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif font-normal text-inkwell;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html, body, #root {
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+  }
+}
+
+/* 自定义工具类 */
+@layer utilities {
+  .content-auto {
+    content-visibility: auto;
+  }
+
+  .paper-card {
+    @apply bg-white/60 backdrop-blur-[8px] border border-border rounded-comfortable shadow-standard;
+  }
+
+  .paper-card-hover {
+    @apply hover:shadow-elevated hover:border-border/80 transition-shadow;
+  }
+}
