@@ -80,6 +80,22 @@ brew install redis
 brew services start redis
 ```
 
+**在 Ubuntu/Debian 上安装：**
+```bash
+# 安装 PostgreSQL
+sudo apt update
+sudo apt install postgresql postgresql-contrib redis-server
+sudo systemctl start postgresql
+sudo systemctl start redis
+```
+
+**在 Windows 上：**
+- 下载安装 [PostgreSQL](https://www.postgresql.org/download/windows/)
+- 下载安装 [Redis](https://github.com/microsoftarchive/redis/releases) 或使用 WSL2 安装
+- 推荐使用 WSL2 运行，体验更好
+
+**不限制平台：** 理论上支持 macOS / Linux / Windows（WSL2），只要能运行 Python/Node.js/PostgreSQL/Redis 即可。
+
 ### 2. 安装依赖
 
 ```bash
