@@ -737,7 +737,7 @@ class NovelOrchestrator:
                 # 读取现有info
                 if self.info_path.exists():
                     with open(self.info_path, "r", encoding='utf-8') as f:
-                        info = json.loads(info)
+                        info = json.load(f)
                 else:
                     info = {
                         "name": self.novel_name,

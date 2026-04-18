@@ -72,13 +72,13 @@ export const Editor: React.FC = () => {
       const agentOrder = ['planner', 'writer', 'critic', 'revise'] as const
       let currentAgent: (typeof agentOrder)[number] | null = null
 
-      if (currentStep.includes('策划')) {
+      if (currentStep.includes('策划') || currentStep.includes('Planner')) {
         currentAgent = 'planner'
-      } else if (currentStep.includes('初稿') || currentStep.includes('生成') || currentStep.includes('系统层防护')) {
+      } else if (currentStep.includes('初稿') || currentStep.includes('生成') || currentStep.includes('Writer') || currentStep.includes('系统层防护')) {
         currentAgent = 'writer'
-      } else if (currentStep.includes('评审')) {
+      } else if (currentStep.includes('评审') || currentStep.includes('Critic')) {
         currentAgent = 'critic'
-      } else if (currentStep.includes('修订')) {
+      } else if (currentStep.includes('修订') || currentStep.includes('Revise')) {
         currentAgent = 'revise'
       }
 
