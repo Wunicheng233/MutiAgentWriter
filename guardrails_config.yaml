@@ -1,0 +1,55 @@
+guardrails:
+  cliche_blacklist:
+  - 只见
+  - 话落
+  - 微微一笑
+  - 心中一动
+  - 瞳孔一缩
+  - 倒吸一口凉气
+  - 随着
+  - 就在这时
+  - 一股.*涌上心头
+  era_vocab:
+    1990s:
+      caution:
+      - 互联网
+      - 手机
+      - 电脑
+      forbidden:
+      - 智能手机
+      - WiFi
+      - 社交媒体
+      - 网购
+      - 二维码
+    ancient:
+      caution: []
+      forbidden:
+      - 电话
+      - 电灯
+      - 汽车
+      - 分钟
+      - 小时
+  hook_indicators:
+  - \?
+  - 突然
+  - 忽然
+  - 猛地
+  - 却
+  - 但是
+  - 然而
+  - 竟然
+  - 背后
+  - 身后
+  - 门外
+  - 窗外
+  - ……$
+  - ——$
+  paragraph:
+    exclude_dialogue: true
+    max_sentences: 3
+  sensitive_words:
+    auto_replace: true
+    block_on_high_severity: true
+    enabled: true
+  word_count:
+    tolerance: 0.3
