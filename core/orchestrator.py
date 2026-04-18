@@ -689,9 +689,10 @@ class NovelOrchestrator:
                         existing_content = f.read()
                     prev_chapter_end = existing_content[-500:] if len(existing_content) > 500 else existing_content
                     logger.info(f"第{chapter_num}章已生成文件存在，跳过（断点续跑）")
-                    # 添加到已生成列表
-                    size = chapter_file.stat().st_size
-                    words = size // 2
+                    # 统计真实汉字数量（只统计中文字符，不含标点空格）
+                    import re
+                    chinese_chars = re.findall(r'[\u4e00-\u9fff]', existing_content)
+                    words = len(chinese_chars)
                     generated.append({"num": chapter_num, "words": words})
                     continue
 
@@ -748,8 +749,12 @@ class NovelOrchestrator:
                 })
 
                 chapter_file = self.output_dir / "chapters" / f"chapter_{chapter_num}.txt"
-                size = chapter_file.stat().st_size
-                words = size // 2
+                with open(chapter_file, "r", encoding="utf-8") as f:
+                    content = f.read()
+                # 统计真实汉字数量（只统计中文字符，不含标点空格）
+                import re
+                chinese_chars = re.findall(r'[\u4e00-\u9fff]', content)
+                words = len(chinese_chars)
                 generated.append({"num": chapter_num, "words": words})
 
                 # 如果允许剧情调整，让用户可以调整下一章剧情节点
