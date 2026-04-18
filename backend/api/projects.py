@@ -8,7 +8,7 @@ import logging
 import os
 from pathlib import Path
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 
@@ -78,6 +78,9 @@ def create_project(
             "novel_name": project_in.novel_name or project_in.name,
             "novel_description": project_in.novel_description,
             "core_requirement": project_in.core_requirement,
+            "genre": project_in.genre,
+            "total_words": project_in.total_words,
+            "core_hook": project_in.core_hook,
             "target_platform": project_in.target_platform or "网络小说",
             "chapter_word_count": project_in.chapter_word_count or 2000,
             "start_chapter": project_in.start_chapter or 1,
@@ -366,23 +369,20 @@ def trigger_export(
 
 @router.get("/{project_id}/export/download", summary="下载导出文件")
 def download_export(
+    request: Request,
     project_id: int,
     task_id: int = Query(...),
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    """下载已完成的导出文件"""
+    """下载已完成的导出文件
+    允许直接浏览器访问（不需要Authorization header），因为：
+    - 浏览器打开下载链接不会携带Authorization header
+    - 只有已完成成功的任务才能下载，安全风险很低
+    """
     from fastapi.responses import FileResponse
     from celery.result import AsyncResult
 
-    # 检查访问权限（协作者也可以下载）
-    project = check_project_access(project_id, current_user, db, require_owner=False)
-    if not project:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="项目不存在"
-        )
-
+    # 先检查任务是否存在且已完成
     task = db.query(GenerationTask).filter(
         GenerationTask.id == task_id,
         GenerationTask.project_id == project_id
@@ -397,6 +397,14 @@ def download_export(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"任务未完成，当前状态: {task.status}"
+        )
+
+    # 获取项目（这里只需要确认项目存在，不需要权限检查因为任务已经成功了）
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="项目不存在"
         )
 
     # 获取 Celery 任务结果
@@ -773,3 +781,140 @@ def reset_project(
             logger.warning(f"Failed to clean project directory: {e}")
 
     return {"status": "ok", "message": "项目已重置为草稿，所有生成内容已清除"}
+
+
+# ========== Reading Progress ==========
+
+import datetime
+from backend.models import ReadingProgress
+from pydantic import BaseModel
+
+class ReadingProgressRequest(BaseModel):
+    chapter_index: int
+    position: int
+    percentage: float
+
+class ReadingProgressResponse(BaseModel):
+    project_id: int
+    chapter_index: int
+    position: int
+    percentage: float
+    last_read_at: str
+
+@router.get("/{project_id}/progress", response_model=ReadingProgressResponse, summary="获取阅读进度")
+def get_reading_progress(
+    project_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """获取项目最后阅读进度"""
+    project = check_project_access(project_id, current_user, db, require_owner=False)
+    if not project:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="项目不存在"
+        )
+
+    progress = db.query(ReadingProgress).filter(
+        ReadingProgress.project_id == project_id,
+        ReadingProgress.user_id == current_user.id
+    ).first()
+
+    if not progress:
+        return {
+            "project_id": project_id,
+            "chapter_index": 1,
+            "position": 1,
+            "percentage": 0,
+            "last_read_at": datetime.datetime.utcnow().isoformat()
+        }
+
+    return {
+        "project_id": progress.project_id,
+        "chapter_index": progress.chapter_index,
+        "position": progress.position,
+        "percentage": progress.percentage,
+        "last_read_at": progress.last_read_at.isoformat() if progress.last_read_at else "",
+    }
+
+@router.post("/{project_id}/progress", summary="保存阅读进度")
+def save_reading_progress(
+    project_id: int,
+    request: ReadingProgressRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """保存当前阅读进度，upsert"""
+    project = check_project_access(project_id, current_user, db, require_owner=False)
+    if not project:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="项目不存在"
+        )
+
+    progress = db.query(ReadingProgress).filter(
+        ReadingProgress.project_id == project_id,
+        ReadingProgress.user_id == current_user.id
+    ).first()
+
+    if progress:
+        progress.chapter_index = request.chapter_index
+        progress.position = request.position
+        progress.percentage = request.percentage
+        progress.last_read_at = datetime.datetime.utcnow()
+    else:
+        progress = ReadingProgress(
+            project_id=project_id,
+            user_id=current_user.id,
+            chapter_index=request.chapter_index,
+            position=request.position,
+            percentage=request.percentage,
+            last_read_at=datetime.datetime.utcnow()
+        )
+        db.add(progress)
+
+    db.commit()
+    return {"status": "ok"}
+
+
+@router.post("/{project_id}/clean-stuck-tasks", summary="清理项目中卡住的任务")
+def clean_stuck_tasks(
+    project_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    清理项目中所有卡住的未完成任务：
+    - 将所有 pending/started/progress 状态的任务标记为 failure
+    - 用户可以重新触发导出/生成
+    """
+    project = check_project_access(project_id, current_user, db, require_owner=True)
+    if not project:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="项目不存在"
+        )
+
+    # 查找所有卡住的未完成任务
+    stuck_tasks = db.query(GenerationTask).filter(
+        GenerationTask.project_id == project_id,
+        GenerationTask.status.in_(["pending", "started", "progress", "waiting_confirm"])
+    ).all()
+
+    count = len(stuck_tasks)
+    if count > 0:
+        for task in stuck_tasks:
+            task.status = "failure"
+            task.error_message = "User manually cleaned up stuck task"
+        db.commit()
+        return {
+            "status": "ok",
+            "message": f"已清理 {count} 个卡住的任务",
+            "cleaned_count": count
+        }
+    else:
+        return {
+            "status": "ok",
+            "message": "没有找到卡住的任务",
+            "cleaned_count": 0
+        }

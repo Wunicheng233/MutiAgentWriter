@@ -272,3 +272,33 @@ export async function resetProject(projectId: number): Promise<{status: string; 
   const res = await api.post(`/projects/${projectId}/reset`)
   return res.data
 }
+
+export async function cleanStuckTasks(projectId: number): Promise<{status: string; message: string; cleaned_count: number}> {
+  const res = await api.post(`/projects/${projectId}/clean-stuck-tasks`)
+  return res.data
+}
+
+// ========== Reading Progress ==========
+
+export interface ReadingProgress {
+  project_id: number
+  chapter_index: number
+  position: number
+  percentage: number
+  last_read_at: string
+}
+
+export async function getReadingProgress(
+  projectId: number
+): Promise<ReadingProgress> {
+  const res = await api.get<ReadingProgress>(`/projects/${projectId}/progress`)
+  return res.data
+}
+
+export async function saveReadingProgress(
+  projectId: number,
+  data: { chapter_index: number; position: number; percentage: number }
+): Promise<{status: string}> {
+  const res = await api.post(`/projects/${projectId}/progress`, data)
+  return res.data
+}

@@ -148,3 +148,16 @@ class ProjectCollaborator(Base):
     invited_at = Column(DateTime, default=datetime.datetime.utcnow)
     accepted_at = Column(DateTime, nullable=True)
 
+
+class ReadingProgress(Base):
+    """阅读进度记录 - 保存用户每个项目的最后阅读位置"""
+    __tablename__ = "reading_progress"
+
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    chapter_index = Column(Integer, nullable=False)
+    position = Column(Integer, nullable=False, default=1)  # 分页模式：页码；滚动模式：scrollTop
+    percentage = Column(Float, default=0.0)  # 阅读百分比 0-1
+    last_read_at = Column(DateTime, default=datetime.datetime.utcnow)
+

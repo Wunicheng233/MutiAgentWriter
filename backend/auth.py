@@ -48,6 +48,10 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     else:
         expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
+    # JWT standard requires 'sub' to be a string
+    # user.id is int, convert to string for python-jose validation
+    if 'sub' in to_encode:
+        to_encode['sub'] = str(to_encode['sub'])
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 

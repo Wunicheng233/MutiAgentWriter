@@ -7,7 +7,7 @@ import { Badge } from '../components/Badge'
 import { Button } from '../components/Button'
 import { Input } from '../components/Input'
 import { ProgressBar } from '../components/ProgressBar'
-import { getProject, triggerGenerate, triggerExport, getExportDownloadUrl, getTaskStatus, getProjectTokenStats, createShareLink, listCollaborators, addCollaborator, removeCollaborator, resetProject, updateProject } from '../utils/endpoints'
+import { getProject, triggerGenerate, triggerExport, getExportDownloadUrl, getTaskStatus, getProjectTokenStats, createShareLink, listCollaborators, addCollaborator, removeCollaborator, resetProject, updateProject, cleanStuckTasks } from '../utils/endpoints'
 import { useAuthStore } from '../store/useAuthStore'
 import { useToast } from '../components/Toast'
 
@@ -39,6 +39,8 @@ export const ProjectOverview: React.FC = () => {
   const [showResetConfirm, setShowResetConfirm] = useState(false)
   const [resetting, setResetting] = useState(false)
   const [editingConfig, setEditingConfig] = useState(false)
+  const [cleaningStuck, setCleaningStuck] = useState(false)
+  const [showCleanConfirm, setShowCleanConfirm] = useState(false)
   const queryClient = useQueryClient()
 
   // 可编辑的配置状态
@@ -131,6 +133,24 @@ export const ProjectOverview: React.FC = () => {
     } catch (e: any) {
       showToast(e.response?.data?.detail || '重置失败', 'error')
       setResetting(false)
+    }
+  }
+
+  const handleCleanStuckTasks = async () => {
+    if (!showCleanConfirm) {
+      setShowCleanConfirm(true)
+      return
+    }
+    try {
+      setCleaningStuck(true)
+      const result = await cleanStuckTasks(projectId)
+      showToast(result.message, result.cleaned_count > 0 ? 'success' : 'info')
+      queryClient.invalidateQueries({ queryKey: ['project', projectId] })
+      setShowCleanConfirm(false)
+      setCleaningStuck(false)
+    } catch (e: any) {
+      showToast(e.response?.data?.detail || '清理失败', 'error')
+      setCleaningStuck(false)
     }
   }
 
@@ -242,63 +262,80 @@ export const ProjectOverview: React.FC = () => {
 
   return (
     <Layout>
-      <div className="flex justify-between items-start mb-6">
-        <div>
-          <h1 className="text-3xl">{data.name}</h1>
-          {data.description && (
-            <p className="text-secondary mt-2">{data.description}</p>
-          )}
-        </div>
-        <Badge variant={getStatusColor(data.status) as any}>
-          {getStatusText(data.status)}
-        </Badge>
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-3">
-        <Card>
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl">基本信息</h2>
-            {data.status === 'draft' && (
-              <Button
-                variant="tertiary"
-                size="sm"
-                onClick={() => setEditingConfig(!editingConfig)}
-              >
-                {editingConfig ? '取消' : '编辑配置'}
-              </Button>
+      <div className="max-w-4xl mx-auto">
+        <div className="flex justify-between items-start mb-6">
+          <div>
+            <div className="flex items-center gap-4 mb-2">
+              <Link to="/">
+                <Button variant="secondary" size="sm">返回书架</Button>
+              </Link>
+              <h1 className="text-3xl">{data.name}</h1>
+            </div>
+            {data.description && (
+              <p className="text-secondary mt-1">{data.description}</p>
             )}
           </div>
-          {!editingConfig ? (
-            <dl className="space-y-3 text-sm">
-              {config?.novel_name && (
-                <>
-                  <dt className="text-secondary">小说名称</dt>
-                  <dd className="mt-1 text-body">{config.novel_name}</dd>
-                </>
-              )}
-              {config?.core_requirement && (
-                <>
-                  <dt className="text-secondary">核心需求</dt>
-                  <dd className="mt-1 text-body whitespace-pre-line">{config.core_requirement}</dd>
-                </>
-              )}
-              {config?.chapter_word_count && (
-                <>
-                  <dt className="text-secondary">每章字数</dt>
-                  <dd className="mt-1 text-body">{config.chapter_word_count}</dd>
-                </>
-              )}
-              {config?.end_chapter && (
-                <>
-                  <dt className="text-secondary">章节范围</dt>
-                  <dd className="mt-1 text-body">{config.start_chapter || 1} - {config.end_chapter}</dd>
-                </>
-              )}
+          <Badge variant={getStatusColor(data.status) as any}>
+            {getStatusText(data.status)}
+          </Badge>
+        </div>
+
+        {/* 基本信息 - 全宽在上 */}
+        <Card>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl">基本信息</h2>
+          {data.status === 'draft' && (
+            <Button
+              variant="tertiary"
+              size="sm"
+              onClick={() => setEditingConfig(!editingConfig)}
+            >
+              {editingConfig ? '取消' : '编辑配置'}
+            </Button>
+          )}
+        </div>
+        {!editingConfig ? (
+          <div className="space-y-4 text-lg">
+            {/* 基础信息和人机交互 - 两栏网格 */}
+            <dl className="grid grid-cols-2 gap-6">
+              <div className="space-y-4">
+                {config?.novel_name && (
+                  <div>
+                    <dt className="text-secondary">小说名称</dt>
+                    <dd className="mt-1 text-body font-medium">{config.novel_name}</dd>
+                  </div>
+                )}
+                {config?.chapter_word_count && (
+                  <div>
+                    <dt className="text-secondary">每章字数</dt>
+                    <dd className="mt-1 text-body">{config.chapter_word_count}</dd>
+                  </div>
+                )}
+                {config?.end_chapter && (
+                  <div>
+                    <dt className="text-secondary">章节范围</dt>
+                    <dd className="mt-1 text-body">{config.start_chapter || 1} - {config.end_chapter}</dd>
+                  </div>
+                )}
+                {tokenStats && tokenStats.total_tokens > 0 && (
+                  <div>
+                    <dt className="text-secondary">Token 消耗</dt>
+                    <dd className="mt-1 text-body">
+                      {tokenStats.total_tokens.toLocaleString()} tokens
+                      <span className="text-secondary ml-2 text-xs">
+                        (≈ ${tokenStats.estimated_cost_usd.toFixed(4)})
+                      </span>
+                    </dd>
+                  </div>
+                )}
+              </div>
+
+              {/* 人机交互选项 - 右栏 */}
               {config && (
-                <div className="space-y-1">
-                  <dt className="text-secondary">人机交互选项：</dt>
+                <div className="space-y-2">
+                  <dt className="text-secondary font-medium">人机交互选项</dt>
                   <dd className="mt-1 text-body">
-                    <ul className="list-disc list-inside pl-1 space-y-1 text-xs">
+                    <ul className="list-disc list-inside space-y-1 text-base">
                       <li>跳过策划确认：{config.skip_plan_confirmation ? '是' : '否'}</li>
                       <li>跳过章节确认：{config.skip_chapter_confirmation ? '是' : '否'}</li>
                       <li>允许剧情调整：{config.allow_plot_adjustment ? '是' : '否'}</li>
@@ -306,163 +343,168 @@ export const ProjectOverview: React.FC = () => {
                   </dd>
                 </div>
               )}
-              {tokenStats && tokenStats.total_tokens > 0 && (
-                <>
-                  <dt className="text-secondary">Token 消耗</dt>
-                  <dd className="mt-1 text-body">
-                    {tokenStats.total_tokens.toLocaleString()} tokens
-                    <span className="text-secondary ml-2">
-                      (≈ ${tokenStats.estimated_cost_usd.toFixed(4)})
-                    </span>
-                  </dd>
-                </>
-              )}
             </dl>
-          ) : (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <Input
-                  label="每章字数"
-                  type="number"
-                  value={configForm.chapter_word_count}
-                  onChange={e => setConfigForm(prev => ({ ...prev, chapter_word_count: parseInt(e.target.value) }))}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <Input
-                  label="起始章节"
-                  type="number"
-                  value={configForm.start_chapter}
-                  onChange={e => setConfigForm(prev => ({ ...prev, start_chapter: parseInt(e.target.value) }))}
-                />
-                <Input
-                  label="结束章节"
-                  type="number"
-                  value={configForm.end_chapter}
-                  onChange={e => setConfigForm(prev => ({ ...prev, end_chapter: parseInt(e.target.value) }))}
-                />
-              </div>
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="edit_skip_plan"
-                    checked={configForm.skip_plan_confirmation}
-                    onChange={e => setConfigForm(prev => ({ ...prev, skip_plan_confirmation: e.target.checked }))}
-                    className="text-sage rounded border-border focus:ring-sage"
-                  />
-                  <label htmlFor="edit_skip_plan" className="text-sm text-body">
-                    跳过策划方案人工确认（全自动模式）
-                  </label>
-                </div>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="edit_skip_chapter"
-                    checked={configForm.skip_chapter_confirmation}
-                    onChange={e => setConfigForm(prev => ({ ...prev, skip_chapter_confirmation: e.target.checked }))}
-                    className="text-sage rounded border-border focus:ring-sage"
-                  />
-                  <label htmlFor="edit_skip_chapter" className="text-sm text-body">
-                    跳过章节级人工确认（全自动生成全部章节）
-                  </label>
-                </div>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="edit_allow_plot"
-                    checked={configForm.allow_plot_adjustment}
-                    onChange={e => setConfigForm(prev => ({ ...prev, allow_plot_adjustment: e.target.checked }))}
-                    className="text-sage rounded border-border focus:ring-sage"
-                  />
-                  <label htmlFor="edit_allow_plot" className="text-sm text-body">
-                    允许每章后调整下一章剧情（人在环路可控创作）
-                  </label>
+
+            {/* 核心需求 - 独立区块，限制高度可滚动 */}
+            {config?.core_requirement && (
+              <div className="bg-sage/5 rounded-standard p-4 border border-border">
+                <h4 className="text-secondary font-medium mb-3">核心需求</h4>
+                <div className="max-h-96 overflow-y-auto text-body whitespace-pre-line pr-2">
+                  {config.core_requirement}
                 </div>
               </div>
-              <div className="flex justify-end pt-2">
-                <Button
-                  variant="primary"
-                  onClick={() => updateConfigMutation.mutate()}
-                  disabled={updateConfigMutation.isPending}
-                >
-                  {updateConfigMutation.isPending ? '保存中...' : '保存配置'}
-                </Button>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <Input
+                label="每章字数"
+                type="number"
+                value={configForm.chapter_word_count}
+                onChange={e => setConfigForm(prev => ({ ...prev, chapter_word_count: parseInt(e.target.value) }))}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <Input
+                label="起始章节"
+                type="number"
+                value={configForm.start_chapter}
+                onChange={e => setConfigForm(prev => ({ ...prev, start_chapter: parseInt(e.target.value) }))}
+              />
+              <Input
+                label="结束章节"
+                type="number"
+                value={configForm.end_chapter}
+                onChange={e => setConfigForm(prev => ({ ...prev, end_chapter: parseInt(e.target.value) }))}
+              />
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="edit_skip_plan"
+                  checked={configForm.skip_plan_confirmation}
+                  onChange={e => setConfigForm(prev => ({ ...prev, skip_plan_confirmation: e.target.checked }))}
+                  className="text-sage rounded border-border focus:ring-sage"
+                />
+                <label htmlFor="edit_skip_plan" className="text-sm text-body">
+                  跳过策划方案人工确认（全自动模式）
+                </label>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="edit_skip_chapter"
+                  checked={configForm.skip_chapter_confirmation}
+                  onChange={e => setConfigForm(prev => ({ ...prev, skip_chapter_confirmation: e.target.checked }))}
+                  className="text-sage rounded border-border focus:ring-sage"
+                />
+                <label htmlFor="edit_skip_chapter" className="text-sm text-body">
+                  跳过章节级人工确认（全自动生成全部章节）
+                </label>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="edit_allow_plot"
+                  checked={configForm.allow_plot_adjustment}
+                  onChange={e => setConfigForm(prev => ({ ...prev, allow_plot_adjustment: e.target.checked }))}
+                  className="text-sage rounded border-border focus:ring-sage"
+                />
+                <label htmlFor="edit_allow_plot" className="text-sm text-body">
+                  允许每章后调整下一章剧情（人在环路可控创作）
+                </label>
               </div>
             </div>
-          )}
-        </Card>
+            <div className="flex justify-end pt-2">
+              <Button
+                variant="primary"
+                onClick={() => updateConfigMutation.mutate()}
+                disabled={updateConfigMutation.isPending}
+              >
+                {updateConfigMutation.isPending ? '保存中...' : '保存配置'}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Card>
 
-        <Card>
-          <h2 className="text-xl mb-4">质量评分</h2>
-          {data.overall_quality_score > 0 ? (
-            <>
-              <div className="mb-6">
+      {/* 质量评分 - 全宽 */}
+      <Card>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl mb-4">质量评分</h2>
+            {data.overall_quality_score > 0 ? (
+              <div className="mb-4 w-64">
                 <div className="flex justify-between text-sm mb-2">
                   <span className="text-secondary">总体评分</span>
                   <span className="text-body font-medium">{data.overall_quality_score.toFixed(1)}/10</span>
                 </div>
                 <ProgressBar progress={data.overall_quality_score * 10} />
               </div>
-              <Link to={`/projects/${projectId}/analytics`}>
-                <Button variant="secondary" className="w-full">
-                  查看详细质量分析
-                </Button>
-              </Link>
-            </>
-          ) : (
-            <p className="text-secondary">尚无评分，生成完成后会自动计算</p>
+            ) : (
+              <p className="text-secondary mb-0">尚无评分，生成完成后会自动计算</p>
+            )}
+          </div>
+          {data.overall_quality_score > 0 && (
+            <Link to={`/projects/${projectId}/analytics`}>
+              <Button variant="secondary">
+                查看详细质量分析
+              </Button>
+            </Link>
           )}
-        </Card>
+        </div>
+      </Card>
 
-        {data && user && data.user_id === user.id && ( // Only owner can see collaborators
-          <Card>
-            <h2 className="text-xl mb-4">协作者</h2>
-            <div className="space-y-3">
-              <div className="flex gap-2">
-                <div className="flex-1">
-                  <Input
-                    label="用户名"
-                    placeholder="输入已注册用户名"
-                    value={newCollaboratorUsername}
-                    onChange={(e) => setNewCollaboratorUsername(e.target.value)}
-                  />
-                </div>
-                <div className="pt-[26px]">
-                  <Button
-                    variant="primary"
-                    onClick={handleAddCollaborator}
-                    disabled={addingCollaborator}
-                  >
-                    {addingCollaborator ? '添加中...' : '添加'}
-                  </Button>
-                </div>
+      {/* 协作者 - 如果有单独占一行 */}
+      {data && user && data.user_id === user.id && ( // Only owner can see collaborators
+        <Card>
+          <h2 className="text-xl mb-4">协作者</h2>
+          <div className="space-y-3">
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <Input
+                  label="用户名"
+                  placeholder="输入已注册用户名"
+                  value={newCollaboratorUsername}
+                  onChange={(e) => setNewCollaboratorUsername(e.target.value)}
+                />
               </div>
-              {collaborators.length > 0 ? (
-                <div className="space-y-2">
-                  {collaborators.map(collab => (
-                    <div key={collab.id} className="flex justify-between items-center p-2 border border-border rounded-standard">
-                      <div>
-                        <div className="font-medium">{collab.username}</div>
-                        <div className="text-xs text-secondary">{collab.email} · {collab.role}</div>
-                      </div>
-                      <Button
-                        variant="tertiary"
-                        size="sm"
-                        onClick={() => handleRemoveCollaborator(collab.id)}
-                      >
-                        移除
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-secondary text-sm">暂无协作者</p>
-              )}
+              <div className="pt-[26px]">
+                <Button
+                  variant="primary"
+                  onClick={handleAddCollaborator}
+                  disabled={addingCollaborator}
+                >
+                  {addingCollaborator ? '添加中...' : '添加'}
+                </Button>
+              </div>
             </div>
-          </Card>
-        )}
-      </div>
+            {collaborators.length > 0 ? (
+              <div className="space-y-2">
+                {collaborators.map(collab => (
+                  <div key={collab.id} className="flex justify-between items-center p-2 border border-border rounded-standard">
+                    <div>
+                      <div className="font-medium">{collab.username}</div>
+                      <div className="text-xs text-secondary">{collab.email} · {collab.role}</div>
+                    </div>
+                    <Button
+                      variant="tertiary"
+                      size="sm"
+                      onClick={() => handleRemoveCollaborator(collab.id)}
+                    >
+                      移除
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-secondary text-sm">暂无协作者</p>
+            )}
+          </div>
+        </Card>
+      )}
 
       {exportPollingId && (
         <div className="mb-6">
@@ -470,40 +512,46 @@ export const ProjectOverview: React.FC = () => {
         </div>
       )}
 
-      <div className="flex flex-wrap gap-4 mt-8">
-        <Link to={`/projects/${projectId}/chapters`}>
-          <Button variant="secondary">
-            查看章节
-          </Button>
-        </Link>
-        {data.status !== 'generating' && (
-          <Button variant="primary" onClick={handleTriggerGenerate}>
-            开始生成
-          </Button>
-        )}
-        {data.status === 'generating' && (
-          <Link to={`/projects/${projectId}/write/1`}>
-            <Button variant="primary">
-              进入写作
+      <div className="mt-8 space-y-6">
+        {/* 主要操作区 */}
+        <div className="flex flex-wrap gap-4">
+          <Link to={`/projects/${projectId}/chapters`}>
+            <Button variant="secondary">
+              查看章节
             </Button>
           </Link>
-        )}
-        <Link to={`/projects/${projectId}/analytics`}>
-          <Button variant="tertiary">
-            质量分析
-          </Button>
-        </Link>
-        {data.status !== 'draft' && (
-          <Button
-            variant="genre"
-            onClick={handleResetProject}
-          >
-            重置项目
-          </Button>
-        )}
+          {data.status !== 'generating' && (
+            <Button variant="primary" onClick={handleTriggerGenerate}>
+              开始生成
+            </Button>
+          )}
+          {data.status === 'generating' && (
+            <Link to={`/projects/${projectId}/write/1`}>
+              <Button variant="primary">
+                进入写作
+              </Button>
+            </Link>
+          )}
+          <Link to={`/projects/${projectId}/analytics`}>
+            <Button variant="secondary">
+              质量分析
+            </Button>
+          </Link>
+          {data.status !== 'draft' && (
+            <Button
+              variant="secondary"
+              onClick={handleResetProject}
+            >
+              重置项目
+            </Button>
+          )}
+        </div>
+
+        {/* 导出与分享区 - 仅完成状态显示 */}
         {data.status === 'completed' && (
-          <div className="flex flex-col gap-3 w-full">
-            <div className="flex gap-2">
+          <div className="bg-sage/5 rounded-standard p-4 border border-border">
+            <h3 className="text-sm font-medium text-body mb-3">导出与分享</h3>
+            <div className="flex flex-wrap gap-3 mb-3">
               <Button variant="secondary" onClick={() => handleTriggerExport('epub')} disabled={!!exportPollingId}>
                 导出 EPUB
               </Button>
@@ -513,25 +561,55 @@ export const ProjectOverview: React.FC = () => {
               <Button variant="secondary" onClick={() => handleTriggerExport('html')} disabled={!!exportPollingId}>
                 导出 HTML
               </Button>
-            </div>
-            <div>
               <Button
-                variant="tertiary"
+                variant="secondary"
                 onClick={handleCreateShare}
                 disabled={creatingShare}
-                className="w-full"
               >
                 {creatingShare ? '创建中...' : shareUrl ? '分享链接已复制' : '创建分享链接'}
               </Button>
-              {shareUrl && (
-                <p className="text-xs text-secondary mt-2 break-all">
-                  {shareUrl}
-                </p>
-              )}
+              <Button
+                variant="tertiary"
+                onClick={() => setShowCleanConfirm(true)}
+                disabled={cleaningStuck}
+              >
+                清理任务队列
+              </Button>
             </div>
+            {shareUrl && (
+              <div className="p-2 bg-white rounded-standard border border-border text-xs text-secondary break-all">
+                {shareUrl}
+              </div>
+            )}
           </div>
         )}
       </div>
+
+      {/* 确认清理对话框 */}
+      {showCleanConfirm && (
+        <div className="mt-4 bg-amber/5 border border-amber/30 rounded-standard p-4 space-y-3">
+          <p className="text-sm text-body">
+            <strong>确认清理任务队列吗？</strong> 这会将所有未完成的任务标记为失败，你可以重新尝试导出。<br />
+            不会删除已生成的章节内容，只清理任务状态。
+          </p>
+          <div className="flex gap-3 justify-end">
+            <Button
+              variant="secondary"
+              onClick={() => setShowCleanConfirm(false)}
+              disabled={cleaningStuck}
+            >
+              取消
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={handleCleanStuckTasks}
+              disabled={cleaningStuck}
+            >
+              {cleaningStuck ? '清理中...' : '确认清理'}
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* 确认重置对话框 */}
       {showResetConfirm && (
@@ -548,7 +626,7 @@ export const ProjectOverview: React.FC = () => {
               取消
             </Button>
             <Button
-              variant="genre"
+              variant="secondary"
               onClick={handleResetProject}
               disabled={resetting}
             >
@@ -557,6 +635,7 @@ export const ProjectOverview: React.FC = () => {
           </div>
         </div>
       )}
+      </div>
     </Layout>
   )
 }

@@ -31,13 +31,16 @@ class Settings(BaseSettings):
 
     # 各Agent独立密钥（高级用户分账号计费）
     planner_api_key: str = Field("", description="Planner Agent API密钥", json_schema_extra={"env": ["PLANNER_API_KEY", "WRITER_API_KEY_PLANNER"]})
-    guardian_api_key: str = Field("", description="Guardian Agent API密钥", json_schema_extra={"env": ["GUARDIAN_API_KEY", "WRITER_API_KEY_GUARDIAN"]})
     writer_api_key: str = Field("", description="Writer Agent API密钥", json_schema_extra={"env": ["WRITER_API_KEY", "WRITER_API_KEY_WRITER"]})
-    editor_api_key: str = Field("", description="Editor Agent API密钥", json_schema_extra={"env": ["EDITOR_API_KEY", "WRITER_API_KEY_EDITOR"]})
-    compliance_api_key: str = Field("", description="Compliance Agent API密钥", json_schema_extra={"env": ["COMPLIANCE_API_KEY", "WRITER_API_KEY_COMPLIANCE"]})
-    quality_api_key: str = Field("", description="Quality Agent API密钥", json_schema_extra={"env": ["QUALITY_API_KEY", "WRITER_API_KEY_QUALITY"]})
     critic_api_key: str = Field("", description="Critic Agent API密钥", json_schema_extra={"env": ["CRITIC_API_KEY", "WRITER_API_KEY_CRITIC"]})
-    fix_api_key: str = Field("", description="Fix Agent API密钥", json_schema_extra={"env": ["FIX_API_KEY", "WRITER_API_KEY_FIX"]})
+    revise_api_key: str = Field("", description="Revise Agent API密钥", json_schema_extra={"env": ["REVISE_API_KEY", "WRITER_API_KEY_REVISE"]})
+    # 保留旧字段用于兼容
+    guardian_api_key: str = Field("", description="Guardian Agent API密钥 (deprecated)", json_schema_extra={"env": ["GUARDIAN_API_KEY", "WRITER_API_KEY_GUARDIAN"]})
+    editor_api_key: str = Field("", description="Editor Agent API密钥 (deprecated)", json_schema_extra={"env": ["EDITOR_API_KEY", "WRITER_API_KEY_EDITOR"]})
+    compliance_api_key: str = Field("", description="Compliance Agent API密钥 (deprecated)", json_schema_extra={"env": ["COMPLIANCE_API_KEY", "WRITER_API_KEY_COMPLIANCE"]})
+    quality_api_key: str = Field("", description="Quality Agent API密钥 (deprecated)", json_schema_extra={"env": ["QUALITY_API_KEY", "WRITER_API_KEY_QUALITY"]})
+    polish_api_key: str = Field("", description="Polish Agent API密钥 (deprecated)", json_schema_extra={"env": ["POLISH_API_KEY", "WRITER_API_KEY_POLISH"]})
+    fix_api_key: str = Field("", description="Fix Agent API密钥 (deprecated)", json_schema_extra={"env": ["FIX_API_KEY", "WRITER_API_KEY_FIX"]})
 
     # ========== API 端点配置 ==========
     # Coding Plan Pro: https://ark.cn-beijing.volces.com/api/coding/v3
@@ -51,23 +54,29 @@ class Settings(BaseSettings):
 
     # 各Agent独立模型（高级用法）
     planner_model: str = Field("ark-code-latest", description="Planner模型名称", json_schema_extra={"env": ["PLANNER_MODEL"]})
-    guardian_model: str = Field("ark-code-latest", description="Guardian模型名称", json_schema_extra={"env": ["GUARDIAN_MODEL"]})
     writer_model: str = Field("doubao-seed-code-preview-latest", description="Writer模型名称", json_schema_extra={"env": ["WRITER_MODEL"]})
-    editor_model: str = Field("doubao-seed-code-preview-latest", description="Editor模型名称", json_schema_extra={"env": ["EDITOR_MODEL"]})
-    compliance_model: str = Field("ark-code-latest", description="Compliance模型名称", json_schema_extra={"env": ["COMPLIANCE_MODEL"]})
-    quality_model: str = Field("ark-code-latest", description="Quality模型名称", json_schema_extra={"env": ["QUALITY_MODEL"]})
     critic_model: str = Field("ark-code-latest", description="Critic模型名称", json_schema_extra={"env": ["CRITIC_MODEL"]})
-    fix_model: str = Field("ark-code-latest", description="Fix模型名称", json_schema_extra={"env": ["FIX_MODEL"]})
+    revise_model: str = Field("ark-code-latest", description="Revise模型名称", json_schema_extra={"env": ["REVISE_MODEL"]})
+    # 保留旧字段用于兼容
+    guardian_model: str = Field("ark-code-latest", description="Guardian模型名称 (deprecated)", json_schema_extra={"env": ["GUARDIAN_MODEL"]})
+    editor_model: str = Field("doubao-seed-code-preview-latest", description="Editor模型名称 (deprecated)", json_schema_extra={"env": ["EDITOR_MODEL"]})
+    compliance_model: str = Field("ark-code-latest", description="Compliance模型名称 (deprecated)", json_schema_extra={"env": ["COMPLIANCE_MODEL"]})
+    quality_model: str = Field("ark-code-latest", description="Quality模型名称 (deprecated)", json_schema_extra={"env": ["QUALITY_MODEL"]})
+    polish_model: str = Field("ark-code-latest", description="Polish模型名称 (deprecated)", json_schema_extra={"env": ["POLISH_MODEL"]})
+    fix_model: str = Field("ark-code-latest", description="Fix模型名称 (deprecated)", json_schema_extra={"env": ["FIX_MODEL"]})
 
     # ========== 温度配置 ==========
     planner_temperature: float = Field(0.8, description="Planner温度（创意需要高温）")
-    guardian_temperature: float = Field(0.2, description="Guardian温度（校验需要低温）")
     writer_temperature: float = Field(0.7, description="Writer温度（创作适中）")
-    editor_temperature: float = Field(0.5, description="Editor温度（润色偏低）")
-    compliance_temperature: float = Field(0.1, description="Compliance温度（合规最严格）")
-    quality_temperature: float = Field(0.4, description="Quality温度（优化稳定）")
     critic_temperature: float = Field(0.2, description="Critic温度（评审低温客观）")
-    fix_temperature: float = Field(0.4, description="Fix温度（修复同quality）")
+    revise_temperature: float = Field(0.4, description="Revise温度（修复按指令执行，低温更准确）")
+    # 保留旧字段用于兼容
+    guardian_temperature: float = Field(0.2, description="Guardian温度（deprecated）")
+    editor_temperature: float = Field(0.5, description="Editor温度（deprecated）")
+    compliance_temperature: float = Field(0.1, description="Compliance温度（deprecated）")
+    quality_temperature: float = Field(0.2, description="Quality温度（deprecated）")
+    polish_temperature: float = Field(0.5, description="Polish温度（deprecated）")
+    fix_temperature: float = Field(0.4, description="Fix温度（deprecated）")
 
     # ========== 系统参数 ==========
     default_max_tokens: int = Field(8192, description="默认最大输出tokens")
@@ -77,8 +86,8 @@ class Settings(BaseSettings):
     critic_pass_threshold: float = Field(8.0, description="Critic全自动模式及格线")
 
     # ========== 质量检查配置 ==========
-    word_count_deviation_allowed: float = Field(0.15, description="字数偏差允许范围（百分比）")
-    word_count_deviation_hard: float = Field(0.25, description="字数偏差硬上限，超过强制打回")
+    word_count_deviation_allowed: float = Field(0.20, description="字数偏差允许范围（百分比）")
+    word_count_deviation_hard: float = Field(0.30, description="字数偏差硬上限，超过强制打回")
     long_paragraph_threshold: int = Field(300, description="长段落判断阈值（字符数）")
     ai_cliche_repeat_threshold: int = Field(2, description="AI套话多少次算重复过多")
 
@@ -128,12 +137,14 @@ class Settings(BaseSettings):
         # 获取对应字段
         api_key_map: Dict[str, str] = {
             "planner": self.planner_api_key,
-            "guardian": self.guardian_api_key,
             "writer": self.writer_api_key,
+            "critic": self.critic_api_key,
+            "revise": self.revise_api_key,
+            # 保留旧键用于兼容
+            "guardian": self.guardian_api_key,
             "editor": self.editor_api_key,
             "compliance": self.compliance_api_key,
             "quality": self.quality_api_key,
-            "critic": self.critic_api_key,
             "fix": self.fix_api_key,
         }
 
@@ -163,13 +174,16 @@ class Settings(BaseSettings):
 
         model_map: Dict[str, str] = {
             "planner": self.planner_model,
-            "guardian": self.guardian_model,
             "writer": self.writer_model,
+            "critic": self.critic_model,
+            "revise": self.revise_model,
+            # 保留旧键用于兼容
+            "guardian": self.guardian_model,
             "editor": self.editor_model,
             "compliance": self.compliance_model,
             "quality": self.quality_model,
-            "critic": self.critic_model,
             "fix": self.fix_model,
+            "trim": self.quality_model,
         }
         return model_map.get(agent_name, self.planner_model)
 
@@ -177,13 +191,16 @@ class Settings(BaseSettings):
         """获取Agent对应的温度参数"""
         temp_map: Dict[str, float] = {
             "planner": self.planner_temperature,
-            "guardian": self.guardian_temperature,
             "writer": self.writer_temperature,
+            "critic": self.critic_temperature,
+            "revise": self.revise_temperature,
+            # 保留旧键用于兼容
+            "guardian": self.guardian_temperature,
             "editor": self.editor_temperature,
             "compliance": self.compliance_temperature,
             "quality": self.quality_temperature,
-            "critic": self.critic_temperature,
             "fix": self.fix_temperature,
+            "trim": 0.3,
         }
         return temp_map.get(agent_name, 0.7)
 
@@ -193,12 +210,10 @@ settings = Settings()
 
 # 确保必要的目录存在
 try:
-    settings.outputs_root.mkdir(exist_ok=True, parents=True)
-    settings.logs_dir.mkdir(exist_ok=True, parents=True)
     settings.prompts_dir.mkdir(exist_ok=True, parents=True)
 except OSError as e:
     import sys
     from utils.logger import logger
     logger.error(f"无法创建必要目录：{e}")
-    logger.error(f"请检查目录权限：outputs_root={settings.outputs_root}, logs_dir={settings.logs_dir}, prompts_dir={settings.prompts_dir}")
+    logger.error(f"请检查目录权限：prompts_dir={settings.prompts_dir}")
     sys.exit(1)

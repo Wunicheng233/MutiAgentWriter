@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-对抗性评论Agent - Critic Agent
-专门挑刺打分，找出章节存在的问题，帮助后续优化
-这就是"对抗性修改"环节：一个挑错，一个优化，提升质量
+Critic Agent - 章节评审员
+精简架构：输出纯 JSON 格式的评审结果，包含 passed/score/issues
+遵循设计文档：Writer → System Guardrails → Critic → Revise → (Critic 复评)
 """
 
+import json
 import re
 import openai
+from typing import Tuple, List, Dict, Optional
 from utils.volc_engine import call_volc_api
 from utils.logger import logger
 from core.config import settings
@@ -15,150 +17,100 @@ from config import PROMPTS_DIR, CRITIC_PASS_SCORE
 
 
 def critic_chapter(
-    chapter_text: str,
-    target_word_count: int,
-    current_chapter: int,
+    chapter_content: str,
     setting_bible: str,
+    chapter_outline: str,
+    content_type: str = "novel",
     client: openai.OpenAI = None
-) -> tuple[bool, str, float, dict]:
+) -> Tuple[bool, int, List[Dict]]:
     """
-    对抗性评论：给章节挑刺打分，多维度评分
-    返回：(是否通过, 问题清单, 总分, 维度分数字典)
+    评审章节，输出 JSON 格式的结果。
+
+    Args:
+        chapter_content: 待评审的章节正文
+        setting_bible: 设定圣经全文
+        chapter_outline: 当前章节的大纲
+        content_type: 内容类型 (novel/short_story/script)
+        client: OpenAI客户端
+
+    Returns:
+        (passed: 是否通过, score: 分数 1-10, issues: 问题列表)
+        issues 列表中每个item包含: {type, location, fix}
     """
-    # 读取提示词
+    # 读取 prompt 模板
     prompt_path = PROMPTS_DIR / "critic.md"
     with open(prompt_path, 'r', encoding='utf-8') as f:
-        system_prompt = f.read().strip()
+        template = f.read().strip()
 
-    full_prompt = f"""{system_prompt}
+    # 占位符替换
+    context = {
+        "chapter_content": chapter_content,
+        "world_bible": setting_bible,
+        "chapter_outline": chapter_outline,
+        "content_type": content_type,
+    }
 
-=========================================
-【当前章节信息】
-目标章节号：第{current_chapter}章
-目标字数：{target_word_count}字
-=========================================
+    for key, value in context.items():
+        # 世界圣经太长，截断保留核心部分
+        if key == "world_bible" and len(str(value)) > 2500:
+            value = str(value)[:2500] + "\n...（内容过长已截断）"
+        template = template.replace(f"{{{{{key}}}}}", str(value))
 
-【设定圣经（用于检查设定一致性）】
-{setting_bible}
-
-=========================================
-【需要评审的章节内容】
-{chapter_text}
-
-=========================================
-请开始评审：
-"""
-
-    logger.info(f"🔍 Critic Agent正在评审第{current_chapter}章，寻找问题...")
+    logger.info(f"🔍 Critic Agent正在评审章节，等待结果...")
     temperature = settings.get_temperature_for_agent("critic")
-    result = call_volc_api("critic", full_prompt, temperature=temperature, client=client)
+    result = call_volc_api("critic", template, temperature=temperature, client=client)
 
-    # 解析结果
-    dimension_scores = parse_dimension_scores(result)
-    total_score = calculate_weighted_total(dimension_scores)
-    issues = parse_issues(result)
-    passed = is_passed(total_score)
+    # 解析 JSON 结果
+    data = parse_json_result(result)
+    if data is None:
+        # 解析失败，默认不通过
+        logger.error(f"❌ Critic 输出JSON解析失败，输出内容: {result[:200]}...")
+        return False, 5, [{
+            "type": "格式问题",
+            "location": "全文",
+            "fix": "重新生成，确保输出严格符合JSON格式"
+        }]
 
-    # 如果只是解析问题失败，但分数不算太低，就默认通过
-    # 这通常是AI输出格式不对，不是真的质量问题
-    if "需要优化整体质量" in issues and total_score >= 5:
-        passed = True
+    passed = data.get("passed", False)
+    score = data.get("score", 5)
+    issues = data.get("issues", [])
 
-    logger.info(f"📊 第{current_chapter}章评审完成，总分：{total_score:.1f}/10，是否通过：{'是' if passed else '否'}")
-    logger.info(f"   维度分数：剧情逻辑={dimension_scores.get('plot', 0)}, 人设一致性={dimension_scores.get('character', 0)}, 吸引力={dimension_scores.get('hook', 0)}, 文笔质量={dimension_scores.get('writing', 0)}, 设定一致性={dimension_scores.get('setting', 0)}")
-    if not passed:
-        logger.warning(f"⚠️  问题清单：{issues}")
+    # 确保score在1-10范围
+    score = max(1, min(10, score))
 
-    return passed, issues, total_score, dimension_scores
+    logger.info(f"📊 评审完成，分数: {score}/10，通过: {passed}，问题数: {len(issues)}")
+    if not passed and issues:
+        for i, issue in enumerate(issues[:3]):
+            logger.info(f"   {i+1}. [{issue.get('type')}] {issue.get('location')} → {issue.get('fix')[:50]}")
 
-
-# 维度权重配置
-WEIGHTS = {
-    "plot": 0.30,      # 剧情逻辑
-    "character": 0.25, # 人设一致性
-    "hook": 0.20,      # 吸引力
-    "writing": 0.15,   # 文笔质量
-    "setting": 0.10    # 设定一致性
-}
-
-DIMENSION_NAMES = {
-    "plot": "剧情逻辑",
-    "character": "人设一致性",
-    "hook": "吸引力",
-    "writing": "文笔质量",
-    "setting": "设定一致性"
-}
-
-def parse_dimension_scores(result: str) -> dict:
-    """解析五个维度的分数"""
-    dimension_patterns = [
-        ("plot", [r'【剧情逻辑】\s*[:：]\s*(\d+)\s*[\//]', r'剧情逻辑\s*[:：]\s*(\d+)']),
-        ("character", [r'【人设一致性】\s*[:：]\s*(\d+)\s*[\//]', r'人设一致性\s*[:：]\s*(\d+)']),
-        ("hook", [r'【吸引力】\s*[:：]\s*(\d+)\s*[\//]', r'吸引力\s*[:：]\s*(\d+)']),
-        ("writing", [r'【文笔质量】\s*[:：]\s*(\d+)\s*[\//]', r'文笔质量\s*[:：]\s*(\d+)']),
-        ("setting", [r'【设定一致性】\s*[:：]\s*(\d+)\s*[\//]', r'设定一致性\s*[:：]\s*(\d+)']),
-    ]
-
-    scores = {}
-    for dim_key, patterns in dimension_patterns:
-        score = 6  # 默认中等分数
-        found = False
-        for pattern in patterns:
-            match = re.search(pattern, result)
-            if match:
-                score = int(match.group(1))
-                score = max(1, min(10, score))
-                found = True
-                break
-        scores[dim_key] = score
-
-    # 如果解析失败尝试解析总分
-    if all(v == 6 for v in scores.values()):
-        # 尝试解析旧格式总分
-        total_match = re.search(r'【总分】\s*[:：]\s*(\d+)\s*[\//]', result)
-        if total_match:
-            total = int(total_match.group(1))
-            # 均匀分配
-            for key in scores:
-                scores[key] = max(1, min(10, total))
-    return scores
+    return passed, score, issues
 
 
-def calculate_weighted_total(dimension_scores: dict) -> float:
-    """根据维度分数计算加权总分"""
-    total = 0.0
-    total_weight = 0.0
-    for key, score in dimension_scores.items():
-        weight = WEIGHTS.get(key, 0)
-        total += score * weight
-        total_weight += weight
-    if total_weight > 0:
-        total = total / total_weight * 10  # 归一化到 0-10
-    return max(1.0, min(10.0, total))
+def parse_json_result(result: str) -> Optional[Dict]:
+    """从输出中提取并解析JSON。"""
+    try:
+        # 尝试提取被markdown包裹的JSON
+        json_text = extract_json_from_markdown(result)
+        data = json.loads(json_text)
+        return data
+    except Exception as e:
+        logger.warning(f"JSON解析失败: {e}")
+        return None
 
 
-def parse_issues(result: str) -> str:
-    """解析问题清单 - 更宽松的匹配"""
-    patterns = [
-        r'【问题清单】\s*[:：]\s*(.*?)(?=【是否通过|【总分|是否通过|总分|\Z)',
-        r'问题清单\s*[:：]\s*(.*?)(?=是否通过|总分|\Z)',
-        r'问题[:：]\s*(.*?)(?=是否通过|总分|\Z)',
-        r'(.*?)(?=【是否通过|是否通过)'
-    ]
-    for pattern in patterns:
-        match = re.search(pattern, result, re.DOTALL)
-        if match:
-            issues = match.group(1).strip()
-            if len(issues) > 0:
-                return issues
-    # 如果还是没找到，提取所有内容
-    lines = result.strip().split('\n')
-    if len(lines) >= 2:
-        return '\n'.join(lines[1:]).strip()
-    return "需要优化整体质量，提升故事吸引力和结尾悬念"
+def extract_json_from_markdown(text: str) -> str:
+    """从markdown中提取JSON内容。"""
+    # 匹配 ```json ... ```
+    json_block_pattern = r'```(?:json)?\s*({[\s\S]*?})\s*```'
+    match = re.search(json_block_pattern, text)
+    if match:
+        return match.group(1)
 
+    # 匹配 {...} 整块
+    curly_pattern = r'({[\s\S]*})'
+    match = re.search(curly_pattern, text)
+    if match:
+        return match.group(1)
 
-def is_passed(total_score: float) -> bool:
-    """判断是否通过 - 严格按配置的及格线判断分数"""
-    # 总分 >= 配置及格线就算通过
-    return total_score >= CRITIC_PASS_SCORE
+    # 如果都没找到，返回原文本尝试直接解析
+    return text.strip()

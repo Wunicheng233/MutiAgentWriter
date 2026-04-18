@@ -21,7 +21,11 @@ class ExportService:
     def __init__(self, db: Session, project_id: int):
         self.db = db
         self.project_id = project_id
-        self.project = db.query(Project).filter(Project.id == project_id).first()
+        from sqlalchemy.orm import joinedload
+        self.project = db.query(Project)\
+            .options(joinedload(Project.owner))\
+            .filter(Project.id == project_id)\
+            .first()
         self.chapters = db.query(Chapter)\
             .filter(Chapter.project_id == project_id)\
             .order_by(Chapter.chapter_index)\
@@ -70,10 +74,6 @@ class ExportService:
         book.set_title(info['title'])
         book.set_language('zh-CN')
         book.add_author(info['author'])
-
-        # 如果有描述，添加到图书信息
-        if info['description']:
-            book.set_description(info['description'])
 
         # 添加章节
         epub_chapters = []

@@ -5,6 +5,43 @@
 @tailwind components;
 @tailwind utilities;
 
+/* 阅读器 CSS 变量 - 主题支持 */
+:root {
+  --reader-bg: #faf7f2;
+  --reader-text: #3a2c1f;
+  --reader-border: #e0e0e0;
+  --reader-secondary: #6b6b6b;
+  --reader-font-family: 'Crimson Pro', Georgia, serif;
+}
+
+.theme-parchment {
+  --reader-bg: #faf7f2;
+  --reader-text: #3a2c1f;
+  --reader-border: #d4cdc4;
+  --reader-secondary: #6b6b6b;
+}
+
+.theme-white {
+  --reader-bg: #ffffff;
+  --reader-text: #333333;
+  --reader-border: #e5e7eb;
+  --reader-secondary: #6b7280;
+}
+
+.theme-dark {
+  --reader-bg: #1a1a1a;
+  --reader-text: #e0e0e0;
+  --reader-border: #333333;
+  --reader-secondary: #999999;
+}
+
+.theme-green {
+  --reader-bg: #e8ede0;
+  --reader-text: #3a4a3a;
+  --reader-border: #cbd5c0;
+  --reader-secondary: #5a6a5a;
+}
+
 /* 全局基础样式 */
 @layer base {
   body {
@@ -15,6 +52,12 @@
   .prose-novel {
     @apply font-serif text-body text-[16px] leading-relaxed;
     line-height: 1.6;
+  }
+  .prose-novel p {
+    @apply mb-4;
+  }
+  .prose-novel p:last-child {
+    @apply mb-0;
   }
 
   /* 标题使用 Crimson Pro 字重 400 */

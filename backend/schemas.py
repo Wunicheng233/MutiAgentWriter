@@ -66,6 +66,9 @@ class ProjectCreate(BaseModel):
     novel_name: Optional[str] = None
     novel_description: Optional[str] = None
     core_requirement: Optional[str] = None
+    genre: Optional[str] = None
+    total_words: Optional[int] = None
+    core_hook: Optional[str] = None
     target_platform: Optional[str] = None
     chapter_word_count: Optional[int] = 2000
     start_chapter: Optional[int] = 1

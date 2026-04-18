@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  # PostgreSQL database
+  db:
+    image: postgres:15-alpine
+    container_name: multiagent-writer-db
+    environment:
+      POSTGRES_USER: multiagent
+      POSTGRES_PASSWORD: multiagentpassword
+      POSTGRES_DB: multiagent_writer
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - multiagent-network
+
+  # Redis for Celery
+  redis:
+    image: redis:7-alpine
+    container_name: multiagent-writer-redis
+    restart: unless-stopped
+    networks:
+      - multiagent-network
+
+  # FastAPI backend
+  web:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: multiagent-writer-web
+    command: uvicorn backend.main:app --host 0.0.0.0 --port 8000
+    volumes:
+      - ../data:/app/data
+      - ../.env:/app/.env
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+      - redis
+    environment:
+      - DATABASE_URL=postgresql://multiagent:multiagentpassword@db:5432/multiagent_writer
+      - REDIS_URL=redis://redis:6379/0
+    restart: unless-stopped
+    networks:
+      - multiagent-network
+
+  # Celery worker for async tasks
+  celery:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: multiagent-writer-celery
+    command: celery -A celery_app worker --loglevel=info
+    volumes:
+      - ../data:/app/data
+      - ../.env:/app/.env
+    depends_on:
+      - db
+      - redis
+      - web
+    environment:
+      - DATABASE_URL=postgresql://multiagent:multiagentpassword@db:5432/multiagent_writer
+      - REDIS_URL=redis://redis:6379/0
+    restart: unless-stopped
+    networks:
+      - multiagent-network
+
+volumes:
+  postgres_data:
+
+networks:
+  multiagent-network:

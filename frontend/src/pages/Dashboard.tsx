@@ -38,7 +38,7 @@ export const Dashboard: React.FC = () => {
   return (
     <Layout>
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl">我的书架</h1>
+        <h1 className="text-3xl font-serif text-inkwell">我的书架</h1>
         <Link to="/projects/new">
           <Button variant="primary">新建项目</Button>
         </Link>
@@ -58,20 +58,23 @@ export const Dashboard: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {data?.items.map((project: Project) => (
           <Link key={project.id} to={`/projects/${project.id}/overview`}>
-            <Card hoverable className="h-full flex flex-col">
-              <div className="flex justify-between items-start mb-4">
-                <h3 className="text-card text-xl font-serif">{project.name}</h3>
+            <Card hoverable className="h-full flex flex-col relative overflow-hidden">
+              {/* 书脊 - 左侧深色条，模拟书本效果 */}
+              <div className="absolute left-0 top-0 bottom-0 w-[8px] bg-[rgba(60,40,20,0.28)]"></div>
+
+              <div className="flex justify-between items-start mb-4 pl-3">
+                <h3 className="text-card text-xl font-serif text-inkwell">{project.name}</h3>
                 <Badge variant={getStatusColor(project.status) as any}>
                   {getStatusText(project.status)}
                 </Badge>
               </div>
               {project.description && (
-                <p className="text-secondary text-sm mb-4 line-clamp-2">
+                <p className="text-secondary text-sm mb-4 line-clamp-2 pl-3">
                   {project.description}
                 </p>
               )}
               {project.overall_quality_score > 0 && (
-                <div className="mb-4">
+                <div className="mb-4 pl-3">
                   <div className="flex justify-between text-sm mb-1">
                     <span className="text-secondary">总体质量</span>
                     <span className="text-body font-medium">{project.overall_quality_score.toFixed(1)}/10</span>
@@ -81,7 +84,7 @@ export const Dashboard: React.FC = () => {
                   />
                 </div>
               )}
-              <div className="text-xs text-secondary mt-auto pt-4">
+              <div className="text-xs text-secondary mt-auto pt-4 pl-3">
                 更新于 {new Date(project.updated_at).toLocaleString()}
               </div>
             </Card>

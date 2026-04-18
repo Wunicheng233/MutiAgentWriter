@@ -90,11 +90,17 @@ def generate_chapter(
 
     logger.info(f"启动内容生成Agent，生成第{chapter_num}章")
 
+    # 构建占位符替换上下文
+    context = {
+        "world_bible": setting_bible,
+        "target_word_count": str(target_word_count),
+    }
+
     # 第一次生成
     if client:
-        result = call_volc_api("writer", user_input, max_tokens=WRITER_MAX_TOKENS, content_type=content_type, client=client)
+        result = call_volc_api("writer", user_input, max_tokens=WRITER_MAX_TOKENS, content_type=content_type, context=context, client=client)
     else:
-        result = call_volc_api("writer", user_input, max_tokens=WRITER_MAX_TOKENS, content_type=content_type)
+        result = call_volc_api("writer", user_input, max_tokens=WRITER_MAX_TOKENS, content_type=content_type, context=context)
     fixed_result = _check_and_fix_title(result, chapter_num)
 
     if fixed_result != result:

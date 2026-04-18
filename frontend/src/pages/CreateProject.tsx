@@ -35,6 +35,9 @@ export const CreateProject: React.FC = () => {
     novel_name: '',
     novel_description: '',
     core_requirement: '',
+    genre: '',
+    total_words: 100000,
+    core_hook: '',
     target_platform: '网络小说',
     chapter_word_count: 2000,
     start_chapter: 1,
@@ -81,7 +84,14 @@ export const CreateProject: React.FC = () => {
   return (
     <Layout>
       <div className="max-w-2xl mx-auto">
-        <h1 className="text-3xl mb-6">新建创作项目</h1>
+        <div className="flex justify-between items-center mb-6">
+          <div className="flex items-center gap-4">
+            <Link to="/">
+              <Button variant="secondary" size="sm">返回书架</Button>
+            </Link>
+            <h1 className="text-3xl">新建创作项目</h1>
+          </div>
+        </div>
 
         <div className="mb-8">
           <ProgressBar progress={progress} message={`步骤 ${currentStep}/${steps.length}: ${steps[currentStep - 1].title}`} />
@@ -144,6 +154,27 @@ export const CreateProject: React.FC = () => {
                 value={formData.novel_description || ''}
                 onChange={e => updateForm({ novel_description: e.target.value })}
               />
+              <Input
+                label="小说题材"
+                placeholder="都市重生/玄幻穿越/校园恋爱/历史架空..."
+                value={formData.genre || ''}
+                onChange={e => updateForm({ genre: e.target.value })}
+              />
+              <div className="grid grid-cols-2 gap-4">
+                <Input
+                  label="目标总字数"
+                  type="number"
+                  placeholder="100000"
+                  value={formData.total_words || ''}
+                  onChange={e => updateForm({ total_words: parseInt(e.target.value) || 0 })}
+                />
+                <Input
+                  label="核心卖点/钩子"
+                  placeholder="一句话概括故事的核心吸引力..."
+                  value={formData.core_hook || ''}
+                  onChange={e => updateForm({ core_hook: e.target.value })}
+                />
+              </div>
               <Textarea
                 label="核心创作需求"
                 placeholder="详细描述你想要的故事，包括风格、节奏、特殊要求..."
@@ -226,6 +257,9 @@ export const CreateProject: React.FC = () => {
                 <p><span className="text-secondary">项目名称：</span> {formData.name}</p>
                 <p><span className="text-secondary">内容类型：</span> {contentTypes.find(t => t.value === formData.content_type)?.label}</p>
                 <p><span className="text-secondary">小说名称：</span> {formData.novel_name}</p>
+                <p><span className="text-secondary">小说题材：</span> {formData.genre || '未填写'}</p>
+                <p><span className="text-secondary">目标总字数：</span> {formData.total_words}</p>
+                <p><span className="text-secondary">核心卖点：</span> {formData.core_hook || '未填写'}</p>
                 <p><span className="text-secondary">生成章节：</span> {formData.start_chapter} - {formData.end_chapter}</p>
                 <p><span className="text-secondary">每章字数：</span> {formData.chapter_word_count}</p>
                 <div className="space-y-1">

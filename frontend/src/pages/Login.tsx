@@ -6,7 +6,7 @@ import { Card } from '../components/Card'
 import { Input } from '../components/Input'
 import { Button } from '../components/Button'
 import { useAuthStore } from '../store/useAuthStore'
-import { login, getMe } from '../utils/endpoints'
+import { login } from '../utils/endpoints'
 import { useToast } from '../components/Toast'
 
 export const Login: React.FC = () => {

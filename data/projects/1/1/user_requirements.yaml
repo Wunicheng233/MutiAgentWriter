@@ -1,6 +1,7 @@
 allow_plot_adjustment: false
 chapter_word_count: 2000
 content_type: full_novel
+core_hook: ''
 core_requirement: '一、整体风格定位
 
   在文学质感上，作品应偏向严肃历史小说，同时兼顾通俗可读性。可参考《大明王朝1566》的权谋厚度、《张居正》的人物塑造功力，以及《卑鄙的圣人：曹操》的叙事节奏。整体应避免过度“网文化”倾向，如频繁使用现代梗、让角色说出不符合时代的语言等。
@@ -61,6 +62,7 @@ core_requirement: '一、整体风格定位
 
   总章节数建议为八十至一百章，平均每卷二十至二十五章，可根据实际生成情况灵活调整。每章目标字数控制在三千字左右。Critic Agent的质量评分及格线建议提高至七点零分（满分十分），以确保历史正剧所需的品质水准。在内容安全方面，涉及战争屠杀、权谋残忍场面时，需始终保持文学化的克制处理，不可渲染暴力细节。'
 end_chapter: 3
+genre: ''
 novel_description: '故事背景
 
   元朝末年，朝政腐败，天灾频仍，民不聊生。黄河连年决口，数百万灾民流离失所，“石人一只眼，挑动黄河天下反”的民谣悄然传遍中原大地。在这片被饥荒、瘟疫与暴政笼罩的废墟之上，一个崭新王朝的胚胎正在最底层的泥土中孕育。
@@ -124,3 +126,4 @@ skip_chapter_confirmation: true
 skip_plan_confirmation: true
 start_chapter: 1
 target_platform: 番茄免费网络小说
+total_words: null

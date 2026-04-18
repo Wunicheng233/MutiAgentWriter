@@ -35,38 +35,47 @@ if USING_NEW_CONFIG:
     # ====================== 核心配置 ======================
     API_KEYS = {
         "planner": settings.planner_api_key or settings.unified_api_key,
-        "guardian": settings.guardian_api_key or settings.unified_api_key,
         "writer": settings.writer_api_key or settings.unified_api_key,
+        "critic": settings.critic_api_key or settings.unified_api_key,
+        "revise": settings.revise_api_key or settings.unified_api_key,
+        # 保留旧键兼容
+        "guardian": settings.guardian_api_key or settings.unified_api_key,
         "editor": settings.editor_api_key or settings.unified_api_key,
         "compliance": settings.compliance_api_key or settings.unified_api_key,
         "quality": settings.quality_api_key or settings.unified_api_key,
-        "critic": settings.critic_api_key or settings.unified_api_key,
+        "polish": settings.polish_api_key or settings.unified_api_key,
         "fix": settings.fix_api_key or settings.unified_api_key
     }
     UNIFIED_API_KEY = settings.unified_api_key
     BASE_URL = settings.base_url
     MODELS = {
         "planner": settings.planner_model,
-        "guardian": settings.guardian_model,
         "writer": settings.writer_model,
+        "critic": settings.critic_model,
+        "revise": settings.revise_model,
+        # 保留旧键兼容
+        "guardian": settings.guardian_model,
         "editor": settings.editor_model,
         "compliance": settings.compliance_model,
         "quality": settings.quality_model,
-        "critic": settings.critic_model,
+        "polish": settings.polish_model,
         "fix": settings.fix_model
     }
     TEMPERATURES = {
         "planner": settings.planner_temperature,
-        "guardian": settings.guardian_temperature,
         "writer": settings.writer_temperature,
+        "critic": settings.critic_temperature,
+        "revise": settings.revise_temperature,
+        # 保留旧键兼容
+        "guardian": settings.guardian_temperature,
         "editor": settings.editor_temperature,
         "compliance": settings.compliance_temperature,
         "quality": settings.quality_temperature,
-        "critic": settings.critic_temperature,
+        "polish": settings.polish_temperature,
         "fix": settings.fix_temperature
     }
     CRITIC_PASS_SCORE = settings.critic_pass_threshold
-    DEFAULT_TEMPERATURE = settings.default_max_tokens  # 保持兼容性
+    DEFAULT_TEMPERATURE = 0.7  # 保持兼容性
     DEFAULT_MAX_TOKENS = settings.default_max_tokens
     WRITER_MAX_TOKENS = settings.writer_max_tokens
     MAX_FIX_RETRIES = settings.max_fix_retries
@@ -89,12 +98,13 @@ else:
     # 多Agent API Key配置
     API_KEYS = {
         "planner": os.getenv("WRITER_API_KEY_PLANNER", ""),
-        "guardian": os.getenv("WRITER_API_KEY_GUARDIAN", ""),
         "writer": os.getenv("WRITER_API_KEY_WRITER", ""),
+        "critic": os.getenv("WRITER_API_KEY_CRITIC", ""),
+        "revise": os.getenv("WRITER_API_KEY_REVISE", ""),
+        "guardian": os.getenv("WRITER_API_KEY_GUARDIAN", ""),
         "editor": os.getenv("WRITER_API_KEY_EDITOR", ""),
         "compliance": os.getenv("WRITER_API_KEY_COMPLIANCE", ""),
         "quality": os.getenv("WRITER_API_KEY_QUALITY", ""),
-        "critic": os.getenv("WRITER_API_KEY_CRITIC", ""),
         "fix": os.getenv("WRITER_API_KEY_FIX", "")
     }
     UNIFIED_API_KEY = os.getenv("WRITER_API_KEY", "")
@@ -105,22 +115,24 @@ else:
     BASE_URL = "https://ark.cn-beijing.volces.com/api/coding/v3"
     MODELS = {
         "planner": "ark-code-latest",
-        "guardian": "ark-code-latest",
         "writer": "doubao-seed-code-preview-latest",
+        "critic": "ark-code-latest",
+        "revise": "ark-code-latest",
+        "guardian": "ark-code-latest",
         "editor": "doubao-seed-code-preview-latest",
         "compliance": "ark-code-latest",
         "quality": "ark-code-latest",
-        "critic": "ark-code-latest",
         "fix": "ark-code-latest"
     }
     TEMPERATURES = {
         "planner": 0.8,
         "writer": 0.7,
+        "critic": 0.2,
+        "revise": 0.4,
         "editor": 0.5,
         "guardian": 0.2,
         "compliance": 0.1,
         "quality": 0.4,
-        "critic": 0.2,
         "fix": 0.4
     }
     CRITIC_PASS_SCORE = 8
@@ -129,8 +141,8 @@ else:
     WRITER_MAX_TOKENS = 8192
     MAX_FIX_RETRIES = 4
     MAX_PARALLEL_CHECKS = 3
-    WORD_COUNT_DEVIATION_ALLOWED = 0.15
-    WORD_COUNT_DEVIATION_HARD = 0.25
+    WORD_COUNT_DEVIATION_ALLOWED = 0.20
+    WORD_COUNT_DEVIATION_HARD = 0.30
     LONG_PARAGRAPH_THRESHOLD = 300
     AI_CLICHE_REPEAT_THRESHOLD = 2
     VECTOR_CHUNK_SIZE = 500

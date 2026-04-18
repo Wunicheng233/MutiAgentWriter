@@ -23,9 +23,9 @@ import {
 } from '../utils/endpoints'
 import { useToast } from '../components/Toast'
 
+// 精简架构：仅 4 个核心 Agent
 const agentNames = [
-  'planner', 'guardian', 'writer', 'editor',
-  'compliance', 'quality', 'critic', 'fix',
+  'planner', 'writer', 'critic', 'revise',
 ]
 
 export const Editor: React.FC = () => {
@@ -40,13 +40,9 @@ export const Editor: React.FC = () => {
   const [currentStep, setCurrentStep] = useState('')
   const [agentStates, setAgentStates] = useState<Record<string, 'idle' | 'running' | 'done' | 'error'>>({
     planner: 'idle',
-    guardian: 'idle',
     writer: 'idle',
-    editor: 'idle',
-    compliance: 'idle',
-    quality: 'idle',
     critic: 'idle',
-    fix: 'idle',
+    revise: 'idle',
   })
   const [showVersionHistory, setShowVersionHistory] = useState(false)
   const [versions, setVersions] = useState<ChapterVersionInfo[]>([])
@@ -71,46 +67,55 @@ export const Editor: React.FC = () => {
       // 重置所有状态为 idle
       Object.keys(newStates).forEach(k => newStates[k as keyof typeof newStates] = 'idle')
 
+      // 1. 优先从 currentStep 文本判断当前 Agent（最准确）
+      // 精简架构顺序: Planner → Writer → Critic → Revise → Critic (复评)
+      const agentOrder = ['planner', 'writer', 'critic', 'revise'] as const
+      let currentAgent: (typeof agentOrder)[number] | null = null
+
+      if (currentStep.includes('策划')) {
+        currentAgent = 'planner'
+      } else if (currentStep.includes('初稿') || currentStep.includes('生成') || currentStep.includes('系统层防护')) {
+        currentAgent = 'writer'
+      } else if (currentStep.includes('评审')) {
+        currentAgent = 'critic'
+      } else if (currentStep.includes('修订')) {
+        currentAgent = 'revise'
+      }
+
+      if (currentAgent) {
+        // 找到了当前 Agent，按顺序设置状态
+        const currentIndex = agentOrder.indexOf(currentAgent)
+        agentOrder.forEach((name, index) => {
+          if (index < currentIndex) {
+            newStates[name] = 'done'
+          } else if (index === currentIndex) {
+            newStates[name] = 'running'
+          } else {
+            newStates[name] = 'idle'
+          }
+        })
+        return newStates
+      }
+
+      // 2. 兜底：如果 currentStep 无法判断，使用进度阈值判断
+      // 精简架构顺序: Planner → Writer → Critic → Revise
       if (progress < 0.15) {
-        // 0-15%: 策划阶段
         newStates.planner = 'running'
       } else if (progress < 0.20) {
-        // 15-20%: 设定圣经生成
         newStates.planner = 'done'
-        newStates.guardian = 'running'
+        newStates.writer = 'running'
       } else {
-        // 20%+: 逐章生成，根据步骤判断哪个Agent在工作
         newStates.planner = 'done'
-        newStates.guardian = 'done'
-
         // 根据步骤描述判断当前哪个Agent在运行
         if (currentStep.includes('初稿生成') || currentStep.includes('正在生成')) {
           newStates.writer = 'running'
-        } else if (currentStep.includes('优化') || currentStep.includes('润色')) {
+        } else if (currentStep.includes('评审')) {
           newStates.writer = 'done'
-          newStates.editor = 'running'
-        } else if (currentStep.includes('合规')) {
-          newStates.writer = 'done'
-          newStates.editor = 'done'
-          newStates.compliance = 'running'
-        } else if (currentStep.includes('质量') || currentStep.includes('评分')) {
-          newStates.writer = 'done'
-          newStates.editor = 'done'
-          newStates.compliance = 'done'
-          newStates.quality = 'running'
-        } else if (currentStep.includes('评审') || currentStep.includes('挑刺')) {
-          newStates.writer = 'done'
-          newStates.editor = 'done'
-          newStates.compliance = 'done'
-          newStates.quality = 'done'
           newStates.critic = 'running'
-        } else if (currentStep.includes('修复') || currentStep.includes('修复')) {
+        } else if (currentStep.includes('修订')) {
           newStates.writer = 'done'
-          newStates.editor = 'done'
-          newStates.compliance = 'done'
-          newStates.quality = 'done'
           newStates.critic = 'done'
-          newStates.fix = 'running'
+          newStates.revise = 'running'
         } else {
           // 默认显示writer正在运行
           newStates.writer = 'running'
@@ -146,13 +151,9 @@ export const Editor: React.FC = () => {
         setAgentStates(prev => {
           const newStates = { ...prev }
           newStates.planner = 'done'
-          newStates.guardian = 'done'
           newStates.writer = 'done'
-          newStates.editor = 'done'
-          newStates.compliance = 'done'
-          newStates.quality = 'done'
           newStates.critic = 'done'
-          newStates.fix = 'done'
+          newStates.revise = 'done'
           return newStates
         })
       } else if (!pollingTaskId) {
@@ -194,6 +195,19 @@ export const Editor: React.FC = () => {
     }, 2000)
   }, [updateMutation])
 
+  // 将纯文本转换为HTML段落格式供TipTap使用
+  // AI生成小说通常每一行就是一个段落，即使没有空行
+  const convertPlainTextToHtml = useCallback((text: string): string => {
+    if (!text) return ''
+    // 按换行分割，过滤掉空行，每一行作为一个段落
+    let lines = text.split('\n')
+      .map(line => line.trim())
+      .filter(line => line !== '') // 跳过空行
+    return lines
+      .map(line => `<p>${line}</p>`)
+      .join('')
+  }, [])
+
   // 编辑器初始化 - 当chapter加载完成后重新创建编辑器保证content正确
   const editor = useEditor({
     extensions: [
@@ -203,10 +217,10 @@ export const Editor: React.FC = () => {
         },
       }),
       Placeholder.configure({
-        placeholder: chapter?.content || '开始写作...',
+        placeholder: '开始写作...',
       }),
     ],
-    content: chapter?.content || '',
+    content: chapter?.content ? convertPlainTextToHtml(chapter.content) : '',
     onUpdate: ({ editor }) => {
       // 防抖自动保存
       debouncedSave(editor.getHTML())
@@ -214,29 +228,18 @@ export const Editor: React.FC = () => {
     immediatelyRender: false,
   })
 
-  // 当后端增量更新了章节内容，自动同步到编辑器
-  // 并且处理chapter从loading到loaded的情况
+  // 当编辑器实例创建完成或者chapter内容加载完成，填充到编辑器
+  // 只在编辑器为空时填充，不会覆盖用户已做的修改
   useEffect(() => {
-    if (!editor) return
-
-    if (chapter?.content) {
-      const currentContent = editor.getHTML()
-      // 检查是否真的需要更新，避免不必要的操作
-      if (currentContent !== chapter.content && chapter.content.trim() !== '') {
-        editor.commands.setContent(chapter.content)
-      }
-    }
-  }, [chapter?.content, editor])
-
-  // 如果chapter加载完成但编辑器还是空，强制重新设置内容
-  useEffect(() => {
-    if (!editor || isLoading) return
+    if (!editor || !chapter?.content) return
 
     const currentContent = editor.getHTML()
-    if ((!currentContent || currentContent.trim() === '') && chapter?.content && chapter.content.trim() !== '') {
-      editor.commands.setContent(chapter.content)
+    // 如果当前编辑器没有内容（只有空p标签），说明还没填充，需要填充
+    if (!currentContent || currentContent.trim() === '<p></p>') {
+      const htmlContent = convertPlainTextToHtml(chapter.content)
+      editor.commands.setContent(htmlContent)
     }
-  }, [chapter?.content, editor, isLoading])
+  }, [editor, chapter?.content, convertPlainTextToHtml])
 
   // 手动保存
   const handleSave = () => {
@@ -274,13 +277,6 @@ export const Editor: React.FC = () => {
         setCurrentStep(step)
         updateAgentStatesFromProgress(status.progress, status.current_chapter, step)
 
-        // 如果当前正在生成的就是我们正在编辑的章节，并且任务还在进行中
-        // 主动刷新章节数据，让编辑器实时显示已生成的内容
-        if (status.current_chapter === chapterIdx && status.celery_state === 'PROGRESS') {
-          // 失效缓存重新获取，获取最新的内容
-          queryClient.invalidateQueries({ queryKey: ['chapter', projectId, chapterIdx] })
-        }
-
         // 任务等待用户确认
         if (status.db_status === 'waiting_confirm') {
           clearInterval(interval)
@@ -293,6 +289,7 @@ export const Editor: React.FC = () => {
           setPollingTaskId(null)
           showToast('章节生成完成', 'success')
           queryClient.invalidateQueries({ queryKey: ['chapter', projectId, chapterIdx] })
+          queryClient.invalidateQueries({ queryKey: ['project', projectId] })
           window.location.reload()
         }
         if (status.celery_state === 'FAILURE') {
@@ -386,6 +383,23 @@ export const Editor: React.FC = () => {
           {project && <p className="text-secondary mt-2">{project.name}</p>}
         </div>
         <div className="flex gap-2">
+          {project?.chapters && project.chapters.length > 1 && (
+            <>
+              <Link to={`/projects/${id}/edit/${chapterIdx - 1}`}>
+                <Button variant="secondary" size="sm" disabled={chapterIdx <= 1}>
+                  上一章
+                </Button>
+              </Link>
+              <Link to={`/projects/${id}/edit/${chapterIdx + 1}`}>
+                <Button variant="secondary" size="sm" disabled={chapterIdx >= project.chapters.length}>
+                  下一章
+                </Button>
+              </Link>
+            </>
+          )}
+          <Link to={`/projects/${id}/read/${chapterIdx}`}>
+            <Button variant="secondary">阅读模式</Button>
+          </Link>
           <Link to={`/projects/${id}/chapters`}>
             <Button variant="secondary">章节列表</Button>
           </Link>
@@ -457,12 +471,12 @@ export const Editor: React.FC = () => {
         </div>
 
         {/* 右侧写作画布 */}
-        <div className="order-1 lg:order-2">
-          <div className="bg-parchment border border-border rounded-standard shadow-ambient min-h-[600px]">
+        <div className="order-1 lg:order-2 flex flex-col h-full">
+          <div className="bg-parchment border border-border rounded-standard shadow-ambient flex-1 overflow-y-auto min-h-[500px]">
             {editor && (
               <EditorContent
                 editor={editor}
-                className="prose-novel max-w-canvas mx-auto py-12 px-8 min-h-[600px] focus:outline-none"
+                className="prose-novel max-w-canvas mx-auto px-8 pt-0 pb-8 focus:outline-none"
               />
             )}
           </div>

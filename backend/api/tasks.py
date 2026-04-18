@@ -3,6 +3,7 @@
 获取Celery任务进度
 """
 
+from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from celery.result import AsyncResult
@@ -74,7 +75,11 @@ def get_task_status(
 
     # 如果FAILURE
     if result.state == "FAILURE":
-        response["error"] = str(result.info) if result.info else "Task failed"
+        # result.info 会重新抛出异常，需要捕获
+        try:
+            response["error"] = str(result.info) if result.info else "Task failed"
+        except Exception:
+            response["error"] = "Task failed with unknown error"
 
     return response
 

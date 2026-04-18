@@ -5,13 +5,14 @@ import { Button } from './Button'
 import { logout } from '../utils/endpoints'
 
 export const NavBar: React.FC = () => {
-  const { user, setUser } = useAuthStore()
+  const { user, setUser, resetAuth } = useAuthStore()
   const navigate = useNavigate()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
 
   const handleLogout = () => {
     logout()
     setUser(null)
+    resetAuth()
     navigate('/login')
   }
 

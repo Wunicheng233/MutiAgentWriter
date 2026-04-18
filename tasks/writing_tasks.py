@@ -155,7 +155,7 @@ def generate_novel_task(
 
         # 增量同步：章节生成完成后，立即同步该章节到数据库
         # 这样前端可以实时看到已生成的内容，不需要等到全部完成
-        if task_record is not None and task_record.project_id and "第" in message and "章状态已提取" in message:
+        if task_record is not None and task_record.project_id and "第" in message and "章生成完成" in message:
             try:
                 match = re.search(r"第\s*(\d+)\s*章", message)
                 if match:
@@ -163,7 +163,7 @@ def generate_novel_task(
                     project = db.query(Project).filter(Project.id == task_record.project_id).first()
                     if project and project.file_path:
                         project_dir = Path(project.file_path)
-                        chapter_file = project_dir / f"chapter_{chapter_index}.txt"
+                        chapter_file = project_dir / "chapters" / f"chapter_{chapter_index}.txt"
                         if chapter_file.exists():
                             with open(chapter_file, "r", encoding="utf-8") as f:
                                 content = f.read()
@@ -182,11 +182,9 @@ def generate_novel_task(
                             body = '\n'.join(body_lines).strip()
                             # 将纯文本换行转换为正确的HTML格式
                             # 空行分隔段落，每个段落用<p>包裹
-                            import re
                             paragraphs = re.split(r'\n\s*\n', body)
                             html_content = '\n'.join(f'<p>{p.strip()}</p>' for p in paragraphs if p.strip())
                             # 计算字数：统计汉字数量（一个汉字算一个字，英文标点空格不算）
-                            import re
                             chinese_chars = re.findall(r'[\u4e00-\u9fff]', html_content)
                             word_count = len(chinese_chars)
                             # 查找是否已有记录，有则更新，无则新建
@@ -234,6 +232,9 @@ def generate_novel_task(
                     "novel_name": project.config.get("novel_name", project.name),
                     "novel_description": project.config.get("novel_description", project.description or ""),
                     "core_requirement": project.config.get("core_requirement", ""),
+                    "genre": project.config.get("genre", ""),
+                    "total_words": project.config.get("total_words"),
+                    "core_hook": project.config.get("core_hook", ""),
                     "target_platform": project.config.get("target_platform", "网络小说"),
                     "chapter_word_count": project.config.get("chapter_word_count", 2000),
                     "start_chapter": project.config.get("start_chapter", 1),
@@ -280,7 +281,10 @@ def generate_novel_task(
                         # 生成完成后，将所有章节从文件系统同步存入数据库
                         if project.file_path:
                             project_dir = Path(project.file_path)
-                            for chapter_file in sorted(project_dir.glob("chapter_*.txt")):
+                            chapters_dir = project_dir / "chapters"
+                            if not chapters_dir.exists():
+                                chapters_dir = project_dir  # 兼容旧版
+                            for chapter_file in sorted(chapters_dir.glob("chapter_*.txt")):
                                 match = chapter_file.name.split("_")[1].split(".")[0]
                                 chapter_index = int(match)
                                 if chapter_file.exists():
@@ -298,11 +302,9 @@ def generate_novel_task(
                                             body_lines.append(line)
                                 body = '\n'.join(body_lines).strip()
                                 # 纯文本转HTML
-                                import re
                                 paragraphs = re.split(r'\n\s*\n', body)
                                 html_content = '\n'.join(f'<p>{p.strip()}</p>' for p in paragraphs if p.strip())
                                 # 计算字数：统计汉字数量（一个汉字算一个字，英文标点空格不算）
-                                import re
                                 chinese_chars = re.findall(r'[\u4e00-\u9fff]', html_content)
                                 word_count = len(chinese_chars)
                                 existing = db.query(Chapter).filter(
@@ -345,7 +347,7 @@ def generate_novel_task(
                                                 Chapter.chapter_index == cs["chapter"]
                                             ).first()
                                             if chapter_db:
-                                                chapter_db.quality_score = cs["total_score"]
+                                                chapter_db.quality_score = cs["score"]
                                                 db.flush()
                                     db.commit()
                                     logger.info(f"Quality scores updated to database: overall {project.overall_quality_score:.2f}")

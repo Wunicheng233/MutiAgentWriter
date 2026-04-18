@@ -139,8 +139,7 @@ def update_chapter(
                 f.write(chapter.content)
         except Exception as e:
             # 文件写入失败不返回错误，只记录日志
-            import logging
-            logging.warning(f"Failed to write chapter file: {e}")
+            logger.warning(f"Failed to write chapter file: {e}")
 
     return chapter
 
@@ -377,7 +376,6 @@ def restore_version(
             with open(chapter_file, "w", encoding="utf-8") as f:
                 f.write(chapter.content)
         except Exception as e:
-            import logging
-            logging.warning(f"Failed to write chapter file: {e}")
+            logger.warning(f"Failed to write chapter file: {e}")
 
     return chapter

@@ -2,6 +2,8 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ToastProvider } from './components/Toast'
 import ProtectedRoute from './components/ProtectedRoute'
+import { useAuthStore } from './store/useAuthStore'
+import { useEffect } from 'react'
 
 // Pages
 import Login from './pages/Login'
@@ -14,6 +16,7 @@ import ChapterList from './pages/ChapterList'
 import Editor from './pages/Editor'
 import QualityDashboard from './pages/QualityDashboard'
 import ShareView from './pages/ShareView'
+import Reader from './components/Reader/index';
 
 import './App.css'
 
@@ -27,6 +30,12 @@ const queryClient = new QueryClient({
 })
 
 function App() {
+  const initializeAuth = useAuthStore(state => state.initializeAuth)
+
+  useEffect(() => {
+    initializeAuth()
+  }, [initializeAuth])
+
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
@@ -79,6 +88,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Editor />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/projects/:id/read/:chapterIndex"
+              element={
+                <ProtectedRoute>
+                  <Reader />
                 </ProtectedRoute>
               }
             />

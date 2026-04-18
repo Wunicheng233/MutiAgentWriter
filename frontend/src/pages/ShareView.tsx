@@ -1,29 +1,49 @@
-import React, { useState } from 'react'
-import { useParams } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
-import { getSharedProject, getSharedChapter } from '../utils/endpoints'
+import React, { useEffect } from 'react';
+import { useParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { getSharedProject, getSharedChapter } from '../utils/endpoints';
+import { useReaderStore } from '../components/Reader/stores/readerStore';
+import { ReaderCore } from '../components/Reader/ReaderCore';
+import { ReaderMenu } from '../components/Reader/components/ReaderMenu';
+import { ReaderSettings } from '../components/Reader/components/ReaderSettings';
+import { TableOfContents } from '../components/Reader/components/TableOfContents';
+import { BookmarkPanel } from '../components/Reader/components/BookmarkPanel';
+import { SearchPanel } from '../components/Reader/components/SearchPanel';
+import { useReaderSettings } from '../components/Reader/hooks/useReaderSettings';
+import { Button } from '../components/Button';
+import type { Project } from '../types/api';
 
 export const ShareView: React.FC = () => {
-  const { token } = useParams<{ token: string }>()
-  const [currentChapterIndex, setCurrentChapterIndex] = useState<number | null>(null)
+  const { token } = useParams<{ token: string }>();
+  const currentChapterIndex = useReaderStore((state) => state.currentChapterIndex);
+  const setCurrentChapter = useReaderStore((state) => state.setCurrentChapter);
+  const { settings, applySettings } = useReaderSettings();
 
   const { data: project, isLoading, error } = useQuery({
     queryKey: ['shared-project', token],
     queryFn: () => getSharedProject(token!),
-  })
+  });
 
   const { data: chapter } = useQuery({
     queryKey: ['shared-chapter', token, currentChapterIndex],
-    queryFn: () => currentChapterIndex ? getSharedChapter(token!, currentChapterIndex) : null,
+    queryFn: () => currentChapterIndex !== null ? getSharedChapter(token!, currentChapterIndex) : null,
     enabled: currentChapterIndex !== null,
-  })
+  });
+
+  // Initialize
+  useEffect(() => {
+    if (project && project.chapters && project.chapters.length > 0) {
+      setCurrentChapter(project.chapters[0].chapter_index);
+    }
+    applySettings();
+  }, [project, setCurrentChapter, applySettings]);
 
   if (isLoading) {
     return (
       <div className="min-h-screen bg-parchment flex items-center justify-center">
         <p className="text-secondary">加载中...</p>
       </div>
-    )
+    );
   }
 
   if (error || !project) {
@@ -34,82 +54,109 @@ export const ShareView: React.FC = () => {
           <p className="text-secondary">该分享链接可能已过期或被删除</p>
         </div>
       </div>
-    )
+    );
   }
 
+  // 转换为 Project 类型供 TableOfContents 使用
+  const projectForToc: Project = {
+    id: 0,
+    user_id: 0,
+    name: project.title,
+    description: project.description || undefined,
+    content_type: 'full_novel',
+    status: 'completed',
+    chapters: project.chapters.map(c => ({
+      id: 0,
+      project_id: 0,
+      chapter_index: c.chapter_index,
+      title: c.title,
+      content: '',
+      word_count: c.word_count,
+      quality_score: 0,
+      status: 'generated',
+      created_at: '',
+      updated_at: '',
+    })),
+    overall_quality_score: 0,
+    created_at: '',
+    updated_at: '',
+  };
+
   return (
-    <div className="min-h-screen bg-parchment">
+    <div className={`min-h-screen ${settings.theme} bg-[var(--reader-bg)]`}
+      style={{
+        // @ts-ignore
+        '--reader-bg': 'var(--reader-bg)',
+        '--reader-text': 'var(--reader-text)',
+        '--reader-border': 'var(--reader-border)',
+        '--reader-secondary': 'var(--reader-secondary)',
+      } as React.CSSProperties}
+    >
       {/* 顶部标题栏 */}
-      <header className="border-b border-border py-6 px-4 bg-white/60 backdrop-blur sticky top-0 z-10">
+      <header className="border-b border-[var(--reader-border)] py-6 px-4 bg-white/60 backdrop-blur sticky top-0 z-10">
         <div className="max-w-5xl mx-auto">
-          <h1 className="font-serif text-3xl text-inkwell text-center">{project.title}</h1>
+          <h1 className="font-serif text-3xl text-[var(--reader-text)] text-center">{project.title}</h1>
           {project.description && (
-            <p className="text-secondary text-center mt-2 max-w-2xl mx-auto">{project.description}</p>
+            <p className="text-[var(--reader-secondary)] text-center mt-2 max-w-2xl mx-auto">{project.description}</p>
           )}
-          <p className="text-secondary text-center text-sm mt-2">作者：{project.author}</p>
+          <p className="text-[var(--reader-secondary)] text-center text-sm mt-2">作者：{project.author}</p>
         </div>
       </header>
 
-      <div className="max-w-5xl mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-8">
-          {/* 左侧目录 */}
-          <aside className="lg:sticky lg:top-32 h-fit">
-            <h2 className="font-serif text-xl text-inkwell mb-4">目录</h2>
-            <div className="space-y-2">
-              {project.chapters.map(chap => (
-                <button
-                  key={chap.chapter_index}
-                  onClick={() => setCurrentChapterIndex(chap.chapter_index)}
-                  className={`w-full text-left px-4 py-3 rounded-standard transition-colors ${
-                    currentChapterIndex === chap.chapter_index
-                      ? 'bg-sage/10 border border-sage text-inkwell'
-                      : 'hover:bg-sage/5 border border-transparent text-body'
-                  }`}
-                >
-                  {chap.title}
-                </button>
-              ))}
-            </div>
-          </aside>
+      {/* 阅读内容 */}
+      <main>
+        {chapter && (
+          <ReaderCore
+            content={chapter.content}
+            projectId={0}
+            chapterIndex={currentChapterIndex}
+            isShare={true}
+          />
+        )}
+      </main>
 
-          {/* 右侧内容 */}
-          <main>
-            {currentChapterIndex === null ? (
-              <div className="text-center py-12 text-secondary">
-                <p>请从左侧目录选择章节开始阅读</p>
-              </div>
-            ) : chapter ? (
-              <article className="prose-novel max-w-none">
-                <h2 className="font-serif text-2xl mb-6 text-center">{chapter.title}</h2>
-                <div
-                  className="font-serif text-[18px] leading-relaxed text-body"
-                  dangerouslySetInnerHTML={{ __html: chapter.content }}
-                />
-                {project.chapters.length > currentChapterIndex && (
-                  <div className="mt-12 text-center">
-                    <button
-                      onClick={() => setCurrentChapterIndex(currentChapterIndex + 1)}
-                      className="px-6 py-3 bg-sage text-parchment rounded-full hover:bg-sage/90 transition-colors"
-                    >
-                      下一章
-                    </button>
-                  </div>
-                )}
-              </article>
-            ) : (
-              <p className="text-secondary">加载章节中...</p>
-            )}
-          </main>
+      {/* 面板 - 分享模式只支持目录和设置，不支持编辑和进度保存 */}
+      <ReaderMenu projectId={0} chapterIndex={currentChapterIndex} isShare={true} />
+      <ReaderSettings />
+      <TableOfContents project={projectForToc} projectId={0} />
+      {/* 书签和搜索在分享模式也可用（保存在本地） */}
+      <BookmarkPanel projectId={0} chapterIndex={currentChapterIndex} onJump={() => {}} />
+      {chapter && <SearchPanel content={chapter.content} onJump={() => {}} />}
+
+      {/* 章节间导航 */}
+      {project.chapters && project.chapters.length > 1 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-black/70 backdrop-blur-sm px-6 py-3 rounded-full flex items-center gap-4 z-30">
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={currentChapterIndex <= 1}
+            onClick={() => setCurrentChapter(currentChapterIndex - 1)}
+            className="text-white bg-transparent border-white/30 hover:bg-white/10 disabled:opacity-30"
+          >
+            上一章
+          </Button>
+          <span className="text-sm text-white">
+            {currentChapterIndex} / {project.chapters.length}
+          </span>
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={currentChapterIndex >= project.chapters.length}
+            onClick={() => setCurrentChapter(currentChapterIndex + 1)}
+            className="text-white bg-transparent border-white/30 hover:bg-white/10 disabled:opacity-30"
+          >
+            下一章
+          </Button>
         </div>
-      </div>
+      )}
 
-      <footer className="border-t border-border py-6 mt-12">
-        <p className="text-center text-secondary text-sm">
+      <footer className="border-t border-[var(--reader-border)] py-6 mt-12">
+        <p className="text-center text-[var(--reader-secondary)] text-sm">
           使用 AI 多智能体创作系统生成 · StoryForge AI
         </p>
       </footer>
     </div>
-  )
-}
+  );
+};
 
-export default ShareView
+export default ShareView;

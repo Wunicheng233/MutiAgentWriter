@@ -1,10 +1,10 @@
 // API 客户端封装
 import axios, { AxiosError } from 'axios'
-import type { AxiosInstance } from 'axios'
+import type { AxiosInstance, InternalAxiosRequestConfig } from 'axios'
 
-// 开发环境直接请求后端完整地址
-// 后端已配置 CORS，允许前端跨域访问
-const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
+// 开发环境通过Vite代理转发到后端，避免跨域问题
+// 生产环境通过环境变量设置完整URL
+const baseURL = import.meta.env.VITE_API_URL || '/api'
 
 const api: AxiosInstance = axios.create({
   baseURL,
@@ -12,14 +12,21 @@ const api: AxiosInstance = axios.create({
 })
 
 // 请求拦截器：自动添加 JWT
-api.interceptors.request.use((config) => {
+api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   const token = localStorage.getItem('access_token')
+  console.log(`[api-interceptor] Request ${config.url}, token from localStorage:`, token ? `exists (${token.slice(0, 20)}...)` : 'null')
   if (token) {
-    // 创建新的headers对象，确保不会有引用问题
-    config.headers = {
-      ...config.headers,
-      Authorization: `Bearer ${token}`,
+    const authValue = `Bearer ${token}`
+
+    // Check if headers is AxiosHeaders instance (has set method)
+    if (typeof config.headers.set === 'function') {
+      // Use Axios v1 proper API to set header
+      config.headers.set('Authorization', authValue)
+    } else {
+      // Handle plain object headers
+      (config.headers as Record<string, string>).Authorization = authValue
     }
+    console.log(`[api-interceptor] Added Authorization header: Bearer ${token.slice(0, 20)}...`)
   }
   return config
 })

@@ -36,12 +36,10 @@ export const AgentCard: React.FC<AgentCardProps> = ({
       onClick={() => output && setExpanded(!expanded)}
     >
       <div className="flex items-center justify-between px-4 py-3">
-        <div className="flex items-center gap-2">
-          <Badge variant="agent">{name}</Badge>
-          <span className={`text-sm text-${statusColor[status]}`}>
-            {statusText[status]}
-          </span>
-        </div>
+        <Badge variant="agent">{name.toUpperCase()}</Badge>
+        <span className={`text-sm px-3 py-1 rounded-full bg-${statusColor[status]}/10 text-${statusColor[status]}`}>
+          {statusText[status]}
+        </span>
         {output && (
           <svg
             className={`w-5 h-5 text-secondary transition-transform ${

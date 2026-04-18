@@ -1,0 +1,51 @@
+# Git
+.git
+.gitignore
+.github
+
+# Node modules
+frontend/node_modules
+node_modules
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env
+venv
+*.egg-info
+dist
+build
+
+# Environment
+.env
+.env.*
+
+# Data (mounted as volume)
+data/*
+!data/.gitkeep
+
+# Logs
+logs
+*.log
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# npm
+npm-debug.log
+yarn-error.log
+
+# Temp
+outputs
+tmp

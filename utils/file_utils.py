@@ -25,11 +25,12 @@ def get_current_output_dir() -> Path:
     return config.CURRENT_OUTPUT_DIR
 
 
-def load_prompt(agent_name: str, content_type: str = None) -> str:
+def load_prompt(agent_name: str, content_type: str = None, context: dict = None) -> str:
     """
     从prompts文件夹加载对应Agent的提示词
     :param agent_name: Agent名称（planner/guardian/writer/editor/compliance）
     :param content_type: 内容类型（full_novel/short_story/script），如果有则加载特定prompt
+    :param context: 占位符替换上下文，key 是占位符名称（不含 {{}}），value 是替换内容
     :return: 提示词内容
     """
     # 如果指定了内容类型且对应prompt存在，使用特定prompt
@@ -37,29 +38,51 @@ def load_prompt(agent_name: str, content_type: str = None) -> str:
         specific_prompt = PROMPTS_DIR / f"{agent_name}_{content_type}.md"
         if specific_prompt.exists():
             with open(specific_prompt, "r", encoding="utf-8") as f:
-                return f.read().strip()
+                content = f.read().strip()
+                if context:
+                    # 替换所有 {{key}} 占位符
+                    for key, value in context.items():
+                        content = content.replace(f"{{{{{key}}}}}", str(value))
+                return content
         # 对于planner和writer，我们有专门的short_story和script版本
         if agent_name == 'planner' and content_type == 'short_story':
             specific_prompt = PROMPTS_DIR / "planner_short_story.md"
             if specific_prompt.exists():
                 with open(specific_prompt, "r", encoding="utf-8") as f:
-                    return f.read().strip()
+                    content = f.read().strip()
+                    if context:
+                        for key, value in context.items():
+                            content = content.replace(f"{{{{{key}}}}}", str(value))
+                    return content
         if agent_name == 'planner' and content_type == 'script':
             specific_prompt = PROMPTS_DIR / "planner_script.md"
             if specific_prompt.exists():
                 with open(specific_prompt, "r", encoding="utf-8") as f:
-                    return f.read().strip()
+                    content = f.read().strip()
+                    if context:
+                        for key, value in context.items():
+                            content = content.replace(f"{{{{{key}}}}}", str(value))
+                    return content
         if agent_name == 'writer' and content_type == 'script':
             specific_prompt = PROMPTS_DIR / "writer_script.md"
             if specific_prompt.exists():
                 with open(specific_prompt, "r", encoding="utf-8") as f:
-                    return f.read().strip()
+                    content = f.read().strip()
+                    if context:
+                        for key, value in context.items():
+                            content = content.replace(f"{{{{{key}}}}}", str(value))
+                    return content
     # 默认加载通用prompt
     prompt_file = PROMPTS_DIR / f"{agent_name}.md"
     if not prompt_file.exists():
         raise FileNotFoundError(f"提示词文件不存在：{prompt_file}")
     with open(prompt_file, "r", encoding="utf-8") as f:
-        return f.read().strip()
+        content = f.read().strip()
+        if context:
+            # 替换所有 {{key}} 占位符
+            for key, value in context.items():
+                content = content.replace(f"{{{{{key}}}}}", str(value))
+        return content
 
 
 def save_output(content: str, filename: str, output_dir: Path = None) -> Path:

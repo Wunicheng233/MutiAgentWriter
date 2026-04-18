@@ -19,7 +19,7 @@ export const Badge: React.FC<BadgeProps> = ({
     genre: 'bg-faded-rose/08 text-faded-rose',
   }
 
-  const classes = `${variantClasses[variant]} px-3 py-1 rounded-pill text-xs font-medium tracking-wider uppercase ${className}`
+  const classes = `${variantClasses[variant]} px-3 py-1 rounded-pill text-sm font-medium tracking-wider uppercase ${className}`
 
   return (
     <span className={classes}>

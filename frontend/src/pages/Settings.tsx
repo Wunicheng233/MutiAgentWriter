@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
 import { Layout } from '../components/Layout'
 import { Card } from '../components/Card'
 import { Button } from '../components/Button'
@@ -72,7 +73,14 @@ export const Settings: React.FC = () => {
 
   return (
     <Layout>
-      <h1 className="text-3xl mb-8 mx-auto max-w-2xl">用户设置</h1>
+      <div className="flex justify-between items-center mb-8 max-w-2xl mx-auto">
+        <div className="flex items-center gap-4">
+          <Link to="/">
+            <Button variant="secondary" size="sm">返回书架</Button>
+          </Link>
+          <h1 className="text-3xl">用户设置</h1>
+        </div>
+      </div>
       <div className="grid gap-6 max-w-2xl mx-auto">
         <Card>
           <h2 className="text-xl mb-4">账户信息</h2>

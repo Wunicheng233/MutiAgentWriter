@@ -62,6 +62,11 @@ export const ChapterList: React.FC = () => {
                 <Badge variant={getStatusColor(chapter.status) as any}>
                   {chapter.status}
                 </Badge>
+                <Link to={`/projects/${id}/read/${chapter.chapter_index}`}>
+                  <Button variant="secondary" size="sm">
+                    阅读
+                  </Button>
+                </Link>
                 <Link to={`/projects/${id}/write/${chapter.chapter_index}`}>
                   <Button variant="primary" size="sm">
                     编辑

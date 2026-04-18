@@ -1,7 +1,11 @@
 """
-小说生成流程编排器
-将原 main.py 中的全局流程重构为可复用的类
-支持进度回调，可用于 CLI 或 Web API
+StoryForge AI 精简架构 - 小说生成流程编排器
+遵循设计文档 00-DESIGN.md
+
+精简流程：
+Planner (设定圣经+大纲) → 逐章循环 Writer → Guardrails → Critic → (Revise → Critic复评) → 保存
+- 每章最多 2-3 次 LLM 调用
+- 系统层防护纯代码实现，零 Token 消耗
 """
 
 import json
@@ -9,16 +13,14 @@ import yaml
 import openai
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Callable
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 
 from .config import settings
-from .agent_pool import agent_pool
 from .agent_pool import (
-    PlannerAgent, GuardianAgent, WriterAgent, EditorAgent,
-    ComplianceAgent, QualityAgent, CriticAgent, FixAgent
+    PlannerAgent, WriterAgent, CriticAgent, ReviseAgent,
+    agent_pool
 )
-from .worldview_manager import WorldviewManager
+from .system_guardrails import run_system_guardrails, GuardrailResult
 from utils.file_utils import save_output, load_chapter_content, set_output_dir
 from utils.yaml_utils import load_user_requirements
 from utils.logger import logger
@@ -29,7 +31,6 @@ from utils.vector_db import (
     add_chapter_to_db,
     reset_current_db
 )
-from agents.critic_agent import DIMENSION_NAMES
 
 
 class WaitingForConfirmationError(Exception):
@@ -42,9 +43,11 @@ class WaitingForConfirmationError(Exception):
 
 class NovelOrchestrator:
     """
-    小说生成流程编排器
+    小说生成流程编排器（精简架构版）
     每个项目对应一个Orchestrator实例，保证多项目隔离
     """
+
+    MAX_REVISE_LOOPS = 2  # 单章最多 Critic → Revise 循环次数
 
     def __init__(
         self,
@@ -67,10 +70,6 @@ class NovelOrchestrator:
         self.progress_callback = progress_callback
         self.project_dir = project_dir
 
-        # 初始化世界观管理器（每个项目独立）
-        # 注意：WorldviewManager会根据CURRENT_OUTPUT_DIR确定存储位置
-        self.worldview_manager = WorldviewManager()
-
         # 创建 OpenAI 客户端，使用用户 API Key（如果提供了）
         api_key = user_api_key or settings.get_api_key_for_agent("default")
         if not api_key or not api_key.strip():
@@ -85,37 +84,27 @@ class NovelOrchestrator:
         self.planner: PlannerAgent = PlannerAgent(
             client, settings.get_model_for_agent("planner"), settings.get_temperature_for_agent("planner")
         )
-        self.guardian: GuardianAgent = GuardianAgent(
-            client, settings.get_model_for_agent("guardian"), settings.get_temperature_for_agent("guardian")
-        )
         self.writer: WriterAgent = WriterAgent(
             client, settings.get_model_for_agent("writer"), settings.get_temperature_for_agent("writer")
-        )
-        self.editor: EditorAgent = EditorAgent(
-            client, settings.get_model_for_agent("editor"), settings.get_temperature_for_agent("editor")
-        )
-        self.compliance: ComplianceAgent = ComplianceAgent(
-            client, settings.get_model_for_agent("compliance"), settings.get_temperature_for_agent("compliance")
-        )
-        self.quality: QualityAgent = QualityAgent(
-            client, settings.get_model_for_agent("quality"), settings.get_temperature_for_agent("quality")
         )
         self.critic: CriticAgent = CriticAgent(
             client, settings.get_model_for_agent("critic"), settings.get_temperature_for_agent("critic")
         )
-        self.fix: FixAgent = FixAgent(
-            client, settings.get_model_for_agent("fix"), settings.get_temperature_for_agent("fix")
+        self.revise: ReviseAgent = ReviseAgent(
+            client, settings.get_model_for_agent("revise"), settings.get_temperature_for_agent("revise")
         )
 
         # 运行时状态
         self.req: Dict = {}
         self.plan: Optional[str] = None
         self.setting_bible: Optional[str] = None
+        self.chapter_outlines: List[Dict] = []  # 结构化分章大纲
         self.novel_name: str = "未命名小说"
         self.start_chapter: int = 1
         self.end_chapter: int = 1
         self.chapter_scores: List[Dict] = []
         self.info_path: Optional[Path] = None
+        self.content_type: str = "novel"
 
     def _report_progress(self, percent: int, message: str):
         """上报进度"""
@@ -126,75 +115,81 @@ class NovelOrchestrator:
             except Exception as e:
                 logger.error(f"进度回调执行失败: {e}")
 
-    def recheck_after_optimization(
-        self,
-        edited: str,
-        setting_bible: str,
-        chapter_num: Optional[int] = None,
-        prev_chapter_end: str = ""
-    ) -> str:
+    def parse_outlines_from_setting_bible(self) -> List[Dict]:
         """
-        优化后重新校验设定一致性+合规性
-        只做必要校验，不做嵌套质量循环，避免LLM调用爆炸
+        从 Planner 输出的设定圣经中解析分章大纲。
+        简化实现：提取Markdown中以"第X章"开头的段落作为章节大纲。
+        最终存储结构化数据可以在 chapter_outlines 数组。
+
+        Returns:
+            [
+                {
+                    "chapter_num": int,
+                    "title": str,
+                    "outline": str,  # 本章目标、核心冲突、结尾钩子
+                }
+            ]
         """
-        # 重新校验设定（只校验一次，不通过才修改）
-        check_result = self.guardian.check_setting_consistency(setting_bible, edited)
-        if "【通过】" not in check_result:
-            logger.warning(f"⚠️  优化后设定校验不通过，正在修正")
-            edited = self.writer.rewrite_chapter(setting_bible, edited, check_result, chapter_num)
+        if not self.setting_bible:
+            return []
 
-        # 再校验合规（只校验一次，不通过才修改）
-        compliance_result = self.compliance.check_compliance(edited)
-        if "【通过】" not in compliance_result:
-            logger.warning(f"⚠️  优化后合规校验不通过，正在修正")
-            edited = self.editor.revise_for_compliance(edited, compliance_result)
+        outlines = []
+        lines = self.setting_bible.split('\n')
+        current_chapter = None
+        current_content = []
 
-        logger.info(f"✓ 优化后基本校验完成")
-        return edited
+        import re
+        chapter_pattern = re.compile(r'^(#\s*)?第\s*(\d+)\s*章[:：]?\s*(.*)$')
 
-    def run_all_checks(
-        self,
-        content: str,
-        target_word_count_int: int,
-        setting_bible: str,
-        chapter_num: int,
-        prev_chapter_end: str
-    ) -> Dict[str, object]:
-        """
-        并行运行 设定检查 + 质量检查 + 合规检查
-        返回检查结果字典
-        """
-        with ThreadPoolExecutor(max_workers=settings.max_parallel_checks) as executor:
-            future_setting = executor.submit(self.guardian.check_setting_consistency, setting_bible, content)
-            future_quality = executor.submit(self.quality.check_quality, content, target_word_count_int, setting_bible, chapter_num, prev_chapter_end)
-            future_compliance = executor.submit(self.compliance.check_compliance, content)
+        for line in lines:
+            line = line.strip()
+            match = chapter_pattern.match(line)
+            if match:
+                # 保存上一章
+                if current_chapter is not None and current_content:
+                    outlines.append({
+                        "chapter_num": current_chapter,
+                    "title": current_title,
+                    "outline": '\n'.join(current_content).strip(),
+                    "target_word_count": int(self.chapter_word_count)
+                    })
+                # 开始新一章
+                current_chapter = int(match.group(2))
+                current_title = match.group(3).strip()
+                current_content = []
+            elif current_chapter is not None and line:
+                current_content.append(line)
 
-            setting_result = future_setting.result()
-            quality_passed, quality_updated, quality_feedback = future_quality.result()
-            compliance_result = future_compliance.result()
+        # 保存最后一章
+        if current_chapter is not None and current_content:
+            outlines.append({
+                "chapter_num": current_chapter,
+                "title": current_title,
+                "outline": '\n'.join(current_content).strip(),
+                "target_word_count": int(self.chapter_word_count)
+                })
 
-        setting_passed = "【通过】" in setting_result
-        compliance_passed = "【通过】" in compliance_result
+        # 如果没有解析到结构化大纲，创建一个简单的大纲
+        if not outlines and self.plan:
+            # 回退：将整个plan作为唯一一章的大纲
+            outlines = [{
+                "chapter_num": 1,
+                "title": "",
+                "outline": self.plan,
+                "target_word_count": int(self.chapter_word_count)
+            }]
 
-        return {
-            "all_passed": setting_passed and quality_passed and compliance_passed,
-            "setting_passed": setting_passed,
-            "quality_passed": quality_passed,
-            "compliance_passed": compliance_passed,
-            "setting_result": setting_result,
-            "quality_feedback": quality_feedback,
-            "compliance_result": compliance_result,
-            "current_content": content,
-        }
+        logger.info(f"从设定圣经解析出 {len(outlines)} 个章节大纲")
+        return outlines
 
     def run_planner(
         self,
         confirmation_handler: Optional[Callable[[str], Tuple[bool, Optional[str]]]] = None
     ) -> str:
         """
-        运行策划阶段：加载需求 -> 生成策划方案 -> （可选）人工确认
+        运行策划阶段：加载需求 -> Planner生成设定圣经+分章大纲 -> （可选）人工确认
         :param confirmation_handler: 人工确认处理函数 f(plan_preview) -> (confirmed: bool, feedback: str)
-        :return: 最终策划方案
+        :return: 最终设定圣经
         """
         self._report_progress(5, "正在加载用户需求配置文件...")
         logger.info("正在加载用户需求配置文件...")
@@ -214,16 +209,18 @@ class NovelOrchestrator:
         else:
             # 回退到全局加载
             self.req = load_user_requirements()
+
         self.novel_name = self.req.get("novel_name", "未命名小说").strip(' "\'')
         novel_description = self.req.get("novel_description", "").strip(' "\'')
         core_requirement = self.req["core_requirement"].strip(' "\'')
         target_platform = self.req["target_platform"].strip(' "\'')
-        self.chapter_word_count = str(self.req["chapter_word_count"])
-        self.start_chapter = self.req["start_chapter"]
-        self.end_chapter = self.req["end_chapter"]
+        self.chapter_word_count = str(self.req.get("chapter_word_count", 2000))
+        self.start_chapter = self.req.get("start_chapter", 1)
+        self.end_chapter = self.req.get("end_chapter", 1)
         self.skip_confirm = self.req.get("skip_plan_confirmation", False)
         self.skip_chapter_confirm = self.req.get("skip_chapter_confirmation", False)
         self.allow_plot_adjustment = self.req.get("allow_plot_adjustment", False)
+        self.content_type = self.req.get("content_type", "novel")
         self.original_requirement = f"{core_requirement} | {target_platform} | {self.chapter_word_count}字/章"
 
         # 创建输出文件夹
@@ -236,10 +233,9 @@ class NovelOrchestrator:
         # 保存信息文件路径
         self.info_path = self.output_dir / "info.json"
 
-        # 重置世界观和向量数据库
+        # 重置向量数据库
         if self.start_chapter == 1:
-            self._report_progress(10, "初始化世界观管理器和向量数据库...")
-            self.worldview_manager.reset_worldview()
+            self._report_progress(10, "初始化向量数据库...")
             reset_current_db()
 
         use_user_plan = self.req.get("use_user_description_as_plan", False)
@@ -248,23 +244,37 @@ class NovelOrchestrator:
             if use_user_plan and len(novel_description.strip()) > 200:
                 # 用户已提供完整大纲，直接使用
                 self._report_progress(15, "使用用户提供的完整大纲...")
-                logger.info(f"用户已提供完整故事大纲，直接使用用户大纲，跳过AI策划生成")
-                self.plan = f"""# 《{self.novel_name}》完整策划方案
-
-{novel_description}
-
-{core_requirement}
-"""
+                logger.info(f"用户已提供完整故事大纲，直接使用用户大纲")
+                self.plan = novel_description
+                # 生成设定圣经
+                self.setting_bible = self.plan
                 logger.info("使用用户提供的策划方案完成")
             else:
-                # 正常流程：AI生成策划方案
-                self._report_progress(15, "AI生成顶层策划方案...")
-                logger.info(f"开始创作新小说《{self.novel_name}》，生成策划方案...")
-                content_type = self.req.get("content_type", "full_novel")
+                # 正常流程：Planner生成设定圣经和分章大纲
+                self._report_progress(15, "Planner正在生成设定圣经和分章大纲...")
+                logger.info(f"开始创作新小说《{self.novel_name}》，Planner生成方案...")
+
+                # 如果项目目录已存在设定圣经，读取它
+                setting_bible_path = self.output_dir / "setting_bible.md"
+                if setting_bible_path.exists():
+                    with open(setting_bible_path, "r", encoding="utf-8") as f:
+                        world_bible = f.read().strip()
+                    logger.info(f"✅ 已加载项目中已存在的设定圣经")
+                else:
+                    world_bible = ""
+
+                # 从req读取其他参数
+                genre = self.req.get("genre", "")
+                total_words = self.req.get("total_words", "")
+                core_hook = self.req.get("core_hook", "")
+
                 self.plan = self.planner.generate_plan(
-                    core_requirement, target_platform, self.chapter_word_count, content_type
+                    core_requirement, target_platform, self.chapter_word_count, self.content_type,
+                    world_bible=world_bible, genre=genre, total_words=str(total_words), core_hook=core_hook
                 )
-                logger.info("顶层策划方案生成完成")
+                # 在精简架构中，Planner直接输出完整的设定圣经+分章大纲
+                self.setting_bible = self.plan
+                logger.info("Planner方案生成完成")
 
             # 保存小说基础信息
             with open(self.info_path, "w", encoding="utf-8") as f:
@@ -272,7 +282,8 @@ class NovelOrchestrator:
                     "name": self.novel_name,
                     "description": novel_description,
                     "core_requirement": core_requirement,
-                    "created_at": str(datetime.now())
+                    "created_at": str(datetime.now()),
+                    "architecture": "slim-v2"  # 标记精简架构
                 }, f, ensure_ascii=False, indent=2)
 
             # 人工确认流程
@@ -284,28 +295,30 @@ class NovelOrchestrator:
                         confirmed, feedback = confirmation_handler(self.plan[:2000])
                         if feedback and feedback.strip():
                             self.plan = self.planner.revise_plan(self.plan, feedback, self.original_requirement)
+                            self.setting_bible = self.plan
                 else:
                     try:
                         import sys
                         if sys.stdin.isatty():
                             # CLI交互式确认
                             print("\n" + "="*80)
-                            print("📝 顶层策划方案预览：")
+                            print("📝 Planner输出预览（设定圣经+大纲）：")
                             print("="*80)
-                            preview = self.plan[:1000] + "..." if len(self.plan) > 1000 else self.plan
+                            preview = self.plan[:1000] + ("..." if len(self.plan) > 1000 else "")
                             print(preview)
                             print("="*80)
-                            confirm = input("\n请确认顶层策划方案是否通过？（y/n）：\n").lower()
+                            confirm = input("\n请确认方案是否通过？（y/n）：\n").lower()
                             while confirm != "y":
                                 feedback = input("请输入修改意见：\n")
                                 self.plan = self.planner.revise_plan(self.plan, feedback, self.original_requirement)
+                                self.setting_bible = self.plan
                                 print("\n" + "="*80)
                                 print("📝 修改后的方案预览：")
                                 print("="*80)
-                                preview = self.plan[:1000] + "..." if len(self.plan) > 1000 else self.plan
+                                preview = self.plan[:1000] + ("..." if len(self.plan) > 1000 else "")
                                 print(preview)
                                 print("="*80)
-                                confirm = input("\n请确认顶层策划方案是否通过？（y/n）：\n").lower()
+                                confirm = input("\n请确认方案是否通过？（y/n）：\n").lower()
                         else:
                             # 非交互式环境，默认通过
                             logger.info("非交互式运行，策划方案自动通过")
@@ -333,188 +346,210 @@ class NovelOrchestrator:
             logger.info("正在把已有的章节加载到向量数据库...")
             load_setting_bible_to_db()
             for existing_chapter in range(1, self.start_chapter):
-                chapter_file = self.output_dir / f"chapter_{existing_chapter}.txt"
+                chapter_file = self.output_dir / f"chapters/chapter_{existing_chapter}.txt"
                 if chapter_file.exists():
                     with open(chapter_file, "r", encoding="utf-8") as f:
                         existing_content = f.read().strip()
-                        add_chapter_to_db(existing_chapter, f"第{existing_chapter}章", existing_content)
+                    add_chapter_to_db(existing_chapter, f"第{existing_chapter}章", existing_content)
             logger.info("已有章节加载完成")
 
-        if self.plan is None:
-            raise ValueError("策划方案为空，请检查配置")
+        if self.setting_bible is None:
+            raise ValueError("设定圣经为空，请检查配置")
 
-        return self.plan
-
-    def run_guardian_bible(self) -> str:
-        """
-        生成设定圣经并加载到向量数据库
-        必须在 run_planner 之后调用
-        :return: 设定圣经文本
-        """
-        if self.plan is None:
-            raise ValueError("请先运行 run_planner 获取策划方案")
-
-        self._report_progress(20, "保存策划方案，生成设定圣经...")
-
-        # 保存策划方案
+        # 保存设定圣经到文件
+        save_output(self.setting_bible, "setting_bible.md", output_dir=self.output_dir)
         save_output(self.plan, "novel_plan.md", output_dir=self.output_dir)
 
-        # 生成设定圣经
-        self.setting_bible = self.guardian.generate_setting_bible(self.plan)
-        save_output(self.setting_bible, "setting_bible.md", output_dir=self.output_dir)
-        load_setting_bible_to_db()
+        # 解析分章大纲
+        self.chapter_outlines = self.parse_outlines_from_setting_bible()
 
-        logger.info("设定圣经生成完成并加载到向量数据库")
+        # 如果用户指定了end_chapter但解析出更多章节，以用户指定为准
+        if self.end_chapter > len(self.chapter_outlines):
+            logger.warning(f"用户指定结束章节{self.end_chapter}，但大纲只解析出{len(self.chapter_outlines)}章，将生成到{len(self.chapter_outlines)}章")
+            self.end_chapter = len(self.chapter_outlines)
+
+        logger.info("Planner阶段完成，设定圣经已保存")
         return self.setting_bible
 
-    def run_chapter_generation(self, chapter_index: int, prev_chapter_end: str = "") -> Tuple[str, float, bool, dict, str]:
+    def get_chapter_outline(self, chapter_num: int) -> str:
+        """获取指定章节的大纲文本。"""
+        for outline in self.chapter_outlines:
+            if outline["chapter_num"] == chapter_num:
+                return outline["outline"]
+        # 如果没找到，返回整个plan作为大纲
+        return self.plan or ""
+
+    def get_target_word_count(self, chapter_num: int) -> int:
+        """获取指定章节的目标字数。"""
+        for outline in self.chapter_outlines:
+            if outline["chapter_num"] == chapter_num:
+                return outline.get("target_word_count", int(self.chapter_word_count))
+        return int(self.chapter_word_count)
+
+    def run_chapter_generation(self, chapter_index: int, prev_chapter_end: str = "") -> Tuple[str, int, bool, List[Dict]]:
         """
-        生成单个章节（含检查-修复-评审全流程）
-        必须在 run_planner 和 run_guardian_bible 之后调用
-        :param chapter_index: 章节号（从1开始）
-        :param prev_chapter_end: 上一章结尾内容，用于衔接
-        :return: (最终内容, 最终评分, 是否通过评审, 维度分数字典, 问题清单)
+        生成单个章节，遵循精简架构流程：
+        Writer → System Guardrails → Critic → (Revise → Critic复评) × N
+
+        最多循环 2 次 Revise → Critic。
+
+        Args:
+            chapter_index: 章节号（从1开始）
+            prev_chapter_end: 上一章结尾内容，用于衔接
+
+        Returns:
+            (最终内容, 最终分数, 是否通过评审, 问题列表)
         """
         if self.plan is None or self.setting_bible is None:
-            raise ValueError("请先运行 run_planner 和 run_guardian_bible")
+            raise ValueError("请先运行 run_planner 获取策划方案和设定圣经")
 
         logger.info(f"{'='*80}")
         logger.info(f"开始生成《{self.novel_name}》第 {chapter_index} 章")
         logger.info(f"{'='*80}")
 
-        chapter_plot = f"第{chapter_index}章，完整策划方案：{self.plan}"
-        # 同时检索相关历史章节和核心设定，控制返回数量节省token
+        # 检索相关历史章节和核心设定，控制返回数量节省token
+        chapter_plot = self.get_chapter_outline(chapter_index)
         related_chapters = search_related_chapter_content(chapter_plot, top_k=2, max_chapter_num=chapter_index)
         related_settings = search_core_setting(chapter_plot, top_k=1)
         related_content = related_settings + "\n" + related_chapters
 
-        # 获取世界观生成约束
-        constraints = self.worldview_manager.get_generation_constraints(chapter_index)
+        # 获取本章目标字数
+        target_word_count = self.get_target_word_count(chapter_index)
 
-        # 内容生成
-        content_type = self.req.get("content_type", "full_novel")
-        target_word_count_int = int(self.chapter_word_count)
+        # Step 1: Writer 生成章节初稿
+        content_type = self.req.get("content_type", "novel")
         draft = self.writer.generate_chapter(
             self.setting_bible,
-            self.plan,
+            chapter_plot,
             chapter_index,
             prev_chapter_end,
             related_content,
-            constraints,
-            target_word_count=target_word_count_int,
+            None,  # 精简架构不需要世界观约束由Critic检查
+            target_word_count=target_word_count,
             content_type=content_type
         )
         logger.info(f"第 {chapter_index} 章初稿生成完成")
 
-        # ========== 优化：初稿后，设定校验、质量校验、合规预检查并行执行 ==========
-        # 汇总所有问题，统一修复Agent一次性修复所有问题
-        current_draft = draft
-        # 最多重试MAX_FIX_RETRIES轮，给足够机会修复所有问题
-        for retry in range(settings.max_fix_retries):
-            logger.info(f"第 {chapter_index} 章：并行执行设定/质量/合规校验（第{retry + 1}轮）")
-            check_result = self.run_all_checks(
-                current_draft, target_word_count_int, self.setting_bible, chapter_index, prev_chapter_end
-            )
-            current_draft = check_result["current_content"]
+        # Step 2: 系统层防护（纯代码，零Token消耗）
+        logger.info(f"运行系统层防护检查...")
+        # 提取主角姓名（从设定圣经中简单提取，找不到就留空）
+        protagonist_name = ""
+        import re
+        match = re.search(r'主角[:：]\s*([^\n]+)', self.setting_bible)
+        if match:
+            protagonist_name = match.group(1).strip()
+        if not protagonist_name:
+            match = re.search(r'主角姓名[:：]\s*([^\n]+)', self.setting_bible)
+            if match:
+                protagonist_name = match.group(1).strip()
 
-            # 全部通过，直接结束
-            if check_result["all_passed"]:
-                logger.info(f"第 {chapter_index} 章全部校验通过")
-                break
+        guardrail_context = {
+            'expected_chapter_num': chapter_index,
+            'previous_chapter_num': chapter_index - 1,
+            'target_word_count': target_word_count,
+            'protagonist_name': protagonist_name,
+        }
 
-            # 汇总所有问题，交给统一修复Agent一次性修复所有问题
-            all_problems = []
-            if not check_result["setting_passed"]:
-                all_problems.append(f"【设定一致性问题】\n{check_result['setting_result']}")
-            if not check_result["quality_passed"]:
-                all_problems.append(f"【质量格式问题】\n{check_result['quality_feedback']}")
-            if not check_result["compliance_passed"]:
-                all_problems.append(f"【合规性问题】\n{check_result['compliance_result']}")
+        guardrail_result: GuardrailResult = run_system_guardrails(draft, guardrail_context)
+        current_content = guardrail_result.corrected_content
 
-            all_problems_text = "\n\n".join(all_problems)
-            logger.warning(f"第 {chapter_index} 章发现{len(all_problems)}个问题，统一修复Agent一次性修复（重试 {retry + 1}/{settings.max_fix_retries}）")
+        # 记录警告日志
+        if guardrail_result.warnings:
+            for warn in guardrail_result.warnings:
+                logger.warning(f"系统防护: {warn}")
+        if guardrail_result.suggestions:
+            for sugg in guardrail_result.suggestions:
+                logger.info(f"系统防护建议: {sugg}")
 
-            current_draft = self.fix.fix_all_issues(
-                current_draft,
-                target_word_count_int,
-                self.setting_bible,
-                all_problems_text,
-                chapter_index,
-                prev_chapter_end
-            )
+        logger.info(f"系统层防护完成，通过: {guardrail_result.passed}")
 
-        # 最终检查
-        final_check = self.run_all_checks(
-            current_draft, target_word_count_int, self.setting_bible, chapter_index, prev_chapter_end
+        # Step 3: Critic 评审
+        chapter_outline = self.get_chapter_outline(chapter_index)
+        passed, score, issues = self.critic.critic_chapter(
+            current_content,
+            self.setting_bible,
+            chapter_outline,
+            content_type,
         )
-        current_draft = final_check["current_content"]
 
-        if not final_check["setting_passed"]:
-            logger.error(f"第 {chapter_index} 章设定校验重试{settings.max_fix_retries}次仍未通过，跳过该章节")
-            return "", 0, False, {}, ""
-        if not final_check["compliance_passed"]:
-            logger.error(f"第 {chapter_index} 章合规校验重试{settings.max_fix_retries}次仍未通过，跳过该章节")
-            return "", 0, False, {}, ""
-        if not final_check["quality_passed"]:
-            logger.warning(f"第 {chapter_index} 章质量校验未完全达标，但继续下一步")
+        revise_count = 0
+        max_revise_loops = self.MAX_REVISE_LOOPS
 
-        draft = current_draft
-
-        # 内容优化润色（editor只负责文笔润色，不碰剧情设定）
-        edited = self.editor.edit_chapter(draft)
-        logger.info(f"第 {chapter_index} 章内容优化完成")
-
-        # ========== 对抗性评审（Critic Agent挑刺打分，最后一关） ==========
-        critic_passed = False
-        critic_retry = 0
-        score = 0.0
-        dimension_scores = {}
-        issues = ""
-        # 重试策略：所有重试都用quality优化，只改问题不改剧情，稳定可靠
-        while not critic_passed and critic_retry < 3:
-            critic_passed, issues, score, dimension_scores = self.critic.critic_chapter(
-                edited, int(self.chapter_word_count), chapter_index, self.setting_bible
+        # 如果不通过，进入 Revise → Critic 循环
+        while not passed and revise_count < max_revise_loops:
+            logger.warning(
+                f"第 {chapter_index} 章Critic评审不通过，问题数 {len(issues)}，"
+                f"正在修订 (第{revise_count + 1}/{max_revise_loops})..."
             )
-            if critic_passed:
-                logger.info(f"第 {chapter_index} 章对抗性评审通过，总分：{score:.1f}/10")
-            else:
-                logger.warning(f"第 {chapter_index} 章对抗性评审不通过，总分：{score:.1f}/10，正在根据评审意见优化...")
-                # 所有重试都用quality优化，只改指出的问题，保持原剧情不变
-                edited = self.quality.optimize_quality(
-                    edited, int(self.chapter_word_count), self.setting_bible, issues, chapter_index, prev_chapter_end
-                )
-                # 优化后重新校验设定和合规，确保没引入新问题
-                edited = self.recheck_after_optimization(edited, self.setting_bible, chapter_index, prev_chapter_end)
-                critic_retry += 1
 
-        if not critic_passed:
-            logger.warning(f"第 {chapter_index} 章对抗性评审重试3次仍未通过，但仍保存输出")
+            # Step 4: Revise 根据问题清单修订
+            current_content = self.revise.revise_chapter(
+                current_content,
+                issues,
+                self.setting_bible
+            )
+            revise_count += 1
+
+            # 再次运行系统层防护（修订后可能格式有变化
+            guardrail_result = run_system_guardrails(current_content, guardrail_context)
+            current_content = guardrail_result.corrected_content
+
+            # Step 5: Critic 复评
+            passed, score, issues = self.critic.critic_chapter(
+                current_content,
+                self.setting_bible,
+                chapter_outline,
+                content_type,
+            )
+
+        if not passed:
+            logger.warning(
+                f"第 {chapter_index} 章经过 {max_revise_loops} 次修订循环仍未通过评审，"
+                f"但仍保存输出，分数 {score}/10"
+            )
+        else:
+            logger.info(
+                f"第 {chapter_index} 章评审通过，分数 {score}/10，"
+                f"修订次数 {revise_count}"
+            )
 
         # 章节级人工确认（如果不跳过）
         if not self.skip_chapter_confirm:
             try:
-                # 只有在 CLI 交互式环境下才需要人工确认
                 import sys
                 if sys.stdin.isatty():
                     print("\n" + "="*80)
                     print(f"📖 第{chapter_index}章生成完成，请审阅：")
                     print("="*80)
-                    preview = edited[:1000] + "..." if len(edited) > 1000 else edited
+                    preview = current_content[:1000] + ("..." if len(current_content) > 1000 else "")
                     print(preview)
                     print("="*80)
                     confirm = input("\n请确认是否通过？（y/n）：\n").lower()
                     while confirm != "y":
                         feedback = input("请输入修改意见：\n")
-                        # 根据用户意见重新优化
-                        edited = self.quality.optimize_quality(
-                            edited, int(self.chapter_word_count), self.setting_bible, feedback, chapter_index, prev_chapter_end
+                        # 根据用户意见重新修订
+                        # 将用户反馈转为issues格式
+                        user_issue = [{
+                            "type": "用户反馈",
+                            "location": "全文",
+                            "fix": feedback
+                        }]
+                        current_content = self.revise.revise_chapter(
+                            current_content,
+                            user_issue,
+                            self.setting_bible
                         )
-                        # 重新校验
-                        edited = self.recheck_after_optimization(edited, self.setting_bible, chapter_index, prev_chapter_end)
+                        # 再次评审
+                        passed, score, issues = self.critic.critic_chapter(
+                            current_content,
+                            self.setting_bible,
+                            chapter_outline,
+                            content_type,
+                        )
                         print("\n" + "="*80)
                         print(f"📖 修改后的第{chapter_index}章预览：")
                         print("="*80)
-                        preview = edited[:1000] + "..." if len(edited) > 1000 else edited
+                        preview = current_content[:1000] + ("..." if len(current_content) > 1000 else "")
                         print(preview)
                         print("="*80)
                         confirm = input("\n请确认是否通过？（y/n）：\n").lower()
@@ -524,47 +559,30 @@ class NovelOrchestrator:
                 if not self.skip_chapter_confirm:
                     logger.info(f"非交互式运行，第{chapter_index}章生成完成，等待用户确认...")
                     # 将当前已编辑好的内容先保存下来供前端预览
-                    save_output(edited, f"chapter_{chapter_index}.txt", output_dir=self.output_dir)
-                    add_chapter_to_db(chapter_index, f"第{chapter_index}章", edited)
+                    self.save_chapter(chapter_index, current_content)
+                    add_chapter_to_db(chapter_index, f"第{chapter_index}章", current_content)
                     # 抛异常告诉上层需要等待确认
-                    raise WaitingForConfirmationError(chapter_index, edited)
+                    raise WaitingForConfirmationError(chapter_index, current_content)
                 # 否则自动通过
                 logger.info("非交互式运行，自动确认章节通过")
 
-        # 所有质量校验通过后，专门生成一个高质量标题（内容定了，标题才准）
-        edited = self.quality.generate_chapter_title(edited, chapter_index)
+        # 保存终稿到 chapters 子目录
+        self.save_chapter(chapter_index, current_content)
 
-        # 保存终稿
-        save_output(edited, f"chapter_{chapter_index}.txt", output_dir=self.output_dir)
-        add_chapter_to_db(chapter_index, f"第{chapter_index}章", edited)
+        # 添加到向量数据库，用于下文检索
+        add_chapter_to_db(chapter_index, f"第{chapter_index}章", current_content)
 
-        # 提取本章状态，更新世界观
-        chapter_state = self.guardian.extract_chapter_state(edited, chapter_index)
-        # 应用状态更新到世界观
-        if "timeline" in chapter_state and "new_time" in chapter_state["timeline"] and "new_event" in chapter_state["timeline"]:
-            self.worldview_manager.update_timeline(
-                chapter_state["timeline"]["new_time"],
-                chapter_state["timeline"]["new_event"],
-                chapter_index
-            )
-        if "characters" in chapter_state:
-            for char_id, char_info in chapter_state["characters"].items():
-                if char_id not in self.worldview_manager.state["characters"]:
-                    self.worldview_manager.add_character(char_id, char_info)
-                else:
-                    self.worldview_manager.update_character(char_id, char_info)
-        if "foreshadows" in chapter_state:
-            for fs in chapter_state["foreshadows"]:
-                self.worldview_manager.add_foreshadow(
-                    fs.get("id", f"fs_{chapter_index}_{len(self.worldview_manager.state['foreshadows'])}"),
-                    fs.get("content", ""),
-                    chapter_index,
-                    fs.get("related_characters", [])
-                )
+        logger.info(f"第 {chapter_index} 章生成完成，已保存")
 
-        logger.info(f"第 {chapter_index} 章状态已提取，世界观已更新")
+        return current_content, score, passed, issues
 
-        return edited, score, critic_passed, dimension_scores, issues
+    def save_chapter(self, chapter_index: int, content: str):
+        """保存章节到 chapters 子目录。"""
+        chapters_dir = self.output_dir / "chapters"
+        chapters_dir.mkdir(exist_ok=True)
+        chapter_file = chapters_dir / f"chapter_{chapter_index}.txt"
+        with open(chapter_file, "w", encoding="utf-8") as f:
+            f.write(content)
 
     def run_full_novel(
         self,
@@ -576,37 +594,51 @@ class NovelOrchestrator:
         :return: 生成结果统计
         """
         logger.info("="*80)
-        logger.info("🚀 火山引擎Coding Plan Pro多Agent小说创作系统启动")
+        logger.info("🚀 StoryForge AI 精简架构 多Agent小说创作系统启动")
         logger.info("="*80)
 
         try:
-            # 步骤1：策划阶段
+            # 步骤1：策划阶段 - Planner生成设定圣经和大纲
             self.run_planner(confirmation_handler)
 
-            # 步骤2：生成设定圣经（首次生成时）
-            if self.start_chapter == 1:
-                self.run_guardian_bible()
+            # 步骤2：逐章生成
+            if len(self.chapter_outlines) == 0:
+                # 如果没有解析出大纲，使用用户指定的start到end范围
+                if self.end_chapter >= self.start_chapter:
+                    for i in range(self.start_chapter, self.end_chapter + 1):
+                        self.chapter_outlines.append({
+                            "chapter_num": i,
+                            "title": f"第{i}章",
+                            "outline": self.plan,
+                            "target_word_count": int(self.chapter_word_count)
+                        })
 
-            # 步骤3：逐章生成
-            total_chapters = self.end_chapter - self.start_chapter + 1
+            total_chapters = [o for o in self.chapter_outlines
+                               if o["chapter_num"] >= self.start_chapter and o["chapter_num"] <= self.end_chapter]
+            total_chapters_count = len(total_chapters)
             logger.info(f"开始生成《{self.novel_name}》章节 {self.start_chapter}-{self.end_chapter}...")
             prev_chapter_end = ""
 
             # 续写时加载上一章的结尾
             if self.start_chapter > 1:
-                prev_chapter_content = load_chapter_content(self.start_chapter - 1, output_dir=self.output_dir)
-                prev_chapter_end = prev_chapter_content[-500:] if len(prev_chapter_content) > 500 else prev_chapter_content
+                prev_chapter = self.start_chapter - 1
+                prev_content = load_chapter_content(prev_chapter, output_dir=self.output_dir / "chapters")
+                prev_chapter_end = prev_content[-500:] if len(prev_content) > 500 else prev_content
 
             self.chapter_scores = []
             generated = []
 
-            for chapter_num in range(self.start_chapter, self.end_chapter + 1):
+            for outline in self.chapter_outlines:
+                chapter_num = outline["chapter_num"]
+                if chapter_num < self.start_chapter or chapter_num > self.end_chapter:
+                    continue
+
                 done_chapters = chapter_num - self.start_chapter
-                percent = 20 + int((done_chapters / total_chapters) * 70)
+                percent = 20 + int((done_chapters / total_chapters_count) * 70)
                 self._report_progress(percent, f"正在生成第 {chapter_num} 章...")
 
                 # ========== 断点续跑：检查章节是否已生成，跳过已完成 ==========
-                chapter_file = self.output_dir / f"chapter_{chapter_num}.txt"
+                chapter_file = self.output_dir / "chapters" / f"chapter_{chapter_num}.txt"
                 if chapter_file.exists():
                     # 文件已存在，说明章节已经生成，跳过
                     # 读取已生成内容，更新 prev_chapter_end 用于下一章衔接
@@ -627,37 +659,53 @@ class NovelOrchestrator:
                     with open(feedback_file, "r", encoding="utf-8") as f:
                         feedback = f.read().strip()
                     # 读取当前已生成的章节内容
-                    existing_content = load_chapter_content(chapter_num, output_dir=self.output_dir)
+                    existing_content = load_chapter_content(chapter_num, output_dir=self.output_dir / "chapters")
                     logger.info(f"找到用户对第{chapter_num}章的修改反馈，根据反馈重新优化...")
-                    # 根据反馈重新优化
-                    edited = self.quality.optimize_quality(
-                        existing_content, int(self.chapter_word_count), self.setting_bible, feedback, chapter_num, prev_chapter_end
+                    # 根据反馈转为issues格式
+                    issues = [{
+                        "type": "用户反馈",
+                        "location": "全文",
+                        "fix": feedback
+                    }]
+                    # 修订
+                    current_content = self.revise.revise_chapter(
+                        existing_content,
+                        issues,
+                        self.setting_bible
                     )
-                    # 重新校验设定和合规
-                    edited = self.recheck_after_optimization(edited, self.setting_bible, chapter_num, prev_chapter_end)
+                    # 重新运行防护检查和评审
+                    guardrail_context = {
+                        'expected_chapter_num': chapter_num,
+                        'previous_chapter_num': chapter_num - 1,
+                        'target_word_count': outline["target_word_count"],
+                    }
+                    guardrail_result = run_system_guardrails(current_content, guardrail_context)
+                    current_content = guardrail_result.corrected_content
+                    passed, score, issues = self.critic.critic_chapter(
+                        current_content,
+                        self.setting_bible,
+                        outline["outline"],
+                        self.content_type,
+                    )
                     # 删除反馈文件
                     feedback_file.unlink()
                     # 后续流程继续
-                    score = 0.0
-                    critic_passed = True
-                    dimension_scores = {}
-                    issues = feedback
                 else:
                     # 正常生成新章节
-                    edited, score, critic_passed, dimension_scores, issues = self.run_chapter_generation(chapter_num, prev_chapter_end)
-                    if not edited:
+                    current_content, score, passed, issues = self.run_chapter_generation(chapter_num, prev_chapter_end)
+                    if not current_content:
                         continue
 
                 # 记录评分
                 self.chapter_scores.append({
                     "chapter": chapter_num,
-                    "total_score": float(score),
-                    "dimension_scores": dimension_scores,
-                    "critic_passed": critic_passed,
+                    "score": score,
+                    "passed": passed,
                     "issues": issues
                 })
 
-                size = (self.output_dir / f"chapter_{chapter_num}.txt").stat().st_size
+                chapter_file = self.output_dir / "chapters" / f"chapter_{chapter_num}.txt"
+                size = chapter_file.stat().st_size
                 words = size // 2
                 generated.append({"num": chapter_num, "words": words})
 
@@ -676,40 +724,33 @@ class NovelOrchestrator:
                                 new_plot = input(f"请输入第{chapter_num + 1}章新的剧情要求：\n")
                                 # 在原策划后面追加用户调整，下一章生成时会用到
                                 self.plan = self.plan + f"\n\n【用户人工调整 - 第{chapter_num + 1}章】：{new_plot}"
+                                self.setting_bible = self.plan
                                 logger.info(f"✅ 已记录你对第{chapter_num + 1}章的剧情调整")
                     except (EOFError, IOError):
                         # 非交互式环境，自动跳过
                         logger.info("非交互式运行，跳过剧情调整")
-
                 # 更新上一章结尾（用于下一章衔接）
-                prev_chapter_end = edited[-500:] if len(edited) > 500 else edited
+                prev_chapter_end = current_content[-500:] if len(current_content) > 500 else current_content
 
             # 统计并保存质量评分到info.json
             if self.chapter_scores and self.info_path:
                 # 读取现有info
                 if self.info_path.exists():
                     with open(self.info_path, "r", encoding='utf-8') as f:
-                        info = json.load(f)
+                        info = json.loads(info)
                 else:
                     info = {
                         "name": self.novel_name,
                         "created_at": str(datetime.now())
                     }
                 # 添加质量评分信息
-                overall_score = sum(cs["total_score"] for cs in self.chapter_scores) / len(self.chapter_scores)
+                if self.chapter_scores:
+                    overall_score = sum(cs["score"] for cs in self.chapter_scores) / len(self.chapter_scores)
+                else:
+                    overall_score = 0
                 info["chapter_scores"] = self.chapter_scores
                 info["overall_quality_score"] = round(overall_score, 2)
-                # 计算各维度平均分
-                dimension_avg = {}
-                for dim_key in DIMENSION_NAMES:
-                    dim_scores = [
-                        cs["dimension_scores"].get(dim_key, 0)
-                        for cs in self.chapter_scores
-                        if cs["dimension_scores"].get(dim_key, 0) > 0
-                    ]
-                    if dim_scores:
-                        dimension_avg[dim_key] = round(sum(dim_scores) / len(dim_scores), 2)
-                info["dimension_average_scores"] = dimension_avg
+                info["architecture"] = "slim-v2"
                 # 保存回info.json
                 with open(self.info_path, "w", encoding="utf-8") as f:
                     json.dump(info, f, ensure_ascii=False, indent=2)
@@ -731,7 +772,7 @@ class NovelOrchestrator:
                 "generated_chapters": len(generated),
                 "total_words": sum(g['words'] for g in generated),
                 "overall_quality_score": (
-                    sum(cs["total_score"] for cs in self.chapter_scores) / len(self.chapter_scores)
+                    sum(cs["score"] for cs in self.chapter_scores) / len(self.chapter_scores)
                     if self.chapter_scores else 0
                 ),
                 "output_dir": str(self.output_dir),

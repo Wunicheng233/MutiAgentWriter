@@ -80,6 +80,9 @@ export interface ProjectCreate {
   novel_name?: string
   novel_description?: string
   core_requirement?: string
+  genre?: string
+  total_words?: number
+  core_hook?: string
   target_platform?: string
   chapter_word_count?: number
   start_chapter?: number
@@ -87,6 +90,7 @@ export interface ProjectCreate {
   skip_plan_confirmation?: boolean
   skip_chapter_confirmation?: boolean
   allow_plot_adjustment?: boolean
+  config?: Record<string, any>
 }
 
 export interface ChapterUpdate {

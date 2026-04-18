@@ -43,6 +43,7 @@ def call_volc_api(
     user_id: int = None,
     project_id: int = None,
     client: openai.OpenAI = None,
+    context: dict = None,
 ) -> str:
     # 不同Agent差异化温度配置（从配置读取）
     # - planner: 创造性策划，温度稍高 (0.8)
@@ -75,11 +76,15 @@ def call_volc_api(
     :param temperature: 温度参数
     :param max_tokens: 最大输出长度
     :param content_type: 内容类型，用于加载特定prompt
+    :param max_retries: 最大重试次数
+    :param user_id: 用户ID，用于记录token使用量
+    :param project_id: 项目ID，用于记录token使用量
     :param client: 外部传入的OpenAI客户端（用于多租户隔离，每个用户使用自己的API Key）
+    :param context: 占位符替换上下文，key 是占位符名称（不含 {{}}），value 是替换内容
     :return: API返回的文本内容
     """
     from utils.file_utils import load_prompt
-    system_prompt = load_prompt(agent_role, content_type)
+    system_prompt = load_prompt(agent_role, content_type, context)
 
     logger.info(f"开始调用 {agent_role} Agent...")
     logger.debug(f"{agent_role} Agent输入：{user_input[:200]}...")
