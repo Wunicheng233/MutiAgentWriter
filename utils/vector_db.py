@@ -7,6 +7,7 @@
 from pathlib import Path
 import config
 from utils.logger import logger
+from utils.runtime_context import get_current_output_dir, get_current_output_dir_optional
 from typing import Optional, Any
 
 # ===================== 全局配置（只存配置，不初始化） =====================
@@ -64,7 +65,7 @@ def _get_embedding_func() -> Any:
 
 def _get_current_chapter_collection_name():
     """获取当前小说专属的章节collection名称"""
-    current_output_dir = config.CURRENT_OUTPUT_DIR
+    current_output_dir = get_current_output_dir_optional()
     if current_output_dir is None:
         return "novel_chapter_content_default"
     # 用输出目录名作为collection名称，保证每本小说独立
@@ -73,7 +74,7 @@ def _get_current_chapter_collection_name():
 
 def _get_current_setting_collection_name():
     """获取当前小说专属的设定collection名称"""
-    current_output_dir = config.CURRENT_OUTPUT_DIR
+    current_output_dir = get_current_output_dir_optional()
     if current_output_dir is None:
         return "novel_world_setting_default"
     return f"settings_{current_output_dir.name}"
@@ -97,7 +98,7 @@ def get_reference_collection():
 def get_chapter_collection():
     client = _get_client()
     embed = _get_embedding_func()
-    current_output_dir = config.CURRENT_OUTPUT_DIR
+    current_output_dir = get_current_output_dir_optional()
     return client.get_or_create_collection(
         name=_get_current_chapter_collection_name(),
         embedding_function=embed,
@@ -108,7 +109,7 @@ def get_chapter_collection():
 def get_setting_collection():
     client = _get_client()
     embed = _get_embedding_func()
-    current_output_dir = config.CURRENT_OUTPUT_DIR
+    current_output_dir = get_current_output_dir_optional()
     return client.get_or_create_collection(
         name=_get_current_setting_collection_name(),
         embedding_function=embed,
@@ -228,7 +229,6 @@ def search_related_chapter_content(
 # ===================== 设定圣经写入/检索 =====================
 def load_setting_bible_to_db():
     """把设定圣经存入向量库，标准化元数据，避免和章节内容混存"""
-    from utils.file_utils import get_current_output_dir
     output_dir = get_current_output_dir()
     setting_path = output_dir / "setting_bible.md"
     if not setting_path.exists():

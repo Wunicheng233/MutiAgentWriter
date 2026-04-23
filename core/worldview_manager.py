@@ -1,7 +1,8 @@
 import copy
 import json
-import config
 from utils.logger import logger
+from utils.runtime_context import get_current_output_dir_optional
+import config
 
 # ===================== 世界观管控核心类 =====================
 # 每本小说独立存储世界观状态，放在当前小说输出文件夹下
@@ -42,7 +43,7 @@ class WorldviewManager:
 
     def _update_file_path(self):
         """更新文件路径到当前小说输出目录"""
-        current_output_dir = config.CURRENT_OUTPUT_DIR
+        current_output_dir = get_current_output_dir_optional()
         if current_output_dir is None:
             # 还没设置输出目录，先存在core临时位置
             self.file_path = config.ROOT_DIR / "core" / "worldview_state.json"

@@ -1,7 +1,8 @@
 from pathlib import Path
 from config import PROMPTS_DIR, OUTPUTS_ROOT
-import config
 from utils.logger import logger
+from utils.runtime_context import get_current_output_dir as get_runtime_output_dir
+from utils.runtime_context import set_current_output_dir
 
 
 def set_output_dir(novel_name: str) -> Path:
@@ -13,16 +14,14 @@ def set_output_dir(novel_name: str) -> Path:
     safe_name = "".join(c for c in novel_name if c.isalnum() or c in (' ', '_', '-')).strip()
     safe_name = safe_name.replace(' ', '_')
     output_dir = OUTPUTS_ROOT / safe_name
-    output_dir.mkdir(exist_ok=True)
-    config.CURRENT_OUTPUT_DIR = output_dir
+    output_dir.mkdir(exist_ok=True, parents=True)
+    set_current_output_dir(output_dir)
     return output_dir
 
 
 def get_current_output_dir() -> Path:
     """获取当前小说的输出目录"""
-    if config.CURRENT_OUTPUT_DIR is None:
-        raise RuntimeError("当前输出目录未设置，请先调用set_output_dir")
-    return config.CURRENT_OUTPUT_DIR
+    return get_runtime_output_dir()
 
 
 def load_prompt(agent_name: str, content_type: str = None, context: dict = None) -> str:

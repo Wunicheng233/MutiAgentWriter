@@ -5,6 +5,7 @@ from pathlib import Path
 import config
 from core.worldview_manager import WorldviewManager
 from utils import vector_db
+from utils.runtime_context import set_current_output_dir, use_output_dir
 
 
 class RuntimeContextIsolationTests(unittest.TestCase):
@@ -14,7 +15,7 @@ class RuntimeContextIsolationTests(unittest.TestCase):
         self.original_output_dir = config.CURRENT_OUTPUT_DIR
 
     def tearDown(self):
-        config.CURRENT_OUTPUT_DIR = self.original_output_dir
+        set_current_output_dir(self.original_output_dir)
         self.temp_dir.cleanup()
 
     def test_vector_collection_names_follow_current_output_dir_dynamically(self):
@@ -49,6 +50,20 @@ class RuntimeContextIsolationTests(unittest.TestCase):
         self.assertEqual(manager.file_path, project_b / "worldview_state.json")
         self.assertEqual(manager.state["characters"], {})
         self.assertTrue((project_b / "worldview_state.json").exists())
+
+    def test_output_dir_context_manager_isolates_current_project_path(self):
+        project_a = self.workspace / "project-a"
+        project_b = self.workspace / "project-b"
+
+        set_current_output_dir(project_a)
+        self.assertEqual(vector_db._get_current_chapter_collection_name(), "chapters_project-a")
+
+        with use_output_dir(project_b):
+            self.assertEqual(config.CURRENT_OUTPUT_DIR, project_b)
+            self.assertEqual(vector_db._get_current_chapter_collection_name(), "chapters_project-b")
+
+        self.assertEqual(config.CURRENT_OUTPUT_DIR, project_a)
+        self.assertEqual(vector_db._get_current_chapter_collection_name(), "chapters_project-a")
 
 
 if __name__ == "__main__":

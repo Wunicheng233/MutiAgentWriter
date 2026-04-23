@@ -22,6 +22,7 @@ from .agent_pool import (
 )
 from .system_guardrails import run_system_guardrails, GuardrailResult
 from utils.file_utils import save_output, load_chapter_content, set_output_dir
+from utils.runtime_context import set_current_output_dir
 from utils.yaml_utils import load_user_requirements
 from utils.logger import logger
 from utils.vector_db import (
@@ -280,8 +281,7 @@ class NovelOrchestrator:
         if self.output_dir is None:
             self.output_dir = set_output_dir(self.novel_name)
         # 更新全局当前输出目录（兼容现有模块依赖）
-        import config
-        config.CURRENT_OUTPUT_DIR = self.output_dir
+        set_current_output_dir(self.output_dir)
 
         # 保存信息文件路径
         self.info_path = self.output_dir / "info.json"
