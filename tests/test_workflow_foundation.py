@@ -362,6 +362,8 @@ class WorkflowFoundationTests(unittest.TestCase):
             self.assertEqual(chapter_step.status, "running")
             self.assertEqual(chapter_step.step_type, "generator")
             self.assertEqual(chapter_step.step_data["last_message"], "正在生成第 3 章...")
+            self.assertEqual(chapter_step.step_data["agent_contract"]["agent_key"], "writer")
+            self.assertEqual(chapter_step.step_data["agent_contract"]["output_schema_ref"], "ChapterDraftArtifact.v1")
 
             update_workflow_run_status(
                 db=db,

@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 from pathlib import Path
 
 from backend.models import Artifact, FeedbackItem, GenerationTask, Project, WorkflowRun, WorkflowStepRun
+from core.agent_contract import get_agent_contract
 
 
 @dataclass(frozen=True)
@@ -61,6 +62,32 @@ def _infer_step_type(step_key: str) -> str:
     return mapping.get(step_key, "system")
 
 
+def _infer_agent_key(step_key: str) -> str | None:
+    mapping = {
+        "planning": "planner",
+        "generating_settings": "planner",
+        "generating_chapter": "writer",
+    }
+    return mapping.get(step_key)
+
+
+def _build_agent_contract_summary(step_key: str) -> dict | None:
+    agent_key = _infer_agent_key(step_key)
+    if agent_key is None:
+        return None
+
+    contract = get_agent_contract(agent_key)
+    return {
+        "agent_key": contract.agent_key,
+        "display_name": contract.display_name,
+        "layer": contract.layer,
+        "input_schema_ref": contract.input_schema_ref,
+        "output_schema_ref": contract.output_schema_ref,
+        "prompt_template_key": contract.prompt_template_key,
+        "model_policy_key": contract.model_policy_key,
+    }
+
+
 def _sync_workflow_step_run(
     db: Session,
     workflow_run: WorkflowRun,
@@ -83,6 +110,10 @@ def _sync_workflow_step_run(
         "cancelled": "cancelled",
     }
     desired_status = step_status_mapping.get(task_status, "running")
+    merged_step_data = dict(step_data or {})
+    contract_summary = _build_agent_contract_summary(step_key)
+    if contract_summary is not None:
+        merged_step_data.setdefault("agent_contract", contract_summary)
 
     active_steps = db.query(WorkflowStepRun).filter(
         WorkflowStepRun.workflow_run_id == workflow_run.id,
@@ -107,7 +138,7 @@ def _sync_workflow_step_run(
             step_type=_infer_step_type(step_key),
             status=desired_status,
             chapter_index=chapter_index,
-            step_data=step_data or {},
+            step_data=merged_step_data,
             started_at=now,
         )
         if desired_status in {"completed", "failed", "cancelled"}:
@@ -116,9 +147,7 @@ def _sync_workflow_step_run(
         db.flush()
         return
 
-    merged_step_data = dict(current_step.step_data or {})
-    if step_data:
-        merged_step_data.update(step_data)
+    merged_step_data = dict(current_step.step_data or {}) | merged_step_data
     current_step.step_data = merged_step_data
     current_step.step_type = _infer_step_type(step_key)
     current_step.status = desired_status
