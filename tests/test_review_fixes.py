@@ -1,3 +1,4 @@
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -277,6 +278,10 @@ class ReviewFixRegressionTests(unittest.TestCase):
         self.assertEqual(chapter_path.read_text(encoding="utf-8"), "重写后的章节内容")
         self.assertFalse(feedback_path.exists())
         self.assertEqual(result["generated_chapters"], 1)
+        info = json.loads((project_dir / "info.json").read_text(encoding="utf-8"))
+        self.assertEqual(info["evaluation_harness_version"], "chapter-evaluation-v1")
+        self.assertEqual(info["evaluation_reports"][0]["chapter_index"], 1)
+        self.assertEqual(info["evaluation_reports"][0]["score"], 9.0)
 
     def test_export_download_requires_authenticated_access(self):
         owner = self._create_user("owner5", "owner5@example.com")

@@ -20,6 +20,7 @@ from .agent_pool import (
     PlannerAgent, WriterAgent, CriticAgent, ReviseAgent,
     agent_pool
 )
+from .evaluation_harness import evaluate_chapter_with_critic
 from .system_guardrails import run_system_guardrails, GuardrailResult
 from utils.file_utils import save_output, load_chapter_content, set_output_dir
 from utils.runtime_context import set_current_output_dir
@@ -106,6 +107,7 @@ class NovelOrchestrator:
         self.start_chapter: int = 1
         self.end_chapter: int = 1
         self.chapter_scores: List[Dict] = []
+        self.evaluation_reports: List[Dict] = []
         # 维度评分累积，用于质量分析雷达图
         self.dimension_scores = {
             "plot": [],
@@ -125,6 +127,28 @@ class NovelOrchestrator:
                 self.progress_callback(percent, message)
             except Exception as e:
                 logger.error(f"进度回调执行失败: {e}")
+
+    def _run_critic_harness(
+        self,
+        chapter_index: int,
+        chapter_content: str,
+        chapter_outline: str,
+        revision_round: int = 0,
+    ) -> Tuple[bool, float, Dict[str, float], List[Dict]]:
+        """Run Critic through the stable evaluation harness boundary."""
+        report = evaluate_chapter_with_critic(
+            critic=self.critic,
+            chapter_content=chapter_content,
+            setting_bible=self.setting_bible or "",
+            chapter_outline=chapter_outline,
+            content_type=self.content_type,
+            chapter_index=chapter_index,
+            revision_round=revision_round,
+        )
+        if not hasattr(self, "evaluation_reports"):
+            self.evaluation_reports = []
+        self.evaluation_reports.append(report.to_dict())
+        return report.as_legacy_tuple()
 
     def parse_outlines_from_setting_bible(self) -> List[Dict]:
         """
@@ -544,11 +568,11 @@ class NovelOrchestrator:
 
         # Step 3: Critic 评审
         chapter_outline = self.get_chapter_outline(chapter_index)
-        passed, score, dimensions, issues = self.critic.critic_chapter(
-            current_content,
-            self.setting_bible,
-            chapter_outline,
-            content_type,
+        passed, score, dimensions, issues = self._run_critic_harness(
+            chapter_index=chapter_index,
+            chapter_content=current_content,
+            chapter_outline=chapter_outline,
+            revision_round=0,
         )
 
         # 保存本章维度评分
@@ -711,11 +735,11 @@ class NovelOrchestrator:
                 passed = False
 
             # Step 5: Critic 复评
-            passed, score, dimensions, issues = self.critic.critic_chapter(
-                current_content,
-                self.setting_bible,
-                chapter_outline,
-                content_type,
+            passed, score, dimensions, issues = self._run_critic_harness(
+                chapter_index=chapter_index,
+                chapter_content=current_content,
+                chapter_outline=chapter_outline,
+                revision_round=revise_count,
             )
             # 更新维度评分
             for dim, score_val in dimensions.items():
@@ -760,11 +784,11 @@ class NovelOrchestrator:
                         self.setting_bible
                     )
                     # 再次评审
-                    passed, score, dimensions, issues = self.critic.critic_chapter(
-                        current_content,
-                        self.setting_bible,
-                        chapter_outline,
-                        content_type,
+                    passed, score, dimensions, issues = self._run_critic_harness(
+                        chapter_index=chapter_index,
+                        chapter_content=current_content,
+                        chapter_outline=chapter_outline,
+                        revision_round=revise_count,
                     )
                     # 更新维度评分
                     for dim, score_val in dimensions.items():
@@ -887,11 +911,11 @@ class NovelOrchestrator:
                     }
                     guardrail_result = run_system_guardrails(current_content, guardrail_context)
                     current_content = guardrail_result.corrected_content
-                    passed, score, dimensions, issues = self.critic.critic_chapter(
-                        current_content,
-                        self.setting_bible,
-                        outline["outline"],
-                        self.content_type,
+                    passed, score, dimensions, issues = self._run_critic_harness(
+                        chapter_index=chapter_num,
+                        chapter_content=current_content,
+                        chapter_outline=outline["outline"],
+                        revision_round=0,
                     )
                     # 更新维度评分
                     for dim, score_val in dimensions.items():
@@ -1005,6 +1029,8 @@ class NovelOrchestrator:
                 info["chapter_scores"] = self.chapter_scores
                 info["overall_quality_score"] = round(overall_score, 2)
                 info["dimension_average_scores"] = dimension_averages
+                info["evaluation_harness_version"] = "chapter-evaluation-v1"
+                info["evaluation_reports"] = getattr(self, "evaluation_reports", [])
                 info["architecture"] = "slim-v2"
                 # 保存回info.json
                 with open(self.info_path, "w", encoding="utf-8") as f:
