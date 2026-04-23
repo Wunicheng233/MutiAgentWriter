@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 from backend.database import get_db
 from backend.models import User, Project, Chapter, GenerationTask
+from backend.task_status import ACTIVE_TASK_STATUSES
 from backend.schemas import (
     ProjectCreate,
     ProjectUpdate,
@@ -124,7 +125,7 @@ def get_project(
     # 包括 pending/started/progress/waiting_confirm，这些都需要前端轮询
     running_task = db.query(GenerationTask).filter(
         GenerationTask.project_id == project_id,
-        GenerationTask.status.in_(["pending", "started", "progress", "waiting_confirm"])
+        GenerationTask.status.in_(ACTIVE_TASK_STATUSES)
     ).order_by(GenerationTask.started_at.desc()).first()
 
     # 将 running_task 添加到返回结果，并附带 workflow 摘要
@@ -301,7 +302,7 @@ def trigger_generation(
     # 检查是否已有运行中的任务
     running_task = db.query(GenerationTask).filter(
         GenerationTask.project_id == project_id,
-        GenerationTask.status.in_(["pending", "started", "progress"])
+        GenerationTask.status.in_(ACTIVE_TASK_STATUSES)
     ).first()
     if running_task:
         raise HTTPException(
@@ -432,7 +433,7 @@ def trigger_export(
     # 这里复用 GenerationTask 记录任务
     running_task = db.query(GenerationTask).filter(
         GenerationTask.project_id == project_id,
-        GenerationTask.status.in_(["pending", "started", "progress"])
+        GenerationTask.status.in_(ACTIVE_TASK_STATUSES)
     ).first()
     if running_task:
         raise HTTPException(
@@ -837,7 +838,7 @@ def reset_project(
     # 1. 查找所有未完成的任务，标记为 cancelled
     running_tasks = db.query(GenerationTask).filter(
         GenerationTask.project_id == project_id,
-        GenerationTask.status.in_(["pending", "started", "progress", "waiting_confirm"])
+        GenerationTask.status.in_(ACTIVE_TASK_STATUSES)
     ).all()
 
     if CELERY_AVAILABLE:
@@ -1004,7 +1005,7 @@ def clean_stuck_tasks(
     # 查找所有卡住的未完成任务
     stuck_tasks = db.query(GenerationTask).filter(
         GenerationTask.project_id == project_id,
-        GenerationTask.status.in_(["pending", "started", "progress", "waiting_confirm"])
+        GenerationTask.status.in_(ACTIVE_TASK_STATUSES)
     ).all()
 
     count = len(stuck_tasks)

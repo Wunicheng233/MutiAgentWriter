@@ -13,7 +13,7 @@ import tasks.writing_tasks as writing_tasks
 from backend.database import Base, get_db
 from backend.deps import get_current_user
 from backend.main import app
-from backend.models import Artifact, FeedbackItem, GenerationTask, Project, User, WorkflowRun, WorkflowStepRun
+from backend.models import Artifact, Chapter, FeedbackItem, GenerationTask, Project, User, WorkflowRun, WorkflowStepRun
 from backend.workflow_service import create_feedback_item, create_generation_workflow_run, update_workflow_run_status
 
 
@@ -501,6 +501,94 @@ class WorkflowFoundationTests(unittest.TestCase):
             )
         finally:
             db.close()
+
+    def test_trigger_generation_blocks_when_waiting_confirm_task_exists(self):
+        owner = self._create_user("active_generation_owner", "active_generation_owner@example.com")
+        project_dir = self.workspace / "active-generation-project"
+        project_dir.mkdir()
+        project = self._create_project(owner, name="Active Generation Novel", file_path=str(project_dir))
+        self._set_current_user(owner)
+
+        db = self.SessionLocal()
+        try:
+            db.add(
+                GenerationTask(
+                    project_id=project.id,
+                    celery_task_id="celery-active-generate-1",
+                    status="waiting_confirm",
+                    progress=0.6,
+                    current_chapter=2,
+                )
+            )
+            db.commit()
+        finally:
+            db.close()
+
+        response = self.client.post(f"/api/projects/{project.id}/generate")
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("已有运行中的任务", response.json()["detail"])
+
+    def test_trigger_export_blocks_when_waiting_confirm_task_exists(self):
+        owner = self._create_user("active_export_owner", "active_export_owner@example.com")
+        project_dir = self.workspace / "active-export-project"
+        project_dir.mkdir()
+        project = self._create_project(owner, name="Active Export Novel", file_path=str(project_dir))
+        self._set_current_user(owner)
+
+        db = self.SessionLocal()
+        try:
+            db.add(
+                GenerationTask(
+                    project_id=project.id,
+                    celery_task_id="celery-active-export-1",
+                    status="waiting_confirm",
+                    progress=0.6,
+                    current_chapter=2,
+                )
+            )
+            db.commit()
+        finally:
+            db.close()
+
+        response = self.client.post(f"/api/projects/{project.id}/export?format=epub")
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("已有运行中的任务", response.json()["detail"])
+
+    def test_regenerate_chapter_blocks_when_waiting_confirm_task_exists(self):
+        owner = self._create_user("active_regen_owner", "active_regen_owner@example.com")
+        project_dir = self.workspace / "active-regen-project"
+        project_dir.mkdir()
+        project = self._create_project(owner, name="Active Regen Novel", file_path=str(project_dir))
+        self._set_current_user(owner)
+
+        db = self.SessionLocal()
+        try:
+            db.add(
+                Chapter(
+                    project_id=project.id,
+                    chapter_index=1,
+                    title="第1章",
+                    content="<p>章节内容</p>",
+                    word_count=4,
+                    status="generated",
+                )
+            )
+            db.add(
+                GenerationTask(
+                    project_id=project.id,
+                    celery_task_id="celery-active-regen-1",
+                    status="waiting_confirm",
+                    progress=0.6,
+                    current_chapter=1,
+                )
+            )
+            db.commit()
+        finally:
+            db.close()
+
+        response = self.client.post(f"/api/projects/{project.id}/chapters/1/regenerate")
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("已有运行中的任务", response.json()["detail"])
 
     def test_task_status_endpoint_includes_workflow_run_steps_and_feedback(self):
         owner = self._create_user("status_api_owner", "status_api_owner@example.com")

@@ -12,6 +12,7 @@ from sqlalchemy import desc
 
 from backend.database import get_db
 from backend.models import User, Project, Chapter, GenerationTask, ChapterVersion
+from backend.task_status import ACTIVE_TASK_STATUSES
 from backend.schemas import ChapterResponse, ChapterUpdate, GenerationTaskResponse
 from backend.deps import get_current_user
 from core.config import settings
@@ -192,7 +193,7 @@ def regenerate_chapter(
     # 检查是否已有运行中的任务
     running_task = db.query(GenerationTask).filter(
         GenerationTask.project_id == project_id,
-        GenerationTask.status.in_(["pending", "started", "progress"])
+        GenerationTask.status.in_(ACTIVE_TASK_STATUSES)
     ).first()
     if running_task:
         raise HTTPException(
