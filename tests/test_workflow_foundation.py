@@ -14,6 +14,7 @@ from backend.database import Base, get_db
 from backend.deps import get_current_user
 from backend.main import app
 from backend.models import Artifact, Chapter, FeedbackItem, GenerationTask, Project, User, WorkflowRun, WorkflowStepRun
+from backend.chapter_sync import parse_chapter_file_content, sync_chapter_file_to_db
 from backend.task_status import ACTIVE_TASK_STATUSES
 from backend.workflow_service import create_feedback_item, create_generation_workflow_run, update_workflow_run_status
 
@@ -252,6 +253,43 @@ class WorkflowFoundationTests(unittest.TestCase):
             )
             self.assertEqual(second_feedback.status, "open")
             self.assertIsNone(second_feedback.resolved_at)
+        finally:
+            db.close()
+
+    def test_sync_chapter_file_to_db_parses_title_html_and_word_count(self):
+        owner = self._create_user("sync_owner", "sync_owner@example.com")
+        project_dir = self.workspace / "sync-project"
+        project_dir.mkdir()
+        project = self._create_project(owner, name="Sync Novel", file_path=str(project_dir))
+        chapter_file = project_dir / "chapters" / "chapter_1.txt"
+        chapter_file.parent.mkdir(parents=True, exist_ok=True)
+        chapter_file.write_text("第1章 初见\n\n山雨欲来。\n\n主角登场。", encoding="utf-8")
+
+        title, html_content, word_count = parse_chapter_file_content(chapter_file.read_text(encoding="utf-8"))
+        self.assertEqual(title, "第1章 初见")
+        self.assertEqual(html_content, "<p>山雨欲来。\n主角登场。</p>")
+        self.assertEqual(word_count, 8)
+
+        db = self.SessionLocal()
+        try:
+            chapter = sync_chapter_file_to_db(
+                db=db,
+                project=project,
+                chapter_index=1,
+                chapter_file=chapter_file,
+                status="generated",
+            )
+            db.commit()
+            self.assertIsNotNone(chapter)
+
+            db_chapter = db.query(Chapter).filter(
+                Chapter.project_id == project.id,
+                Chapter.chapter_index == 1,
+            ).one()
+            self.assertEqual(db_chapter.title, "第1章 初见")
+            self.assertEqual(db_chapter.content, "<p>山雨欲来。\n主角登场。</p>")
+            self.assertEqual(db_chapter.word_count, 8)
+            self.assertEqual(db_chapter.status, "generated")
         finally:
             db.close()
 

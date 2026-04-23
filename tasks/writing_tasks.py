@@ -15,6 +15,7 @@ from celery.utils.log import get_task_logger
 from typing import Optional, Dict
 
 from celery_app import celery_app
+from backend.chapter_sync import sync_chapter_file_to_db
 from core.orchestrator import NovelOrchestrator, WaitingForConfirmationError
 from backend.database import SessionLocal
 from backend.models import GenerationTask, Project, User, Chapter
@@ -196,52 +197,15 @@ def generate_novel_task(
                     if project and project.file_path:
                         project_dir = Path(project.file_path)
                         chapter_file = project_dir / "chapters" / f"chapter_{chapter_index}.txt"
-                        if chapter_file.exists():
-                            with open(chapter_file, "r", encoding="utf-8") as f:
-                                content = f.read()
-                            # 提取标题和正文
-                            # 第一行是 "第X章 标题"，提取出来作为章节标题
-                            lines = content.split('\n')
-                            chapter_title = None
-                            body_lines = []
-                            for i, line in enumerate(lines):
-                                if i == 0 and line.strip() and '第' in line and '章' in line:
-                                    # 第一行是标题，提取
-                                    chapter_title = line.strip().lstrip('#').strip()
-                                else:
-                                    if line.strip():
-                                        body_lines.append(line)
-                            body = '\n'.join(body_lines).strip()
-                            # 将纯文本换行转换为正确的HTML格式
-                            # 空行分隔段落，每个段落用<p>包裹
-                            paragraphs = re.split(r'\n\s*\n', body)
-                            html_content = '\n'.join(f'<p>{p.strip()}</p>' for p in paragraphs if p.strip())
-                            # 计算字数：统计汉字数量（一个汉字算一个字，英文标点空格不算）
-                            chinese_chars = re.findall(r'[\u4e00-\u9fff]', html_content)
-                            word_count = len(chinese_chars)
-                            # 查找是否已有记录，有则更新，无则新建
-                            existing = db.query(Chapter).filter(
-                                Chapter.project_id == project.id,
-                                Chapter.chapter_index == chapter_index
-                            ).first()
-                            if existing:
-                                existing.content = html_content
-                                existing.word_count = word_count
-                                if chapter_title:
-                                    existing.title = chapter_title
-                                existing.status = "generated"
-                                logger.info(f"Incremental sync: updated chapter {chapter_index} to database")
-                            else:
-                                chapter = Chapter(
-                                    project_id=project.id,
-                                    chapter_index=chapter_index,
-                                    title=chapter_title,
-                                    content=html_content,
-                                    word_count=word_count,
-                                    status="generated"
-                                )
-                                db.add(chapter)
-                                logger.info(f"Incremental sync: added new chapter {chapter_index} to database")
+                        synced_chapter = sync_chapter_file_to_db(
+                            db=db,
+                            project=project,
+                            chapter_index=chapter_index,
+                            chapter_file=chapter_file,
+                            status="generated",
+                        )
+                        if synced_chapter is not None:
+                            logger.info(f"Incremental sync: upserted chapter {chapter_index} to database")
                             db.commit()
 
                             # 增量同步质量评分：从info.json读取当前章节的评分并更新
@@ -384,46 +348,13 @@ def generate_novel_task(
                             for chapter_file in sorted(chapters_dir.glob("chapter_*.txt")):
                                 match = chapter_file.name.split("_")[1].split(".")[0]
                                 chapter_index = int(match)
-                                if chapter_file.exists():
-                                    with open(chapter_file, "r", encoding="utf-8") as f:
-                                        content = f.read()
-                                # 提取标题和正文，转换HTML格式
-                                lines = content.split('\n')
-                                chapter_title = None
-                                body_lines = []
-                                for i, line in enumerate(lines):
-                                    if i == 0 and line.strip() and '第' in line and '章' in line:
-                                        chapter_title = line.strip().lstrip('#').strip()
-                                    else:
-                                        if line.strip():
-                                            body_lines.append(line)
-                                body = '\n'.join(body_lines).strip()
-                                # 纯文本转HTML
-                                paragraphs = re.split(r'\n\s*\n', body)
-                                html_content = '\n'.join(f'<p>{p.strip()}</p>' for p in paragraphs if p.strip())
-                                # 计算字数：统计汉字数量（一个汉字算一个字，英文标点空格不算）
-                                chinese_chars = re.findall(r'[\u4e00-\u9fff]', html_content)
-                                word_count = len(chinese_chars)
-                                existing = db.query(Chapter).filter(
-                                    Chapter.project_id == project.id,
-                                    Chapter.chapter_index == chapter_index
-                                ).first()
-                                if existing:
-                                    existing.content = html_content
-                                    existing.word_count = word_count
-                                    if chapter_title:
-                                        existing.title = chapter_title
-                                    existing.status = "generated"
-                                else:
-                                    chapter = Chapter(
-                                        project_id=project.id,
-                                        chapter_index=chapter_index,
-                                        title=chapter_title,
-                                        content=html_content,
-                                        word_count=word_count,
-                                        status="generated"
-                                    )
-                                    db.add(chapter)
+                                sync_chapter_file_to_db(
+                                    db=db,
+                                    project=project,
+                                    chapter_index=chapter_index,
+                                    chapter_file=chapter_file,
+                                    status="generated",
+                                )
                             db.commit()
                             logger.info(f"Final synchronization: all chapters to database")
 
