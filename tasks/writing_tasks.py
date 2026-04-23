@@ -25,6 +25,7 @@ from utils.runtime_context import (
     set_current_run_context,
 )
 from backend.database import SessionLocal
+from backend.evaluation_sync import sync_evaluation_reports_to_artifacts
 from backend.models import GenerationTask, Project, User, Chapter
 from backend.workflow_service import (
     materialize_open_feedback_files,
@@ -248,6 +249,12 @@ def generate_novel_task(
                                     # 更新项目总体评分
                                     project.overall_quality_score = info.get("overall_quality_score", 0)
                                     project.dimension_average_scores = info.get("dimension_average_scores", {})
+                                    sync_evaluation_reports_to_artifacts(
+                                        db=db,
+                                        project=project,
+                                        workflow_run_id=task_record.workflow_run.id if task_record.workflow_run else None,
+                                        evaluation_reports=info.get("evaluation_reports"),
+                                    )
                                     # 更新当前章节的quality_score
                                     if "chapter_scores" in info:
                                         for cs in info["chapter_scores"]:
@@ -406,6 +413,12 @@ def generate_novel_task(
                                     # 更新项目总体评分
                                     project.overall_quality_score = info.get("overall_quality_score", 0)
                                     project.dimension_average_scores = info.get("dimension_average_scores", {})
+                                    sync_evaluation_reports_to_artifacts(
+                                        db=db,
+                                        project=project,
+                                        workflow_run_id=task_record.workflow_run.id if task_record.workflow_run else None,
+                                        evaluation_reports=info.get("evaluation_reports"),
+                                    )
                                     # 更新每个章节的quality_score
                                     if "chapter_scores" in info:
                                         for cs in info["chapter_scores"]:

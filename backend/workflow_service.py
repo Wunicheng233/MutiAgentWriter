@@ -216,6 +216,47 @@ def record_chapter_draft_artifact(
     return artifact
 
 
+def record_chapter_evaluation_artifact(
+    db: Session,
+    project_id: int,
+    chapter: Chapter,
+    workflow_run_id: int | None,
+    evaluation_report: dict,
+    source: str = "agent",
+) -> Artifact:
+    """Record a chapter evaluation report produced by the harness."""
+    if chapter.id is None:
+        db.flush()
+
+    current_artifact = _matching_artifact_query(
+        db=db,
+        project_id=project_id,
+        artifact_type="chapter_evaluation",
+        scope="chapter",
+        chapter_id=chapter.id,
+        chapter_index=chapter.chapter_index,
+    ).filter(Artifact.is_current.is_(True)).order_by(Artifact.id.desc()).first()
+
+    if (
+        current_artifact is not None
+        and current_artifact.workflow_run_id == workflow_run_id
+        and (current_artifact.content_json or {}) == evaluation_report
+    ):
+        return current_artifact
+
+    return create_artifact(
+        db=db,
+        project_id=project_id,
+        workflow_run_id=workflow_run_id,
+        chapter_id=chapter.id,
+        artifact_type="chapter_evaluation",
+        scope="chapter",
+        chapter_index=chapter.chapter_index,
+        source=source,
+        content_json=evaluation_report,
+    )
+
+
 def _infer_step_type(step_key: str) -> str:
     mapping = {
         "queued_generation": "system",

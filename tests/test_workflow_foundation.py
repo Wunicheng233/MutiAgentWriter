@@ -1,3 +1,4 @@
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -646,6 +647,35 @@ class WorkflowFoundationTests(unittest.TestCase):
                 test_case.assertEqual(run_context.user_id, owner.id)
                 self.progress_callback(80, "正在生成第 1 章...")
                 self.progress_callback(90, "第 1 章生成完成")
+                (self.project_dir / "info.json").write_text(
+                    json.dumps(
+                        {
+                            "chapter_scores": [
+                                {"chapter": 1, "score": 9, "passed": True, "issues": []}
+                            ],
+                            "overall_quality_score": 9,
+                            "dimension_average_scores": {"plot": 9},
+                            "evaluation_harness_version": "chapter-evaluation-v1",
+                            "evaluation_reports": [
+                                {
+                                    "harness_version": "chapter-evaluation-v1",
+                                    "chapter_index": 1,
+                                    "passed": True,
+                                    "score": 9.0,
+                                    "dimensions": {"plot": 9.0},
+                                    "issues": [],
+                                    "evaluator_agent": "critic",
+                                    "content_type": "novel",
+                                    "revision_round": 0,
+                                    "created_at": "2026-04-23T00:00:00",
+                                    "metadata": {},
+                                }
+                            ],
+                        },
+                        ensure_ascii=False,
+                    ),
+                    encoding="utf-8",
+                )
                 self.progress_callback(100, "🎉 完成")
                 return {"generated_chapters": 1}
 
@@ -690,6 +720,15 @@ class WorkflowFoundationTests(unittest.TestCase):
             self.assertTrue(chapter_artifact.is_current)
             self.assertIn("章节内容", chapter_artifact.content_text)
             self.assertEqual(chapter_artifact.content_json["title"], "第1章 标题")
+            evaluation_artifact = db.query(Artifact).filter(
+                Artifact.project_id == project.id,
+                Artifact.artifact_type == "chapter_evaluation",
+                Artifact.scope == "chapter",
+                Artifact.chapter_index == 1,
+            ).one()
+            self.assertEqual(evaluation_artifact.workflow_run_id, run.id)
+            self.assertEqual(evaluation_artifact.content_json["harness_version"], "chapter-evaluation-v1")
+            self.assertEqual(evaluation_artifact.content_json["score"], 9.0)
             step_keys = [
                 (step.step_key, step.status, step.chapter_index)
                 for step in db.query(WorkflowStepRun)
