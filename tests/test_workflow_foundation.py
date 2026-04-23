@@ -19,7 +19,7 @@ from backend.deps import get_current_user
 from backend.main import app
 from backend.models import Artifact, Chapter, FeedbackItem, GenerationTask, Project, User, WorkflowRun, WorkflowStepRun
 from backend.chapter_sync import parse_chapter_file_content, sync_chapter_file_to_db
-from backend.task_status import ACTIVE_TASK_STATUSES
+from backend.task_status import ACTIVE_TASK_STATUSES, get_active_project_task
 from backend.workflow_service import create_artifact, create_feedback_item, create_generation_workflow_run, update_workflow_run_status
 
 
@@ -152,6 +152,40 @@ class WorkflowFoundationTests(unittest.TestCase):
             ).one()
             self.assertEqual(queued_step.status, "completed")
             self.assertEqual(queued_step.step_type, "system")
+        finally:
+            db.close()
+
+    def test_active_project_task_helper_includes_waiting_confirm_and_prefers_latest(self):
+        owner = self._create_user("active_helper_owner", "active_helper_owner@example.com")
+        project = self._create_project(owner, name="Active Helper Novel")
+
+        db = self.SessionLocal()
+        try:
+            older_active_task = GenerationTask(
+                project_id=project.id,
+                celery_task_id="celery-active-helper-old",
+                status="progress",
+                progress=0.4,
+            )
+            completed_task = GenerationTask(
+                project_id=project.id,
+                celery_task_id="celery-active-helper-done",
+                status="success",
+                progress=1.0,
+            )
+            waiting_task = GenerationTask(
+                project_id=project.id,
+                celery_task_id="celery-active-helper-waiting",
+                status="waiting_confirm",
+                progress=0.6,
+                current_chapter=2,
+            )
+            db.add_all([older_active_task, completed_task, waiting_task])
+            db.commit()
+
+            active_task = get_active_project_task(db, project.id)
+
+            self.assertEqual(active_task.celery_task_id, "celery-active-helper-waiting")
         finally:
             db.close()
 

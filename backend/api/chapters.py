@@ -14,7 +14,7 @@ from backend.chapter_sync import html_content_to_plain_text, render_chapter_plai
 from backend.database import get_db
 from backend.models import User, Project, Chapter, GenerationTask, ChapterVersion
 from backend.task_dispatch import dispatch_tracked_task, make_task_id
-from backend.task_status import ACTIVE_TASK_STATUSES
+from backend.task_status import get_active_project_task
 from backend.schemas import ChapterResponse, ChapterUpdate, GenerationTaskResponse
 from backend.deps import get_current_user
 from core.config import settings
@@ -194,10 +194,7 @@ def regenerate_chapter(
         )
 
     # 检查是否已有运行中的任务
-    running_task = db.query(GenerationTask).filter(
-        GenerationTask.project_id == project_id,
-        GenerationTask.status.in_(ACTIVE_TASK_STATUSES)
-    ).first()
+    running_task = get_active_project_task(db, project_id)
     if running_task:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

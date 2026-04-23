@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 from backend.database import get_db
 from backend.models import User, Project, Chapter, GenerationTask
 from backend.task_dispatch import dispatch_tracked_task, make_task_id
-from backend.task_status import ACTIVE_TASK_STATUSES
+from backend.task_status import active_project_tasks_query, get_active_project_task
 from backend.schemas import (
     ProjectCreate,
     ProjectUpdate,
@@ -122,12 +122,8 @@ def get_project(
             detail="项目不存在"
         )
 
-    # 查询当前是否有正在运行的生成任务
-    # 包括 pending/started/progress/waiting_confirm，这些都需要前端轮询
-    running_task = db.query(GenerationTask).filter(
-        GenerationTask.project_id == project_id,
-        GenerationTask.status.in_(ACTIVE_TASK_STATUSES)
-    ).order_by(GenerationTask.started_at.desc()).first()
+    # 查询当前是否有正在运行的任务，包括等待人工确认的任务。
+    running_task = get_active_project_task(db, project_id)
 
     # 将 running_task 添加到返回结果，并附带 workflow 摘要
     result = project.__dict__.copy()
@@ -301,10 +297,7 @@ def trigger_generation(
         )
 
     # 检查是否已有运行中的任务
-    running_task = db.query(GenerationTask).filter(
-        GenerationTask.project_id == project_id,
-        GenerationTask.status.in_(ACTIVE_TASK_STATUSES)
-    ).first()
+    running_task = get_active_project_task(db, project_id)
     if running_task:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -437,12 +430,8 @@ def trigger_export(
             detail="项目不存在"
         )
 
-    # 检查是否已有运行中的导出任务
-    # 这里复用 GenerationTask 记录任务
-    running_task = db.query(GenerationTask).filter(
-        GenerationTask.project_id == project_id,
-        GenerationTask.status.in_(ACTIVE_TASK_STATUSES)
-    ).first()
+    # 检查是否已有运行中的导出任务；这里复用 GenerationTask 记录任务。
+    running_task = get_active_project_task(db, project_id)
     if running_task:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -852,10 +841,7 @@ def reset_project(
         )
 
     # 1. 查找所有未完成的任务，标记为 cancelled
-    running_tasks = db.query(GenerationTask).filter(
-        GenerationTask.project_id == project_id,
-        GenerationTask.status.in_(ACTIVE_TASK_STATUSES)
-    ).all()
+    running_tasks = active_project_tasks_query(db, project_id).all()
 
     if CELERY_AVAILABLE:
         for task in running_tasks:
@@ -1019,10 +1005,7 @@ def clean_stuck_tasks(
         )
 
     # 查找所有卡住的未完成任务
-    stuck_tasks = db.query(GenerationTask).filter(
-        GenerationTask.project_id == project_id,
-        GenerationTask.status.in_(ACTIVE_TASK_STATUSES)
-    ).all()
+    stuck_tasks = active_project_tasks_query(db, project_id).all()
 
     count = len(stuck_tasks)
     if count > 0:
