@@ -317,10 +317,12 @@ def generate_novel_task(
                 materialized_feedback_files = materialize_open_feedback_files(db, project)
                 if materialized_feedback_files:
                     created_feedback_files = [item for item in materialized_feedback_files if item.file_created]
+                    updated_feedback_files = [item for item in materialized_feedback_files if item.file_updated]
                     logger.info(
-                        "Prepared %s open feedback target(s) for orchestration, created %s missing feedback file(s)",
+                        "Prepared %s open feedback target(s) for orchestration, created %s missing feedback file(s), refreshed %s stale feedback file(s)",
                         len(materialized_feedback_files),
                         len(created_feedback_files),
+                        len(updated_feedback_files),
                     )
 
         # 获取用户 API Key

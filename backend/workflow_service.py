@@ -27,6 +27,7 @@ class FeedbackFileMaterialization:
     content: str
     path: Path
     file_created: bool
+    file_updated: bool
 
 
 def _next_artifact_version(
@@ -390,10 +391,13 @@ def materialize_open_feedback_files(
         else:
             continue
 
-        file_created = False
-        if not feedback_file.exists():
+        file_created = not feedback_file.exists()
+        file_updated = False
+        if feedback_file.exists():
+            existing_content = feedback_file.read_text(encoding="utf-8")
+            file_updated = existing_content != item.content
+        if file_created or file_updated:
             feedback_file.write_text(item.content, encoding="utf-8")
-            file_created = True
 
         materialized_files.append(
             FeedbackFileMaterialization(
@@ -403,6 +407,7 @@ def materialize_open_feedback_files(
                 content=item.content,
                 path=feedback_file,
                 file_created=file_created,
+                file_updated=file_updated,
             )
         )
 

@@ -14,6 +14,7 @@ from backend.database import Base, get_db
 from backend.deps import get_current_user
 from backend.main import app
 from backend.models import Artifact, Chapter, FeedbackItem, GenerationTask, Project, User, WorkflowRun, WorkflowStepRun
+from backend.task_status import ACTIVE_TASK_STATUSES
 from backend.workflow_service import create_feedback_item, create_generation_workflow_run, update_workflow_run_status
 
 
@@ -181,6 +182,11 @@ class WorkflowFoundationTests(unittest.TestCase):
         db = self.SessionLocal()
         try:
             feedback = db.query(FeedbackItem).filter(FeedbackItem.project_id == project.id).one()
+            tasks = db.query(GenerationTask).filter(GenerationTask.project_id == project.id).order_by(GenerationTask.id).all()
+            old_task, new_task = tasks
+            old_run = db.query(WorkflowRun).filter(WorkflowRun.generation_task_id == old_task.id).one()
+            new_run = db.query(WorkflowRun).filter(WorkflowRun.generation_task_id == new_task.id).one()
+
             self.assertEqual(feedback.workflow_run.run_kind, "generation")
             self.assertEqual(feedback.feedback_scope, "chapter")
             self.assertEqual(feedback.feedback_type, "user_rejection")
@@ -188,6 +194,20 @@ class WorkflowFoundationTests(unittest.TestCase):
             self.assertEqual(feedback.chapter_index, 2)
             self.assertEqual(feedback.created_by_user_id, owner.id)
             self.assertIn("主角存在感太弱", feedback.content)
+            self.assertEqual(old_task.status, "success")
+            self.assertIsNotNone(old_task.completed_at)
+            self.assertEqual(old_run.status, "completed")
+            self.assertEqual(old_run.current_step_key, "completed")
+            self.assertEqual(old_run.run_metadata["review_decision"], "rejected")
+            self.assertEqual(old_run.run_metadata["continued_with_task_id"], new_task.celery_task_id)
+            self.assertEqual(new_task.status, "pending")
+            self.assertEqual(new_run.parent_run_id, old_run.id)
+
+            active_tasks = db.query(GenerationTask).filter(
+                GenerationTask.project_id == project.id,
+                GenerationTask.status.in_(ACTIVE_TASK_STATUSES),
+            ).all()
+            self.assertEqual([task.celery_task_id for task in active_tasks], [new_task.celery_task_id])
         finally:
             db.close()
 
@@ -786,11 +806,13 @@ class WorkflowFoundationTests(unittest.TestCase):
             "请重写第二章，并增强主角与反派的冲突。",
         )
 
-    def test_generate_task_marks_consumed_feedback_as_applied(self):
+    def test_generate_task_overwrites_stale_feedback_bridge_and_marks_latest_feedback_applied(self):
         owner = self._create_user("applied_owner", "applied_owner@example.com")
         project_dir = self.workspace / "applied-project"
         project_dir.mkdir()
         project = self._create_project(owner, name="Applied Novel", file_path=str(project_dir))
+        feedback_file = project_dir / "feedback_2.txt"
+        feedback_file.write_text("这是陈旧的反馈文件内容。", encoding="utf-8")
 
         db = self.SessionLocal()
         try:
@@ -832,6 +854,7 @@ class WorkflowFoundationTests(unittest.TestCase):
             def run_full_novel(self):
                 feedback_file = self.project_dir / "feedback_2.txt"
                 assert feedback_file.exists(), "structured feedback bridge file should exist before orchestration"
+                assert feedback_file.read_text(encoding="utf-8") == "请重写第二章，并加强结尾悬念。", "latest structured feedback should overwrite stale bridge file content"
                 feedback_file.unlink()
                 raise writing_tasks.WaitingForConfirmationError(2, "待确认")
 

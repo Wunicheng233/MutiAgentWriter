@@ -3,6 +3,7 @@
 获取Celery任务进度
 """
 
+from datetime import datetime
 from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -13,7 +14,12 @@ from backend.database import get_db
 from backend.models import User, GenerationTask, Project, Chapter
 from backend.schemas import GenerationTaskResponse
 from backend.deps import get_current_user
-from backend.workflow_service import create_feedback_item, create_generation_workflow_run, serialize_workflow_run
+from backend.workflow_service import (
+    create_feedback_item,
+    create_generation_workflow_run,
+    serialize_workflow_run,
+    update_workflow_run_status,
+)
 from celery_app import celery_app
 from tasks.writing_tasks import generate_novel_task
 
@@ -121,6 +127,27 @@ def confirm_chapter(
         triggered_by_user_id=current_user.id,
         regenerate=not request.approved,
         parent_run=task_record.workflow_run,
+    )
+
+    review_outcome = "approved" if request.approved else "rejected"
+    task_record.status = "success"
+    task_record.completed_at = datetime.utcnow()
+    task_record.current_step = (
+        f"第{chapter_index}章已确认，已继续生成下一章"
+        if request.approved
+        else f"第{chapter_index}章已驳回，已启动重写"
+    )
+    update_workflow_run_status(
+        db=db,
+        generation_task=task_record,
+        task_status="success",
+        current_step_key="completed",
+        current_chapter=chapter_index,
+        metadata_updates={
+            "review_decision": review_outcome,
+            "review_feedback": request.feedback.strip() or None,
+            "continued_with_task_id": new_task.id,
+        },
     )
     db.commit()
 
