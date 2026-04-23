@@ -12,6 +12,7 @@ StoryForge AI 精简架构 - 仅保留 4 个核心 Agent:
 
 import openai
 from typing import Dict, Any, Type
+from .agent_contract import AgentContract, get_agent_contract
 from .config import settings
 from utils.logger import logger
 
@@ -29,6 +30,7 @@ class BaseAgent:
 
     def __init__(self, agent_name: str, client: openai.OpenAI, model: str, temperature: float):
         self.agent_name = agent_name
+        self.contract: AgentContract = get_agent_contract(agent_name)
         self.client = client
         self.model = model
         self.default_temperature = temperature
