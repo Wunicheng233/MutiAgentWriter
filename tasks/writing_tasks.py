@@ -17,6 +17,7 @@ from typing import Optional, Dict
 from celery_app import celery_app
 from backend.chapter_sync import sync_chapter_file_to_db
 from core.orchestrator import NovelOrchestrator, WaitingForConfirmationError
+from utils.runtime_context import get_current_output_dir_optional, set_current_output_dir
 from backend.database import SessionLocal
 from backend.models import GenerationTask, Project, User, Chapter
 from backend.workflow_service import (
@@ -52,6 +53,8 @@ def generate_novel_task(
     logger.info(f"Starting generate_novel task, task_id={self.request.id}, project_dir={project_dir}, user_id={user_id}")
 
     # 获取数据库会话，查找对应的GenerationTask记录
+    previous_output_dir = get_current_output_dir_optional()
+    set_current_output_dir(project_dir)
     db = SessionLocal()
     materialized_feedback_files = []
     applied_feedback_item_ids = []
@@ -462,4 +465,5 @@ def generate_novel_task(
         raise
 
     finally:
+        set_current_output_dir(previous_output_dir)
         db.close()

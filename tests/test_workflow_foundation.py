@@ -10,6 +10,7 @@ from sqlalchemy.orm import sessionmaker
 import backend.api.projects as projects_api
 import backend.api.tasks as tasks_api
 import tasks.writing_tasks as writing_tasks
+from utils.runtime_context import get_current_output_dir_optional, set_current_output_dir
 from backend.database import Base, get_db
 from backend.deps import get_current_user
 from backend.main import app
@@ -37,6 +38,7 @@ class WorkflowFoundationTests(unittest.TestCase):
 
     def tearDown(self):
         app.dependency_overrides.clear()
+        set_current_output_dir(None)
         self.engine.dispose()
         self.temp_dir.cleanup()
 
@@ -509,17 +511,23 @@ class WorkflowFoundationTests(unittest.TestCase):
         finally:
             db.close()
 
+        test_case = self
+
         class FakeOrchestrator:
             def __init__(self, project_dir, progress_callback, user_api_key):
+                self.project_dir = Path(project_dir)
                 self.progress_callback = progress_callback
 
             def run_full_novel(self):
+                test_case.assertEqual(get_current_output_dir_optional(), self.project_dir)
                 self.progress_callback(80, "正在生成第 1 章...")
                 self.progress_callback(100, "🎉 完成")
                 return {"generated_chapters": 1}
 
         original_session_local = writing_tasks.SessionLocal
         original_orchestrator = writing_tasks.NovelOrchestrator
+        previous_output_dir = self.workspace / "previous-runtime-project"
+        set_current_output_dir(previous_output_dir)
         try:
             writing_tasks.SessionLocal = self.SessionLocal
             writing_tasks.NovelOrchestrator = FakeOrchestrator
@@ -532,6 +540,7 @@ class WorkflowFoundationTests(unittest.TestCase):
 
         self.assertTrue(result["success"])
         self.assertTrue(result["completed"])
+        self.assertEqual(get_current_output_dir_optional(), previous_output_dir)
 
         db = self.SessionLocal()
         try:
