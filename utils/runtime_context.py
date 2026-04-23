@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from contextlib import contextmanager
 from contextvars import ContextVar
 from pathlib import Path
@@ -16,9 +17,24 @@ import config
 
 
 _current_output_dir: ContextVar[Path | None] = ContextVar("current_output_dir", default=None)
+_current_run_context: ContextVar["RunContext | None"] = ContextVar("current_run_context", default=None)
 
 
-def set_current_output_dir(output_dir: Path | str | None) -> Path | None:
+@dataclass(frozen=True)
+class RunContext:
+    project_id: int | None = None
+    project_path: Path | None = None
+    generation_task_id: int | None = None
+    celery_task_id: str | None = None
+    workflow_run_id: int | None = None
+    user_id: int | None = None
+
+    @property
+    def output_dir(self) -> Path | None:
+        return self.project_path
+
+
+def _set_output_dir(output_dir: Path | str | None) -> Path | None:
     path = Path(output_dir) if output_dir is not None else None
     _current_output_dir.set(path)
     # 兼容仍直接读取 config.CURRENT_OUTPUT_DIR 的旧代码。
@@ -26,7 +42,15 @@ def set_current_output_dir(output_dir: Path | str | None) -> Path | None:
     return path
 
 
+def set_current_output_dir(output_dir: Path | str | None) -> Path | None:
+    _current_run_context.set(None)
+    return _set_output_dir(output_dir)
+
+
 def get_current_output_dir_optional() -> Path | None:
+    run_context = _current_run_context.get()
+    if run_context and run_context.output_dir is not None:
+        return run_context.output_dir
     context_output_dir = _current_output_dir.get()
     if context_output_dir is not None:
         return context_output_dir
@@ -40,6 +64,16 @@ def get_current_output_dir() -> Path:
     return output_dir
 
 
+def set_current_run_context(run_context: RunContext | None) -> RunContext | None:
+    _current_run_context.set(run_context)
+    _set_output_dir(run_context.output_dir if run_context else None)
+    return run_context
+
+
+def get_current_run_context_optional() -> RunContext | None:
+    return _current_run_context.get()
+
+
 @contextmanager
 def use_output_dir(output_dir: Path | str | None) -> Iterator[Path | None]:
     previous_config_output_dir = config.CURRENT_OUTPUT_DIR
@@ -49,4 +83,18 @@ def use_output_dir(output_dir: Path | str | None) -> Iterator[Path | None]:
         yield _current_output_dir.get()
     finally:
         _current_output_dir.reset(token)
+        config.CURRENT_OUTPUT_DIR = previous_config_output_dir
+
+
+@contextmanager
+def use_run_context(run_context: RunContext | None) -> Iterator[RunContext | None]:
+    previous_config_output_dir = config.CURRENT_OUTPUT_DIR
+    run_token = _current_run_context.set(run_context)
+    output_token = _current_output_dir.set(run_context.output_dir if run_context else None)
+    config.CURRENT_OUTPUT_DIR = run_context.output_dir if run_context else None
+    try:
+        yield run_context
+    finally:
+        _current_run_context.reset(run_token)
+        _current_output_dir.reset(output_token)
         config.CURRENT_OUTPUT_DIR = previous_config_output_dir

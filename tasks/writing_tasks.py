@@ -17,7 +17,13 @@ from typing import Optional, Dict
 from celery_app import celery_app
 from backend.chapter_sync import sync_chapter_file_to_db
 from core.orchestrator import NovelOrchestrator, WaitingForConfirmationError
-from utils.runtime_context import get_current_output_dir_optional, set_current_output_dir
+from utils.runtime_context import (
+    RunContext,
+    get_current_output_dir_optional,
+    get_current_run_context_optional,
+    set_current_output_dir,
+    set_current_run_context,
+)
 from backend.database import SessionLocal
 from backend.models import GenerationTask, Project, User, Chapter
 from backend.workflow_service import (
@@ -53,6 +59,7 @@ def generate_novel_task(
     logger.info(f"Starting generate_novel task, task_id={self.request.id}, project_dir={project_dir}, user_id={user_id}")
 
     # 获取数据库会话，查找对应的GenerationTask记录
+    previous_run_context = get_current_run_context_optional()
     previous_output_dir = get_current_output_dir_optional()
     set_current_output_dir(project_dir)
     db = SessionLocal()
@@ -63,6 +70,17 @@ def generate_novel_task(
         task_record = db.query(GenerationTask).filter(
             GenerationTask.celery_task_id == self.request.id
         ).first()
+        if task_record is not None:
+            set_current_run_context(
+                RunContext(
+                    project_id=task_record.project_id,
+                    project_path=Path(project_dir) if project_dir else None,
+                    generation_task_id=task_record.id,
+                    celery_task_id=self.request.id,
+                    workflow_run_id=task_record.workflow_run.id if task_record.workflow_run else None,
+                    user_id=int(user_id) if user_id is not None else None,
+                )
+            )
         # 如果任务已经被取消（用户重置了项目），直接退出不执行
         if task_record and task_record.status == "cancelled":
             logger.info(f"Task {self.request.id} has been cancelled, skipping execution")
@@ -465,5 +483,9 @@ def generate_novel_task(
         raise
 
     finally:
-        set_current_output_dir(previous_output_dir)
+        if previous_run_context is not None:
+            set_current_run_context(previous_run_context)
+        else:
+            set_current_run_context(None)
+            set_current_output_dir(previous_output_dir)
         db.close()

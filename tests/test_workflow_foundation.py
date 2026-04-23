@@ -10,7 +10,7 @@ from sqlalchemy.orm import sessionmaker
 import backend.api.projects as projects_api
 import backend.api.tasks as tasks_api
 import tasks.writing_tasks as writing_tasks
-from utils.runtime_context import get_current_output_dir_optional, set_current_output_dir
+from utils.runtime_context import get_current_output_dir_optional, get_current_run_context_optional, set_current_output_dir
 from backend.database import Base, get_db
 from backend.deps import get_current_user
 from backend.main import app
@@ -501,12 +501,14 @@ class WorkflowFoundationTests(unittest.TestCase):
             db.add(task)
             db.commit()
             db.refresh(task)
-            create_generation_workflow_run(
+            run = create_generation_workflow_run(
                 db=db,
                 project=project,
                 generation_task=task,
                 triggered_by_user_id=owner.id,
             )
+            task_db_id = task.id
+            run_id = run.id
             db.commit()
         finally:
             db.close()
@@ -520,6 +522,14 @@ class WorkflowFoundationTests(unittest.TestCase):
 
             def run_full_novel(self):
                 test_case.assertEqual(get_current_output_dir_optional(), self.project_dir)
+                run_context = get_current_run_context_optional()
+                test_case.assertIsNotNone(run_context)
+                test_case.assertEqual(run_context.project_id, project.id)
+                test_case.assertEqual(run_context.project_path, self.project_dir)
+                test_case.assertEqual(run_context.generation_task_id, task_db_id)
+                test_case.assertEqual(run_context.celery_task_id, "celery-success-1")
+                test_case.assertEqual(run_context.workflow_run_id, run_id)
+                test_case.assertEqual(run_context.user_id, owner.id)
                 self.progress_callback(80, "正在生成第 1 章...")
                 self.progress_callback(100, "🎉 完成")
                 return {"generated_chapters": 1}
@@ -541,6 +551,7 @@ class WorkflowFoundationTests(unittest.TestCase):
         self.assertTrue(result["success"])
         self.assertTrue(result["completed"])
         self.assertEqual(get_current_output_dir_optional(), previous_output_dir)
+        self.assertIsNone(get_current_run_context_optional())
 
         db = self.SessionLocal()
         try:
