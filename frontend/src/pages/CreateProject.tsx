@@ -7,8 +7,11 @@ import { Input, Textarea } from '../components/Input'
 import { Button } from '../components/Button'
 import { ProgressBar } from '../components/ProgressBar'
 import { createProject } from '../utils/endpoints'
-import { useToast } from '../components/Toast'
+import { useToast } from '../components/toastContext'
+import { getErrorMessage } from '../utils/errorMessage'
 import type { ProjectCreate } from '../types/api'
+
+type ContentType = NonNullable<ProjectCreate['content_type']>
 
 const steps = [
   { id: 1, title: '基本信息' },
@@ -57,9 +60,8 @@ export const CreateProject: React.FC = () => {
       showToast('项目创建成功', 'success')
       navigate(`/projects/${data.id}/overview`)
     },
-    onError: (error: any) => {
-      const message = error.response?.data?.detail || '创建失败'
-      showToast(message, 'error')
+    onError: (error: unknown) => {
+      showToast(getErrorMessage(error, '创建失败'), 'error')
     },
   })
 
@@ -129,7 +131,7 @@ export const CreateProject: React.FC = () => {
                         name="content_type"
                         value={type.value}
                         checked={formData.content_type === type.value}
-                        onChange={e => updateForm({ content_type: e.target.value as any })}
+                        onChange={e => updateForm({ content_type: e.target.value as ContentType })}
                         className="sr-only"
                       />
                       {type.label}

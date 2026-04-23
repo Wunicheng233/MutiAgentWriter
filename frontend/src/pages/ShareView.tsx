@@ -85,7 +85,6 @@ export const ShareView: React.FC = () => {
   return (
     <div className={`min-h-screen ${settings.theme} bg-[var(--reader-bg)]`}
       style={{
-        // @ts-ignore
         '--reader-bg': 'var(--reader-bg)',
         '--reader-text': 'var(--reader-text)',
         '--reader-border': 'var(--reader-border)',

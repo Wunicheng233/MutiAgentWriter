@@ -9,6 +9,7 @@ import type {
   QualityAnalytics,
   ProjectCreate,
   ChapterUpdate,
+  TaskStatus,
 } from '../types/api'
 
 // ========== Auth ==========
@@ -20,12 +21,8 @@ export async function register(data: { username: string; email: string; password
 
 export async function login(data: { username: string; password: string }): Promise<Token> {
   const res = await api.post<Token>('/auth/login', data)
-  console.log('Login response:', res.data)
   if (res.data.access_token) {
     localStorage.setItem('access_token', res.data.access_token)
-    console.log('Token saved to localStorage:', res.data.access_token)
-  } else {
-    console.error('No access_token in login response!', res.data)
   }
   return res.data
 }
@@ -114,8 +111,8 @@ export async function regenerateChapter(projectId: number, chapterIndex: number)
 
 // ========== Tasks ==========
 
-export async function getTaskStatus(taskId: string): Promise<any> {
-  const res = await api.get(`/tasks/${taskId}`)
+export async function getTaskStatus(taskId: string): Promise<TaskStatus> {
+  const res = await api.get<TaskStatus>(`/tasks/${taskId}`)
   return res.data
 }
 

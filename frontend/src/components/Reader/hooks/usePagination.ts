@@ -39,12 +39,10 @@ function calculatePagination(
   const currentLines: string[] = [];
   let currentLineCount = 0;
   let currentStartOffset = 0;
-  let totalOffset = 0;
 
   for (const para of paragraphs) {
     const trimmedPara = para.trim();
     let remainingText = FIRST_LINE_INDENT + trimmedPara;
-    totalOffset += FIRST_LINE_INDENT.length;
 
     while (remainingText.length > 0) {
       const fitLength = measurer.fitTextToWidth(
@@ -56,7 +54,6 @@ function calculatePagination(
 
       const line = remainingText.slice(0, fitLength);
       remainingText = remainingText.slice(fitLength);
-      totalOffset += fitLength;
 
       if (currentLineCount >= linesPerPage) {
         const pageContent = currentLines.join('\n');
@@ -122,31 +119,32 @@ export function usePagination(
   useEffect(() => {
     // 检查容器尺寸，如果为 0 不计算
     if (containerWidth <= 0 || containerHeight <= 0) {
-      setPages([]);
-      setTotalPages(0);
+      queueMicrotask(() => {
+        setPages([]);
+        setTotalPages(0);
+      });
       return;
     }
 
     if (!content || content.trim().length === 0) {
-      setPages([]);
-      setTotalPages(0);
-      return;
-    }
-    if (!content || content.trim().length === 0) {
-      setPages([]);
-      setTotalPages(0);
+      queueMicrotask(() => {
+        setPages([]);
+        setTotalPages(0);
+      });
       return;
     }
 
     if (paginationCache.has(cacheKey)) {
       const cachedPages = paginationCache.get(cacheKey)!;
-      setPages(cachedPages);
-      setTotalPages(cachedPages.length);
+      queueMicrotask(() => {
+        setPages(cachedPages);
+        setTotalPages(cachedPages.length);
+      });
       return;
     }
 
     // 没有缓存，需要计算
-    setLoading(true);
+    queueMicrotask(() => setLoading(true));
 
     // 尝试使用 Web Worker，如果失败回退到主线程
     try {
@@ -193,13 +191,15 @@ export function usePagination(
         PaginationWorker.removeEventListener('error', handleError);
         PaginationWorker.terminate();
       };
-    } catch (e) {
+    } catch {
       // Worker 创建失败，直接在主线程计算
       const result = calculatePagination(content, containerWidth, containerHeight, fontSize, lineHeight, fontFamily);
       paginationCache.set(cacheKey, result.pages);
-      setPages(result.pages);
-      setTotalPages(result.totalPages);
-      setLoading(false);
+      queueMicrotask(() => {
+        setPages(result.pages);
+        setTotalPages(result.totalPages);
+        setLoading(false);
+      });
     }
   }, [content, containerWidth, containerHeight, fontSize, lineHeight, fontFamily, cacheKey]);
 

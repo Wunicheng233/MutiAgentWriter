@@ -22,7 +22,8 @@ import {
   type ChapterVersionInfo,
 } from '../utils/endpoints'
 import api from '../utils/api'
-import { useToast } from '../components/Toast'
+import { useToast } from '../components/toastContext'
+import { getErrorMessage } from '../utils/errorMessage'
 
 // 精简架构：仅 4 个核心 Agent
 const agentNames = [
@@ -60,7 +61,7 @@ export const Editor: React.FC = () => {
     let tableStarted = false;
 
     for (let i = 0; i < lines.length; i++) {
-      let line = lines[i];
+      const line = lines[i];
       if (line.trim().startsWith('|') && line.trim().endsWith('|')) {
         if (!tableStarted) {
           processedLines.push('<table class="border-collapse my-3 w-full bg-bg rounded border border-border overflow-hidden">');
@@ -205,28 +206,35 @@ export const Editor: React.FC = () => {
 
     if (project.status === 'completed') {
       // 全部完成，所有agent都是done
-      setAgentStates(prev => {
-        const newStates = { ...prev }
-        Object.keys(newStates).forEach(k => newStates[k as keyof typeof newStates] = 'done')
-        return newStates
+      queueMicrotask(() => {
+        setAgentStates(prev => {
+          const newStates = { ...prev }
+          Object.keys(newStates).forEach(k => newStates[k as keyof typeof newStates] = 'done')
+          return newStates
+        })
       })
     } else if (project.status === 'generating') {
       if (project.current_generation_task) {
-        setPollingTaskId(project.current_generation_task.celery_task_id)
-        // 立即根据任务已有进度更新agent状态，不需要等第一次轮询
-        const progress = project.current_generation_task.progress || 0
-        const currentStep = project.current_generation_task.current_step || ''
-        const currentChapter = project.current_generation_task.current_chapter ?? null
-        updateAgentStatesFromProgress(progress, currentChapter, currentStep)
+        const task = project.current_generation_task
+        queueMicrotask(() => {
+          setPollingTaskId(task.celery_task_id)
+          // 立即根据任务已有进度更新agent状态，不需要等第一次轮询
+          const progress = task.progress || 0
+          const currentStep = task.current_step || ''
+          const currentChapter = task.current_chapter ?? null
+          updateAgentStatesFromProgress(progress, currentChapter, currentStep)
+        })
       } else if (!pollingTaskId && chapter && chapter.status === 'generated') {
         // 项目还在生成中，但当前章节已经生成完毕，前面的agents都完成了
-        setAgentStates(prev => {
-          const newStates = { ...prev }
-          newStates.planner = 'done'
-          newStates.writer = 'done'
-          newStates.critic = 'done'
-          newStates.revise = 'done'
-          return newStates
+        queueMicrotask(() => {
+          setAgentStates(prev => {
+            const newStates = { ...prev }
+            newStates.planner = 'done'
+            newStates.writer = 'done'
+            newStates.critic = 'done'
+            newStates.revise = 'done'
+            return newStates
+          })
         })
       } else if (!pollingTaskId) {
         // 保险措施：项目状态是generating但没有找到current_generation_task，
@@ -235,10 +243,12 @@ export const Editor: React.FC = () => {
       }
     } else if (chapter && chapter.status === 'generated') {
       // 其他情况（比如draft但已经生成），如果章节已经生成，所有agent完成
-      setAgentStates(prev => {
-        const newStates = { ...prev }
-        Object.keys(newStates).forEach(k => newStates[k as keyof typeof newStates] = 'done')
-        return newStates
+      queueMicrotask(() => {
+        setAgentStates(prev => {
+          const newStates = { ...prev }
+          Object.keys(newStates).forEach(k => newStates[k as keyof typeof newStates] = 'done')
+          return newStates
+        })
       })
     }
   }, [project, projectId, pollingTaskId, queryClient, chapter, updateAgentStatesFromProgress])
@@ -272,7 +282,7 @@ export const Editor: React.FC = () => {
   const convertPlainTextToHtml = useCallback((text: string): string => {
     if (!text) return ''
     // 按换行分割，过滤掉空行，每一行作为一个段落
-    let lines = text.split('\n')
+    const lines = text.split('\n')
       .map(line => line.trim())
       .filter(line => line !== '') // 跳过空行
     return lines
@@ -332,8 +342,8 @@ export const Editor: React.FC = () => {
       newStates.writer = 'running'
       setAgentStates(newStates)
       showToast('重新生成任务已提交', 'success')
-    } catch (e: any) {
-      showToast(e.response?.data?.detail || '提交失败', 'error')
+    } catch (e: unknown) {
+      showToast(getErrorMessage(e, '提交失败'), 'error')
     }
   }
 
@@ -352,7 +362,7 @@ export const Editor: React.FC = () => {
         // 任务等待用户确认
         if (status.db_status === 'waiting_confirm') {
           clearInterval(interval)
-          setWaitingConfirmChapter(status.current_chapter)
+          setWaitingConfirmChapter(status.current_chapter ?? null)
           // 如果是策划方案确认，加载预览
           if (status.current_chapter === 0) {
             try {
@@ -407,8 +417,8 @@ export const Editor: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['chapter', projectId, chapterIdx] })
       showToast('已恢复到所选版本', 'success')
       loadVersions()
-    } catch (e: any) {
-      showToast(e.response?.data?.detail || '恢复失败', 'error')
+    } catch (e: unknown) {
+      showToast(getErrorMessage(e, '恢复失败'), 'error')
     }
   }
 
@@ -432,8 +442,8 @@ export const Editor: React.FC = () => {
       setWaitingConfirmChapter(null)
       setPollingTaskId(res.new_task_id)
       setFeedbackText('')
-    } catch (e: any) {
-      showToast(e.response?.data?.detail || '提交失败', 'error')
+    } catch (e: unknown) {
+      showToast(getErrorMessage(e, '提交失败'), 'error')
     }
   }
 
@@ -441,12 +451,6 @@ export const Editor: React.FC = () => {
   const wordCount = chapter?.content
     ? (chapter.content.match(/[\u4e00-\u9fff]/g) || []).length
     : 0
-
-  useEffect(() => {
-    if (showVersionHistory) {
-      loadVersions()
-    }
-  }, [showVersionHistory, loadVersions])
 
   if (isLoading) {
     return (

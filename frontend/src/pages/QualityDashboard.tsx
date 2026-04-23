@@ -5,6 +5,7 @@ import ReactECharts from 'echarts-for-react'
 import { Layout } from '../components/Layout'
 import { Card } from '../components/Card'
 import { Badge } from '../components/Badge'
+import type { BadgeVariant } from '../components/Badge'
 import { Button } from '../components/Button'
 import { ProgressBar } from '../components/ProgressBar'
 import { getProjectAnalytics } from '../utils/endpoints'
@@ -169,7 +170,7 @@ export const QualityDashboard: React.FC = () => {
     ],
   }
 
-  const getScoreColor = (score: number) => {
+  const getScoreColor = (score: number): BadgeVariant => {
     if (score >= 8) return 'agent'
     if (score >= 6) return 'status'
     if (score >= 4) return 'secondary'
@@ -238,11 +239,11 @@ export const QualityDashboard: React.FC = () => {
             <div key={chapter.chapter_index} className="flex justify-between items-center p-3 border border-border rounded-standard hover:border-sage/30 transition-colors">
               <div>
                 <span className="font-medium">{chapter.title || `第${chapter.chapter_index}章`}</span>
-                <Badge variant={chapter.status as any} className="ml-3">
+                <Badge variant="secondary" className="ml-3">
                   {chapter.status}
                 </Badge>
               </div>
-              <Badge variant={getScoreColor(chapter.quality_score) as any}>
+              <Badge variant={getScoreColor(chapter.quality_score)}>
                 {chapter.quality_score.toFixed(1)}/10
               </Badge>
             </div>

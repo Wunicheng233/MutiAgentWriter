@@ -189,7 +189,6 @@ export const ReaderCore: React.FC<ReaderCoreProps> = ({
     <div
       className={`min-h-screen ${themeClass} bg-[var(--reader-bg)] transition-colors duration-300`}
       style={{
-        // @ts-ignore CSS variable
         '--reader-font-size': `${actualFontSize}px`,
         '--reader-line-height': actualLineHeight,
       } as React.CSSProperties}

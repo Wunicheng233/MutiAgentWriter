@@ -1,4 +1,22 @@
 // API 类型定义
+export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue }
+
+export interface ProjectConfig {
+  novel_name?: string
+  novel_description?: string
+  core_requirement?: string
+  genre?: string
+  total_words?: number
+  core_hook?: string
+  target_platform?: string
+  chapter_word_count?: number
+  start_chapter?: number
+  end_chapter?: number
+  skip_plan_confirmation?: boolean
+  skip_chapter_confirmation?: boolean
+  allow_plot_adjustment?: boolean
+  [key: string]: JsonValue | undefined
+}
 
 export interface User {
   id: number
@@ -22,8 +40,8 @@ export interface Project {
   description?: string
   content_type: string
   status: string
-  config?: Record<string, any>
-  bible?: Record<string, any>
+  config?: ProjectConfig
+  bible?: Record<string, JsonValue>
   file_path?: string
   overall_quality_score: number
   dimension_average_scores?: Record<string, number>
@@ -42,7 +60,7 @@ export interface Chapter {
   word_count: number
   quality_score: number
   status: string
-  agent_logs?: Record<string, any>
+  agent_logs?: Record<string, JsonValue>
   created_at: string
   updated_at: string
 }
@@ -58,6 +76,15 @@ export interface GenerationTask {
   error_message?: string
   started_at: string
   completed_at?: string
+}
+
+export interface TaskStatus {
+  progress: number
+  current_step?: string
+  current_chapter?: number
+  celery_state?: string
+  db_status?: string
+  error?: string
 }
 
 export interface QualityAnalytics {
@@ -90,7 +117,7 @@ export interface ProjectCreate {
   skip_plan_confirmation?: boolean
   skip_chapter_confirmation?: boolean
   allow_plot_adjustment?: boolean
-  config?: Record<string, any>
+  config?: ProjectConfig
 }
 
 export interface ChapterUpdate {

@@ -17,7 +17,7 @@ export function useContentSync(initialContent: string) {
   // 当外部内容变化时更新
   useEffect(() => {
     if (!isDirty) {
-      setContent(initialContent);
+      queueMicrotask(() => setContent(initialContent));
     }
   }, [initialContent, isDirty]);
 

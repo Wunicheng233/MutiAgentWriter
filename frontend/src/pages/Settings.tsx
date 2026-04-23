@@ -8,7 +8,7 @@ import { Button } from '../components/Button'
 import { Input } from '../components/Input'
 import { useAuthStore } from '../store/useAuthStore'
 import { clearApiKey, getUserMonthlyTokenStats, updateApiKey } from '../utils/endpoints'
-import { useToast } from '../components/Toast'
+import { useToast } from '../components/toastContext'
 
 export const Settings: React.FC = () => {
   const { user, setUser } = useAuthStore()

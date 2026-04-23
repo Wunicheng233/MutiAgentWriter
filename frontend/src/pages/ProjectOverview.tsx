@@ -4,12 +4,14 @@ import { Link, useParams } from 'react-router-dom'
 import { Layout } from '../components/Layout'
 import { Card } from '../components/Card'
 import { Badge } from '../components/Badge'
+import type { BadgeVariant } from '../components/Badge'
 import { Button } from '../components/Button'
 import { Input } from '../components/Input'
 import { ProgressBar } from '../components/ProgressBar'
 import { getProject, triggerGenerate, triggerExport, downloadExportFile, getTaskStatus, getProjectTokenStats, createShareLink, listCollaborators, addCollaborator, removeCollaborator, resetProject, updateProject, cleanStuckTasks } from '../utils/endpoints'
 import { useAuthStore } from '../store/useAuthStore'
-import { useToast } from '../components/Toast'
+import { useToast } from '../components/toastContext'
+import { getErrorMessage } from '../utils/errorMessage'
 
 export const ProjectOverview: React.FC = () => {
   const { id } = useParams<{ id: string }>()
@@ -65,8 +67,8 @@ export const ProjectOverview: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['project', projectId] })
       setEditingConfig(false)
     },
-    onError: (error: any) => {
-      showToast(error.response?.data?.detail || '更新失败', 'error')
+    onError: (error: unknown) => {
+      showToast(getErrorMessage(error, '更新失败'), 'error')
     },
   })
 
@@ -101,8 +103,8 @@ export const ProjectOverview: React.FC = () => {
       showToast('协作者添加成功', 'success')
       setNewCollaboratorUsername('')
       queryClient.invalidateQueries({ queryKey: ['collaborators', projectId] })
-    } catch (e: any) {
-      showToast(e.response?.data?.detail || '添加失败', 'error')
+    } catch (e: unknown) {
+      showToast(getErrorMessage(e, '添加失败'), 'error')
     } finally {
       setAddingCollaborator(false)
     }
@@ -113,8 +115,8 @@ export const ProjectOverview: React.FC = () => {
       await removeCollaborator(projectId, collabId)
       showToast('协作者移除成功', 'success')
       queryClient.invalidateQueries({ queryKey: ['collaborators', projectId] })
-    } catch (e: any) {
-      showToast(e.response?.data?.detail || '移除失败', 'error')
+    } catch (e: unknown) {
+      showToast(getErrorMessage(e, '移除失败'), 'error')
     }
   }
 
@@ -130,8 +132,8 @@ export const ProjectOverview: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['project', projectId] })
       setShowResetConfirm(false)
       setResetting(false)
-    } catch (e: any) {
-      showToast(e.response?.data?.detail || '重置失败', 'error')
+    } catch (e: unknown) {
+      showToast(getErrorMessage(e, '重置失败'), 'error')
       setResetting(false)
     }
   }
@@ -148,8 +150,8 @@ export const ProjectOverview: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['project', projectId] })
       setShowCleanConfirm(false)
       setCleaningStuck(false)
-    } catch (e: any) {
-      showToast(e.response?.data?.detail || '清理失败', 'error')
+    } catch (e: unknown) {
+      showToast(getErrorMessage(e, '清理失败'), 'error')
       setCleaningStuck(false)
     }
   }
@@ -161,8 +163,8 @@ export const ProjectOverview: React.FC = () => {
       await triggerGenerate(projectId, isRegenerate)
       showToast(isRegenerate ? '重新生成任务已提交，已有章节已清空' : '生成任务已提交', 'success')
       refetch()
-    } catch (e: any) {
-      showToast(e.response?.data?.detail || '提交失败', 'error')
+    } catch (e: unknown) {
+      showToast(getErrorMessage(e, '提交失败'), 'error')
     }
   }
 
@@ -174,8 +176,8 @@ export const ProjectOverview: React.FC = () => {
       setExportProgress(0)
       setExportStep(`准备导出 ${format}...`)
       showToast('导出任务已提交', 'success')
-    } catch (e: any) {
-      showToast(e.response?.data?.detail || '提交失败', 'error')
+    } catch (e: unknown) {
+      showToast(getErrorMessage(e, '提交失败'), 'error')
     }
   }
 
@@ -187,8 +189,8 @@ export const ProjectOverview: React.FC = () => {
       setShareUrl(fullUrl)
       await navigator.clipboard.writeText(fullUrl)
       showToast('分享链接已创建并复制到剪贴板', 'success')
-    } catch (e: any) {
-      showToast(e.response?.data?.detail || '创建失败', 'error')
+    } catch (e: unknown) {
+      showToast(getErrorMessage(e, '创建失败'), 'error')
     } finally {
       setCreatingShare(false)
     }
@@ -248,7 +250,7 @@ export const ProjectOverview: React.FC = () => {
   }
 
   const config = data.config
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string): BadgeVariant => {
     switch (status) {
       case 'draft': return 'secondary'
       case 'generating': return 'status'
@@ -283,7 +285,7 @@ export const ProjectOverview: React.FC = () => {
               <p className="text-secondary mt-1">{data.description}</p>
             )}
           </div>
-          <Badge variant={getStatusColor(data.status) as any}>
+          <Badge variant={getStatusColor(data.status)}>
             {getStatusText(data.status)}
           </Badge>
         </div>

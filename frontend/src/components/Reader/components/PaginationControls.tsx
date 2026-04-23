@@ -14,7 +14,6 @@ export const PaginationControls: React.FC<PaginationControlsProps> = ({
   totalPages,
   onPrevPage,
   onNextPage,
-  onGoToPage: _onGoToPage,
 }) => {
   if (totalPages <= 1) return null;
 

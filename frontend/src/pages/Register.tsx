@@ -6,7 +6,8 @@ import { Card } from '../components/Card'
 import { Input } from '../components/Input'
 import { Button } from '../components/Button'
 import { register } from '../utils/endpoints'
-import { useToast } from '../components/Toast'
+import { useToast } from '../components/toastContext'
+import { getErrorMessage } from '../utils/errorMessage'
 
 export const Register: React.FC = () => {
   const [username, setUsername] = useState('')
@@ -22,9 +23,8 @@ export const Register: React.FC = () => {
       showToast('注册成功，请登录', 'success')
       navigate('/login')
     },
-    onError: (error: any) => {
-      const message = error.response?.data?.detail || '注册失败'
-      showToast(message, 'error')
+    onError: (error: unknown) => {
+      showToast(getErrorMessage(error, '注册失败'), 'error')
     },
   })
 

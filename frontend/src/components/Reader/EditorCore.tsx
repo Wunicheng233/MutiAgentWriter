@@ -16,7 +16,7 @@ interface EditorCoreProps {
 // 将纯文本转换为 HTML 段落（和 Editor.tsx 保持一致）
 const convertPlainTextToHtml = (text: string): string => {
   if (!text) return '';
-  let lines = text.split('\n')
+  const lines = text.split('\n')
     .map(line => line.trim())
     .filter(line => line !== '');
   return lines
@@ -84,7 +84,6 @@ export const EditorCore: React.FC<EditorCoreProps> = ({
   return (
     <div className={`min-h-screen ${themeClass} bg-[var(--reader-bg)] transition-colors duration-300 pb-20`}
       style={{
-        // @ts-ignore
         '--reader-font-size': `${actualFontSize}px`,
         '--reader-line-height': actualLineHeight,
       } as React.CSSProperties}

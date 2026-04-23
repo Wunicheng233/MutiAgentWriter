@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { Layout } from '../components/Layout'
 import { Card } from '../components/Card'
 import { Badge } from '../components/Badge'
+import type { BadgeVariant } from '../components/Badge'
 import { Button } from '../components/Button'
 import { ProgressBar } from '../components/ProgressBar'
 import { listProjects } from '../utils/endpoints'
@@ -15,7 +16,7 @@ export const Dashboard: React.FC = () => {
     queryFn: () => listProjects(),
   })
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string): BadgeVariant => {
     switch (status) {
       case 'draft': return 'secondary'
       case 'generating': return 'status'
@@ -64,7 +65,7 @@ export const Dashboard: React.FC = () => {
 
               <div className="flex justify-between items-start mb-4 pl-3">
                 <h3 className="text-card text-xl font-serif text-inkwell">{project.name}</h3>
-                <Badge variant={getStatusColor(project.status) as any}>
+                <Badge variant={getStatusColor(project.status)}>
                   {getStatusText(project.status)}
                 </Badge>
               </div>

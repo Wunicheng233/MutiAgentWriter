@@ -4,6 +4,7 @@ import { Link, useParams } from 'react-router-dom'
 import { Layout } from '../components/Layout'
 import { Card } from '../components/Card'
 import { Badge } from '../components/Badge'
+import type { BadgeVariant } from '../components/Badge'
 import { Button } from '../components/Button'
 import { listChapters } from '../utils/endpoints'
 import { getProject } from '../utils/endpoints'
@@ -22,7 +23,7 @@ export const ChapterList: React.FC = () => {
     queryFn: () => listChapters(projectId),
   })
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string): BadgeVariant => {
     switch (status) {
       case 'draft': return 'genre'
       case 'generated': return 'agent'
@@ -59,7 +60,7 @@ export const ChapterList: React.FC = () => {
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <Badge variant={getStatusColor(chapter.status) as any}>
+                <Badge variant={getStatusColor(chapter.status)}>
                   {chapter.status}
                 </Badge>
                 <Link to={`/projects/${id}/read/${chapter.chapter_index}`}>

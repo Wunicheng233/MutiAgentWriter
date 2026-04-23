@@ -7,7 +7,8 @@ import { Input } from '../components/Input'
 import { Button } from '../components/Button'
 import { useAuthStore } from '../store/useAuthStore'
 import { login } from '../utils/endpoints'
-import { useToast } from '../components/Toast'
+import { useToast } from '../components/toastContext'
+import { getErrorMessage } from '../utils/errorMessage'
 
 export const Login: React.FC = () => {
   const [username, setUsername] = useState('')
@@ -19,24 +20,18 @@ export const Login: React.FC = () => {
   const { mutate, isPending } = useMutation({
     mutationFn: () => login({ username, password }),
     onSuccess: (data) => {
-      console.log('Login success:', data)
-      console.log('Token saved:', data.access_token)
       setUser(data.user)
       showToast('登录成功', 'success')
       navigate('/')
     },
-    onError: (error: any) => {
-      console.error('Login failed:', error)
-      console.error('Response:', error.response)
-      const message = error.response?.data?.detail || '登录失败'
-      showToast(message, 'error')
+    onError: (error: unknown) => {
+      showToast(getErrorMessage(error, '登录失败'), 'error')
     },
   })
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    console.log('Starting login mutation...')
     mutate()
   }
 

@@ -17,7 +17,7 @@ import { useReaderSettings } from './hooks/useReaderSettings';
 import { useContentSync } from './hooks/useContentSync';
 import { updateChapter } from '../../utils/endpoints';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useToast } from '../../components/Toast';
+import { useToast } from '../../components/toastContext';
 import type { PaginationResponse } from './types';
 
 const Reader: React.FC = () => {

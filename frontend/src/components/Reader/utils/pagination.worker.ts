@@ -20,12 +20,10 @@ self.onmessage = (e: MessageEvent<PaginationRequest>) => {
   const currentLines: string[] = [];
   let currentLineCount = 0;
   let currentStartOffset = 0;
-  let totalOffset = 0;
 
   for (const para of paragraphs) {
     const trimmedPara = para.trim();
     let remainingText = FIRST_LINE_INDENT + trimmedPara;
-    totalOffset += FIRST_LINE_INDENT.length;
 
     while (remainingText.length > 0) {
       const fitLength = measurer.fitTextToWidth(
@@ -37,7 +35,6 @@ self.onmessage = (e: MessageEvent<PaginationRequest>) => {
 
       const line = remainingText.slice(0, fitLength);
       remainingText = remainingText.slice(fitLength);
-      totalOffset += fitLength;
 
       // 检查是否超出当前页
       if (currentLineCount >= linesPerPage) {
