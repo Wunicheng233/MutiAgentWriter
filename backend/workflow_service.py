@@ -36,15 +36,103 @@ def _next_artifact_version(
     project_id: int,
     artifact_type: str,
     scope: str,
+    chapter_id: int | None = None,
     chapter_index: int | None = None,
 ) -> int:
-    current_max = db.query(func.max(Artifact.version_number)).filter(
+    query = db.query(func.max(Artifact.version_number)).filter(
         Artifact.project_id == project_id,
         Artifact.artifact_type == artifact_type,
         Artifact.scope == scope,
-        Artifact.chapter_index == chapter_index,
-    ).scalar()
+    )
+    if chapter_index is not None:
+        query = query.filter(Artifact.chapter_index == chapter_index)
+    elif chapter_id is not None:
+        query = query.filter(Artifact.chapter_id == chapter_id)
+    else:
+        query = query.filter(Artifact.chapter_index.is_(None), Artifact.chapter_id.is_(None))
+
+    current_max = query.scalar()
     return (current_max or 0) + 1
+
+
+def _matching_artifact_query(
+    db: Session,
+    project_id: int,
+    artifact_type: str,
+    scope: str,
+    chapter_id: int | None = None,
+    chapter_index: int | None = None,
+):
+    query = db.query(Artifact).filter(
+        Artifact.project_id == project_id,
+        Artifact.artifact_type == artifact_type,
+        Artifact.scope == scope,
+    )
+    if chapter_index is not None:
+        return query.filter(Artifact.chapter_index == chapter_index)
+    if chapter_id is not None:
+        return query.filter(Artifact.chapter_id == chapter_id)
+    return query.filter(Artifact.chapter_index.is_(None), Artifact.chapter_id.is_(None))
+
+
+def create_artifact(
+    db: Session,
+    project_id: int,
+    artifact_type: str,
+    scope: str,
+    workflow_run_id: int | None = None,
+    chapter_id: int | None = None,
+    chapter_index: int | None = None,
+    source: str = "system",
+    content_text: str | None = None,
+    content_json: dict | list | None = None,
+    is_current: bool = True,
+) -> Artifact:
+    """Create a versioned artifact and keep the current pointer consistent."""
+    if not artifact_type:
+        raise ValueError("artifact_type is required")
+    if scope not in {"project", "chapter", "step"}:
+        raise ValueError(f"Unsupported artifact scope: {scope}")
+    if source not in {"system", "user", "agent"}:
+        raise ValueError(f"Unsupported artifact source: {source}")
+
+    version = _next_artifact_version(
+        db=db,
+        project_id=project_id,
+        artifact_type=artifact_type,
+        scope=scope,
+        chapter_id=chapter_id,
+        chapter_index=chapter_index,
+    )
+
+    if is_current:
+        current_artifacts = _matching_artifact_query(
+            db=db,
+            project_id=project_id,
+            artifact_type=artifact_type,
+            scope=scope,
+            chapter_id=chapter_id,
+            chapter_index=chapter_index,
+        ).filter(Artifact.is_current.is_(True)).all()
+        for existing_artifact in current_artifacts:
+            existing_artifact.is_current = False
+
+    artifact = Artifact(
+        project_id=project_id,
+        workflow_run_id=workflow_run_id,
+        chapter_id=chapter_id,
+        artifact_type=artifact_type,
+        scope=scope,
+        chapter_index=chapter_index,
+        version_number=version,
+        is_current=is_current,
+        source=source,
+        content_text=content_text,
+        content_json=content_json,
+    )
+    db.add(artifact)
+    db.flush()
+    return artifact
 
 
 def _infer_step_type(step_key: str) -> str:
@@ -186,23 +274,15 @@ def create_generation_workflow_run(
     db.add(run)
     db.flush()
 
-    version = _next_artifact_version(
+    create_artifact(
         db=db,
-        project_id=project.id,
-        artifact_type="project_config_snapshot",
-        scope="project",
-    )
-    artifact = Artifact(
         project_id=project.id,
         workflow_run_id=run.id,
         artifact_type="project_config_snapshot",
         scope="project",
-        version_number=version,
-        is_current=True,
         source="system",
         content_json=project.config or {},
     )
-    db.add(artifact)
 
     step = WorkflowStepRun(
         workflow_run_id=run.id,

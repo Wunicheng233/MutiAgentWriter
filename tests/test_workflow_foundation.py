@@ -17,7 +17,7 @@ from backend.main import app
 from backend.models import Artifact, Chapter, FeedbackItem, GenerationTask, Project, User, WorkflowRun, WorkflowStepRun
 from backend.chapter_sync import parse_chapter_file_content, sync_chapter_file_to_db
 from backend.task_status import ACTIVE_TASK_STATUSES
-from backend.workflow_service import create_feedback_item, create_generation_workflow_run, update_workflow_run_status
+from backend.workflow_service import create_artifact, create_feedback_item, create_generation_workflow_run, update_workflow_run_status
 
 
 class WorkflowFoundationTests(unittest.TestCase):
@@ -135,6 +135,118 @@ class WorkflowFoundationTests(unittest.TestCase):
             ).one()
             self.assertEqual(queued_step.status, "completed")
             self.assertEqual(queued_step.step_type, "system")
+        finally:
+            db.close()
+
+    def test_create_artifact_versions_project_artifacts_and_keeps_single_current(self):
+        owner = self._create_user("artifact_owner", "artifact_owner@example.com")
+        project = self._create_project(owner, name="Artifact Novel")
+
+        db = self.SessionLocal()
+        try:
+            first_artifact = create_artifact(
+                db=db,
+                project_id=project.id,
+                artifact_type="project_config_snapshot",
+                scope="project",
+                source="system",
+                content_json={"novel_name": "Artifact Novel v1"},
+            )
+            second_artifact = create_artifact(
+                db=db,
+                project_id=project.id,
+                artifact_type="project_config_snapshot",
+                scope="project",
+                source="system",
+                content_json={"novel_name": "Artifact Novel v2"},
+            )
+            db.commit()
+            db.refresh(first_artifact)
+            db.refresh(second_artifact)
+
+            self.assertEqual(first_artifact.version_number, 1)
+            self.assertFalse(first_artifact.is_current)
+            self.assertEqual(second_artifact.version_number, 2)
+            self.assertTrue(second_artifact.is_current)
+
+            current_artifacts = db.query(Artifact).filter(
+                Artifact.project_id == project.id,
+                Artifact.artifact_type == "project_config_snapshot",
+                Artifact.scope == "project",
+                Artifact.is_current.is_(True),
+            ).all()
+            self.assertEqual([artifact.id for artifact in current_artifacts], [second_artifact.id])
+        finally:
+            db.close()
+
+    def test_create_artifact_versions_chapter_artifacts_independently(self):
+        owner = self._create_user("chapter_artifact_owner", "chapter_artifact_owner@example.com")
+        project = self._create_project(owner, name="Chapter Artifact Novel")
+
+        db = self.SessionLocal()
+        try:
+            chapter_one_v1 = create_artifact(
+                db=db,
+                project_id=project.id,
+                artifact_type="chapter_draft",
+                scope="chapter",
+                chapter_index=1,
+                source="agent",
+                content_text="第一章初稿",
+            )
+            chapter_one_v2 = create_artifact(
+                db=db,
+                project_id=project.id,
+                artifact_type="chapter_draft",
+                scope="chapter",
+                chapter_index=1,
+                source="agent",
+                content_text="第一章二稿",
+            )
+            chapter_two_v1 = create_artifact(
+                db=db,
+                project_id=project.id,
+                artifact_type="chapter_draft",
+                scope="chapter",
+                chapter_index=2,
+                source="agent",
+                content_text="第二章初稿",
+            )
+            db.commit()
+            db.refresh(chapter_one_v1)
+            db.refresh(chapter_one_v2)
+            db.refresh(chapter_two_v1)
+
+            self.assertEqual(chapter_one_v1.version_number, 1)
+            self.assertFalse(chapter_one_v1.is_current)
+            self.assertEqual(chapter_one_v2.version_number, 2)
+            self.assertTrue(chapter_one_v2.is_current)
+            self.assertEqual(chapter_two_v1.version_number, 1)
+            self.assertTrue(chapter_two_v1.is_current)
+        finally:
+            db.close()
+
+    def test_create_artifact_rejects_unknown_scope_and_source(self):
+        owner = self._create_user("invalid_artifact_owner", "invalid_artifact_owner@example.com")
+        project = self._create_project(owner, name="Invalid Artifact Novel")
+
+        db = self.SessionLocal()
+        try:
+            with self.assertRaises(ValueError):
+                create_artifact(
+                    db=db,
+                    project_id=project.id,
+                    artifact_type="chapter_draft",
+                    scope="unknown",
+                )
+            with self.assertRaises(ValueError):
+                create_artifact(
+                    db=db,
+                    project_id=project.id,
+                    artifact_type="chapter_draft",
+                    scope="chapter",
+                    source="external",
+                )
         finally:
             db.close()
 
