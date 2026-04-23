@@ -645,6 +645,7 @@ class WorkflowFoundationTests(unittest.TestCase):
                 test_case.assertEqual(run_context.workflow_run_id, run_id)
                 test_case.assertEqual(run_context.user_id, owner.id)
                 self.progress_callback(80, "正在生成第 1 章...")
+                self.progress_callback(90, "第 1 章生成完成")
                 self.progress_callback(100, "🎉 完成")
                 return {"generated_chapters": 1}
 
@@ -676,6 +677,19 @@ class WorkflowFoundationTests(unittest.TestCase):
             self.assertEqual(run.current_step_key, "completed")
             self.assertIsNotNone(run.completed_at)
             self.assertTrue(run.run_metadata["completed"])
+            chapter_artifacts = db.query(Artifact).filter(
+                Artifact.project_id == project.id,
+                Artifact.artifact_type == "chapter_draft",
+                Artifact.scope == "chapter",
+                Artifact.chapter_index == 1,
+            ).all()
+            self.assertEqual(len(chapter_artifacts), 1)
+            chapter_artifact = chapter_artifacts[0]
+            self.assertEqual(chapter_artifact.workflow_run_id, run.id)
+            self.assertEqual(chapter_artifact.version_number, 1)
+            self.assertTrue(chapter_artifact.is_current)
+            self.assertIn("章节内容", chapter_artifact.content_text)
+            self.assertEqual(chapter_artifact.content_json["title"], "第1章 标题")
             step_keys = [
                 (step.step_key, step.status, step.chapter_index)
                 for step in db.query(WorkflowStepRun)
@@ -691,6 +705,12 @@ class WorkflowFoundationTests(unittest.TestCase):
                     ("completed", "completed", None),
                 ],
             )
+            generating_step = db.query(WorkflowStepRun).filter(
+                WorkflowStepRun.workflow_run_id == run.id,
+                WorkflowStepRun.step_key == "generating_chapter",
+                WorkflowStepRun.chapter_index == 1,
+            ).one()
+            self.assertEqual(generating_step.output_artifact_id, chapter_artifact.id)
         finally:
             db.close()
 

@@ -28,6 +28,7 @@ from backend.database import SessionLocal
 from backend.models import GenerationTask, Project, User, Chapter
 from backend.workflow_service import (
     materialize_open_feedback_files,
+    record_chapter_draft_artifact,
     reconcile_consumed_feedback_files,
     update_workflow_run_status,
 )
@@ -114,7 +115,7 @@ def generate_novel_task(
         workflow_step_key = "running"
 
         # 解析当前步骤
-        if "正在生成第" in message and "章" in message:
+        if ("正在生成第" in message or "章生成完成" in message) and "章" in message:
             match = re.search(r"第\s*(\d+)\s*章", message)
             if match:
                 current_chapter = int(match.group(1))
@@ -226,6 +227,14 @@ def generate_novel_task(
                             status="generated",
                         )
                         if synced_chapter is not None:
+                            record_chapter_draft_artifact(
+                                db=db,
+                                project_id=project.id,
+                                chapter=synced_chapter,
+                                workflow_run_id=task_record.workflow_run.id if task_record.workflow_run else None,
+                                content_text=chapter_file.read_text(encoding="utf-8"),
+                                source="agent",
+                            )
                             logger.info(f"Incremental sync: upserted chapter {chapter_index} to database")
                             db.commit()
 
@@ -369,13 +378,22 @@ def generate_novel_task(
                             for chapter_file in sorted(chapters_dir.glob("chapter_*.txt")):
                                 match = chapter_file.name.split("_")[1].split(".")[0]
                                 chapter_index = int(match)
-                                sync_chapter_file_to_db(
+                                synced_chapter = sync_chapter_file_to_db(
                                     db=db,
                                     project=project,
                                     chapter_index=chapter_index,
                                     chapter_file=chapter_file,
                                     status="generated",
                                 )
+                                if synced_chapter is not None:
+                                    record_chapter_draft_artifact(
+                                        db=db,
+                                        project_id=project.id,
+                                        chapter=synced_chapter,
+                                        workflow_run_id=task_record.workflow_run.id if task_record.workflow_run else None,
+                                        content_text=chapter_file.read_text(encoding="utf-8"),
+                                        source="agent",
+                                    )
                             db.commit()
                             logger.info(f"Final synchronization: all chapters to database")
 

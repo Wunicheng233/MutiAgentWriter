@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 
 from pathlib import Path
 
-from backend.models import Artifact, FeedbackItem, GenerationTask, Project, WorkflowRun, WorkflowStepRun
+from backend.models import Artifact, Chapter, FeedbackItem, GenerationTask, Project, WorkflowRun, WorkflowStepRun
 from core.agent_contract import get_agent_contract
 
 
@@ -132,6 +132,87 @@ def create_artifact(
     )
     db.add(artifact)
     db.flush()
+    return artifact
+
+
+def _attach_output_artifact_to_step(
+    db: Session,
+    workflow_run_id: int | None,
+    step_key: str,
+    artifact: Artifact,
+    chapter_index: int | None = None,
+) -> None:
+    if workflow_run_id is None:
+        return
+
+    step_query = db.query(WorkflowStepRun).filter(
+        WorkflowStepRun.workflow_run_id == workflow_run_id,
+        WorkflowStepRun.step_key == step_key,
+    )
+    if chapter_index is not None:
+        step_query = step_query.filter(WorkflowStepRun.chapter_index == chapter_index)
+
+    step = step_query.order_by(WorkflowStepRun.id.desc()).first()
+    if step is not None:
+        step.output_artifact_id = artifact.id
+        db.flush()
+
+
+def record_chapter_draft_artifact(
+    db: Session,
+    project_id: int,
+    chapter: Chapter,
+    workflow_run_id: int | None,
+    content_text: str,
+    source: str = "agent",
+) -> Artifact:
+    """Record the current chapter draft artifact and link it to its generation step."""
+    if chapter.id is None:
+        db.flush()
+
+    content_json = {
+        "title": chapter.title,
+        "word_count": chapter.word_count,
+        "status": chapter.status,
+    }
+
+    current_artifact = _matching_artifact_query(
+        db=db,
+        project_id=project_id,
+        artifact_type="chapter_draft",
+        scope="chapter",
+        chapter_id=chapter.id,
+        chapter_index=chapter.chapter_index,
+    ).filter(Artifact.is_current.is_(True)).order_by(Artifact.id.desc()).first()
+
+    if (
+        current_artifact is not None
+        and current_artifact.workflow_run_id == workflow_run_id
+        and current_artifact.content_text == content_text
+        and (current_artifact.content_json or {}) == content_json
+    ):
+        artifact = current_artifact
+    else:
+        artifact = create_artifact(
+            db=db,
+            project_id=project_id,
+            workflow_run_id=workflow_run_id,
+            chapter_id=chapter.id,
+            artifact_type="chapter_draft",
+            scope="chapter",
+            chapter_index=chapter.chapter_index,
+            source=source,
+            content_text=content_text,
+            content_json=content_json,
+        )
+
+    _attach_output_artifact_to_step(
+        db=db,
+        workflow_run_id=workflow_run_id,
+        step_key="generating_chapter",
+        artifact=artifact,
+        chapter_index=chapter.chapter_index,
+    )
     return artifact
 
 
