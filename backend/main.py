@@ -14,6 +14,7 @@ from backend.api.projects import router as projects_router
 from backend.api.chapters import router as chapters_router
 from backend.api.tasks import router as tasks_router
 from backend.api.share import router as share_router
+from backend.api.perspectives import router as perspectives_router
 from backend.database import Base, engine
 
 # 创建数据库表（生产环境使用Alembic迁移）
@@ -60,6 +61,7 @@ app.include_router(projects_router, prefix="/api")
 app.include_router(chapters_router, prefix="/api")
 app.include_router(tasks_router, prefix="/api")
 app.include_router(share_router, prefix="/api")
+app.include_router(perspectives_router, prefix="/api")
 
 
 @app.get("/api/health")
