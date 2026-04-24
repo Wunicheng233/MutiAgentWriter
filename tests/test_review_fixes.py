@@ -298,7 +298,7 @@ class ReviewFixRegressionTests(unittest.TestCase):
         original_load_prompt = file_utils.load_prompt
         original_sleep = volc_engine.time.sleep
         try:
-            file_utils.load_prompt = lambda agent_role, content_type=None, context=None: captured_contexts.append(context) or "system"
+            file_utils.load_prompt = lambda agent_role, content_type=None, context=None, perspective=None, perspective_strength=None: captured_contexts.append(context) or "system"
             volc_engine.time.sleep = lambda seconds: None
             result = volc_engine.call_volc_api(
                 agent_role="writer",

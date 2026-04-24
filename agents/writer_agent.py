@@ -46,6 +46,8 @@ def generate_chapter(
     target_word_count: int = 2000,
     content_type: str = "full_novel",
     client: openai.OpenAI = None,
+    perspective: str = None,
+    perspective_strength: float = 0.7,
 ) -> str:
     constraints_text = ""
     if constraints:
@@ -99,9 +101,9 @@ def generate_chapter(
 
     # 第一次生成
     if client:
-        result = call_volc_api("writer", user_input, max_tokens=WRITER_MAX_TOKENS, content_type=content_type, context=context, client=client)
+        result = call_volc_api("writer", user_input, max_tokens=WRITER_MAX_TOKENS, content_type=content_type, context=context, client=client, perspective=perspective, perspective_strength=perspective_strength)
     else:
-        result = call_volc_api("writer", user_input, max_tokens=WRITER_MAX_TOKENS, content_type=content_type, context=context)
+        result = call_volc_api("writer", user_input, max_tokens=WRITER_MAX_TOKENS, content_type=content_type, context=context, perspective=perspective, perspective_strength=perspective_strength)
     fixed_result = _check_and_fix_title(result, chapter_num)
 
     if fixed_result != result:
@@ -115,6 +117,8 @@ def generate_chapter(
                 content_type=content_type,
                 context=context,
                 client=client,
+                perspective=perspective,
+                perspective_strength=perspective_strength,
             )
         else:
             result = call_volc_api(
@@ -123,6 +127,8 @@ def generate_chapter(
                 max_tokens=WRITER_MAX_TOKENS,
                 content_type=content_type,
                 context=context,
+                perspective=perspective,
+                perspective_strength=perspective_strength,
             )
         fixed_result = _check_and_fix_title(result, chapter_num)
 
@@ -135,6 +141,8 @@ def rewrite_chapter(
     feedback: str,
     chapter_num: int = None,
     client: openai.OpenAI = None,
+    perspective: str = None,
+    perspective_strength: float = 0.7,
 ) -> str:
     # 从原文提取章节号（如果没传入）
     if chapter_num is None:
@@ -177,9 +185,9 @@ def rewrite_chapter(
 
     logger.info("✍️  内容生成Agent正在修改章节...")
     if client:
-        result = call_volc_api("writer", user_input, client=client)
+        result = call_volc_api("writer", user_input, client=client, perspective=perspective, perspective_strength=perspective_strength)
     else:
-        result = call_volc_api("writer", user_input)
+        result = call_volc_api("writer", user_input, perspective=perspective, perspective_strength=perspective_strength)
 
     # 检测并修复标题
     if chapter_num:

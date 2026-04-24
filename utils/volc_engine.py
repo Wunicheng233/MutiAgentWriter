@@ -44,6 +44,8 @@ def call_volc_api(
     project_id: int = None,
     client: openai.OpenAI = None,
     context: dict = None,
+    perspective: str = None,
+    perspective_strength: float = None,
 ) -> str:
     # 不同Agent差异化温度配置（从配置读取）
     # - planner: 创造性策划，温度稍高 (0.8)
@@ -84,7 +86,7 @@ def call_volc_api(
     :return: API返回的文本内容
     """
     from utils.file_utils import load_prompt
-    system_prompt = load_prompt(agent_role, content_type, context)
+    system_prompt = load_prompt(agent_role, content_type, context, perspective=perspective, perspective_strength=perspective_strength)
 
     logger.info(f"开始调用 {agent_role} Agent...")
     logger.debug(f"{agent_role} Agent输入：{user_input[:200]}...")
@@ -164,4 +166,6 @@ def call_volc_api(
             project_id=project_id,
             client=client,
             context=context,
+            perspective=perspective,
+            perspective_strength=perspective_strength,
         )

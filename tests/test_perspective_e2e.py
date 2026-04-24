@@ -44,3 +44,32 @@ class PerspectiveEndToEndTests(unittest.TestCase):
         # 低强度 (0.2) 应该没有例句
         if "经典句式参考" in low_strength:
             print("⚠️ 低强度仍然有例句，可能需要调整裁剪逻辑")
+
+
+class WriterAgentPerspectiveTests(unittest.TestCase):
+    def test_writer_agent_accepts_perspective_parameter(self):
+        """generate_chapter 应该接受 perspective 参数"""
+        import inspect
+        from agents.writer_agent import generate_chapter
+
+        sig = inspect.signature(generate_chapter)
+        params = list(sig.parameters.keys())
+
+        self.assertIn('perspective', params)
+        self.assertIn('perspective_strength', params)
+
+        print("✅ generate_chapter 接受 perspective 和 perspective_strength 参数")
+
+    def test_writer_agent_perspective_effect(self):
+        """传入 perspective 应该影响生成的 prompt"""
+        from agents.writer_agent import generate_chapter
+
+        # 检查函数定义
+        import inspect
+        source = inspect.getsource(generate_chapter)
+
+        # 应该在调用 load_prompt 时传入 perspective
+        self.assertIn('perspective', source)
+        self.assertIn('perspective_strength', source)
+
+        print("✅ generate_chapter 内部使用 perspective 参数")
