@@ -17,8 +17,11 @@ from backend.database import get_db
 from backend.models import User
 from backend.schemas import UserCreate, UserLogin, Token, UserResponse
 from backend.auth import (
+    build_user_response,
+    clear_user_api_key as clear_persisted_user_api_key,
     verify_password,
     get_password_hash,
+    set_user_api_key,
     create_access_token,
     password_needs_upgrade,
     ACCESS_TOKEN_EXPIRE_MINUTES,
@@ -26,6 +29,17 @@ from backend.auth import (
 from backend.deps import get_current_user
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+def _get_persistent_current_user(db: Session, current_user: User) -> User:
+    """Load the current user into the active DB session before mutating it."""
+    persisted_user = db.query(User).filter(User.id == current_user.id).first()
+    if persisted_user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="用户不存在",
+        )
+    return persisted_user
 
 
 @router.post("/register", response_model=UserResponse, summary="用户注册")
@@ -60,7 +74,7 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(user)
 
-    return user
+    return build_user_response(user)
 
 
 @router.post("/login", response_model=Token, summary="用户登录")
@@ -98,32 +112,34 @@ def login(form_data: UserLogin, db: Session = Depends(get_db)):
     return {
         "access_token": access_token,
         "token_type": "bearer",
-        "user": UserResponse.model_validate(user)
+        "user": build_user_response(user)
     }
 
 
 @router.get("/me", response_model=UserResponse, summary="获取当前用户信息")
 def get_me(current_user: User = Depends(get_current_user)):
     """获取当前认证用户的信息"""
-    return current_user
+    return build_user_response(current_user)
 
 
 @router.post("/refresh-api-key", response_model=UserResponse, summary="清除用户自定义API Key")
 def refresh_api_key(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """兼容旧前端入口：清除用户自定义模型 API Key，恢复使用系统统一配置。"""
-    current_user.api_key = None
+    persisted_user = _get_persistent_current_user(db, current_user)
+    clear_persisted_user_api_key(persisted_user)
     db.commit()
-    db.refresh(current_user)
-    return current_user
+    db.refresh(persisted_user)
+    return build_user_response(persisted_user)
 
 
 @router.delete("/api-key", response_model=UserResponse, summary="清除用户自定义API Key")
 def clear_api_key(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """清除用户自己的模型 API Key，恢复使用系统统一配置。"""
-    current_user.api_key = None
+    persisted_user = _get_persistent_current_user(db, current_user)
+    clear_persisted_user_api_key(persisted_user)
     db.commit()
-    db.refresh(current_user)
-    return current_user
+    db.refresh(persisted_user)
+    return build_user_response(persisted_user)
 
 
 class UpdateApiKeyRequest(BaseModel):
@@ -132,10 +148,11 @@ class UpdateApiKeyRequest(BaseModel):
 @router.put("/api-key", response_model=UserResponse, summary="更新用户自定义API Key")
 def update_api_key(request: UpdateApiKeyRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """更新用户自己的API Key（比如火山引擎 API Key）"""
-    current_user.api_key = request.api_key.strip()
+    persisted_user = _get_persistent_current_user(db, current_user)
+    set_user_api_key(persisted_user, request.api_key)
     db.commit()
-    db.refresh(current_user)
-    return current_user
+    db.refresh(persisted_user)
+    return build_user_response(persisted_user)
 
 
 class UserMonthlyTokenStats(BaseModel):

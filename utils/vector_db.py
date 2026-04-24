@@ -228,12 +228,12 @@ def add_chapter_to_db(
 
     # 3. 写入向量库
     try:
-        chapter_collection.add(
+        chapter_collection.upsert(
             documents=chunks,
             ids=ids,
             metadatas=metadatas
         )
-        logger.info(f"✅ 第{chapter_num}章《{chapter_title}》已存入向量库，共{chunk_count}个数据块")
+        logger.info(f"✅ 第{chapter_num}章《{chapter_title}》已同步到向量库，共{chunk_count}个数据块")
     except Exception as e:
         logger.error(f"❌ 章节存入向量库失败：{str(e)}")
         raise
@@ -301,12 +301,12 @@ def load_setting_bible_to_db():
 
         setting_collection = get_setting_collection()
         # 标准化写入设定Collection，和章节内容完全隔离
-        setting_collection.add(
+        setting_collection.upsert(
             documents=[setting_content],
             ids=["core_setting_bible"],
             metadatas=[{"setting_type": "core_bible", "version": "1.0"}]
         )
-        logger.info("✅ 核心设定圣经已存入向量库")
+        logger.info("✅ 核心设定圣经已同步到向量库")
     except Exception as e:
         logger.error(f"❌ 设定圣经存入失败：{str(e)}")
 
@@ -337,7 +337,7 @@ def search_core_setting(query: str, top_k: int = 3) -> str:
 def init_reference_collection():
     """初始化文风参考集合，加载references目录下的所有txt文件"""
     reference_collection = get_reference_collection()
-    REF_DIR = ROOT_DIR / "references"
+    REF_DIR = config.ROOT_DIR / "references"
     REF_DIR.mkdir(exist_ok=True)
 
     # 检查是否已经有数据
@@ -352,7 +352,7 @@ def init_reference_collection():
             content = f.read().strip()
         if content:
             # 完整保存内容（包括用户注释），注释会帮助AI理解学习目标
-            reference_collection.add(
+            reference_collection.upsert(
                 documents=[content],
                 ids=[txt_file.name],
                 metadatas=[{"filename": txt_file.name}]

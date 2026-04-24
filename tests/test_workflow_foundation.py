@@ -13,6 +13,7 @@ import backend.api.chapters as chapters_api
 import backend.api.tasks as tasks_api
 import tasks.export_tasks as export_tasks
 import tasks.writing_tasks as writing_tasks
+from backend.auth import set_user_api_key
 from utils.runtime_context import get_current_output_dir_optional, get_current_run_context_optional, set_current_output_dir
 from backend.database import Base, get_db
 from backend.deps import get_current_user
@@ -611,7 +612,7 @@ class WorkflowFoundationTests(unittest.TestCase):
             db.close()
 
         class FakeOrchestrator:
-            def __init__(self, project_dir, progress_callback, user_api_key):
+            def __init__(self, project_dir, progress_callback, user_api_key, cancellation_checker=None):
                 self.progress_callback = progress_callback
 
             def run_full_novel(self):
@@ -668,9 +669,12 @@ class WorkflowFoundationTests(unittest.TestCase):
         chapters_dir.mkdir()
         (chapters_dir / "chapter_1.txt").write_text("第1章 标题\n\n章节内容", encoding="utf-8")
         project = self._create_project(owner, name="Success Novel", file_path=str(project_dir))
+        custom_api_key = "abcd1234efgh5678"
 
         db = self.SessionLocal()
         try:
+            user = db.query(User).filter(User.id == owner.id).one()
+            set_user_api_key(user, custom_api_key)
             task = GenerationTask(
                 project_id=project.id,
                 celery_task_id="celery-success-1",
@@ -695,9 +699,10 @@ class WorkflowFoundationTests(unittest.TestCase):
         test_case = self
 
         class FakeOrchestrator:
-            def __init__(self, project_dir, progress_callback, user_api_key):
+            def __init__(self, project_dir, progress_callback, user_api_key, cancellation_checker=None):
                 self.project_dir = Path(project_dir)
                 self.progress_callback = progress_callback
+                test_case.assertEqual(user_api_key, custom_api_key)
 
             def run_full_novel(self):
                 test_case.assertEqual(get_current_output_dir_optional(), self.project_dir)
@@ -814,6 +819,82 @@ class WorkflowFoundationTests(unittest.TestCase):
                 WorkflowStepRun.chapter_index == 1,
             ).one()
             self.assertEqual(generating_step.output_artifact_id, chapter_artifact.id)
+        finally:
+            db.close()
+
+    def test_generate_novel_task_cancelled_during_execution_updates_workflow_run_status(self):
+        owner = self._create_user("cancel_owner", "cancel_owner@example.com")
+        project_dir = self.workspace / "cancel-project"
+        project_dir.mkdir()
+        project = self._create_project(owner, name="Cancel Novel", file_path=str(project_dir))
+
+        db = self.SessionLocal()
+        try:
+            task = GenerationTask(
+                project_id=project.id,
+                celery_task_id="celery-cancel-1",
+                status="pending",
+                progress=0.0,
+            )
+            db.add(task)
+            db.commit()
+            db.refresh(task)
+            create_generation_workflow_run(
+                db=db,
+                project=project,
+                generation_task=task,
+                triggered_by_user_id=owner.id,
+            )
+            db.commit()
+        finally:
+            db.close()
+
+        test_case = self
+
+        class FakeOrchestrator:
+            def __init__(self, project_dir, progress_callback, user_api_key, cancellation_checker=None):
+                self.progress_callback = progress_callback
+                self.cancellation_checker = cancellation_checker
+
+            def run_full_novel(self):
+                db = test_case.SessionLocal()
+                try:
+                    task = db.query(GenerationTask).filter(
+                        GenerationTask.celery_task_id == "celery-cancel-1"
+                    ).one()
+                    task.status = "cancelled"
+                    db.commit()
+                finally:
+                    db.close()
+
+                self.progress_callback(45, "正在生成第 2 章...")
+                raise AssertionError("progress callback should stop cancelled tasks before continuing")
+
+        original_session_local = writing_tasks.SessionLocal
+        original_orchestrator = writing_tasks.NovelOrchestrator
+        try:
+            writing_tasks.SessionLocal = self.SessionLocal
+            writing_tasks.NovelOrchestrator = FakeOrchestrator
+            writing_tasks.generate_novel_task.push_request(id="celery-cancel-1", retries=0)
+            result = writing_tasks.generate_novel_task.run(project_dir=str(project_dir), user_id=str(owner.id))
+        finally:
+            writing_tasks.generate_novel_task.pop_request()
+            writing_tasks.SessionLocal = original_session_local
+            writing_tasks.NovelOrchestrator = original_orchestrator
+
+        self.assertTrue(result["cancelled"])
+        self.assertIn("cancelled", result["message"])
+
+        db = self.SessionLocal()
+        try:
+            task = db.query(GenerationTask).filter(GenerationTask.celery_task_id == "celery-cancel-1").one()
+            run = db.query(WorkflowRun).filter(WorkflowRun.generation_task_id == task.id).one()
+            self.assertEqual(task.status, "cancelled")
+            self.assertIn("cancelled", task.error_message)
+            self.assertIsNotNone(task.completed_at)
+            self.assertEqual(run.status, "cancelled")
+            self.assertEqual(run.current_step_key, "cancelled")
+            self.assertTrue(run.run_metadata["cancelled_during_execution"])
         finally:
             db.close()
 
@@ -1568,7 +1649,7 @@ class WorkflowFoundationTests(unittest.TestCase):
         self.assertFalse(feedback_file.exists())
 
         class FakeOrchestrator:
-            def __init__(self, project_dir, progress_callback, user_api_key):
+            def __init__(self, project_dir, progress_callback, user_api_key, cancellation_checker=None):
                 self.project_dir = Path(project_dir)
 
             def run_full_novel(self):
@@ -1636,7 +1717,7 @@ class WorkflowFoundationTests(unittest.TestCase):
             db.close()
 
         class FakeOrchestrator:
-            def __init__(self, project_dir, progress_callback, user_api_key):
+            def __init__(self, project_dir, progress_callback, user_api_key, cancellation_checker=None):
                 self.project_dir = Path(project_dir)
 
             def run_full_novel(self):

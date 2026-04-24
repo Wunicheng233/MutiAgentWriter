@@ -16,7 +16,8 @@ from typing import Optional, Dict
 
 from celery_app import celery_app
 from backend.chapter_sync import sync_chapter_file_to_db
-from core.orchestrator import NovelOrchestrator, WaitingForConfirmationError
+from backend.auth import get_user_api_key
+from core.orchestrator import GenerationCancelledError, NovelOrchestrator, WaitingForConfirmationError
 from utils.runtime_context import (
     RunContext,
     get_current_output_dir_optional,
@@ -44,6 +45,15 @@ class GenerateNovelTask(Task):
         """任务失败时的回调"""
         logger.error(f"Task {task_id} failed: {exc}", exc_info=True)
         super().on_failure(exc, task_id, args, kwargs, einfo)
+
+
+def _cancelled_result(task_id: str, message: str) -> Dict:
+    return {
+        "success": False,
+        "task_id": task_id,
+        "cancelled": True,
+        "message": message,
+    }
 
 
 @celery_app.task(bind=True, name="generate_novel", base=GenerateNovelTask, max_retries=3)
@@ -104,12 +114,31 @@ def generate_novel_task(
     except Exception:
         task_record = None
 
+    def ensure_not_cancelled(message: str = "Task has been cancelled") -> None:
+        if task_record is None:
+            return
+
+        db.refresh(task_record)
+        if task_record.status != "cancelled":
+            return
+
+        update_workflow_run_status(
+            db=db,
+            generation_task=task_record,
+            task_status="cancelled",
+            current_step_key="cancelled",
+            metadata_updates={"cancelled_during_execution": True},
+        )
+        db.commit()
+        raise GenerationCancelledError(message)
+
     def progress_callback(percent: int, message: str):
         """
         进度回调，更新到Celery任务状态 + 同步更新数据库
         percent: 0-100 百分比
         message: 当前步骤描述
         """
+        ensure_not_cancelled()
         # 计算小数进度（0-1）用于前端进度条
         progress = percent / 100.0
         current_chapter = None
@@ -329,7 +358,7 @@ def generate_novel_task(
         # 获取用户 API Key
         # project -> user -> api_key
         user = db.query(User).filter(User.id == int(user_id)).first()
-        user_api_key = user.api_key if user else None
+        user_api_key = get_user_api_key(user)
         # 如果用户设置了自己的 API Key，就用用户的，否则用系统配置的
         api_key_to_use = None
         if user_api_key and user_api_key.strip():
@@ -339,7 +368,8 @@ def generate_novel_task(
         orchestrator = NovelOrchestrator(
             project_dir=project_dir,
             progress_callback=progress_callback,
-            user_api_key=api_key_to_use
+            user_api_key=api_key_to_use,
+            cancellation_checker=ensure_not_cancelled,
         )
 
         # 执行完整生成流程，可能需要等待人工确认
@@ -473,6 +503,25 @@ def generate_novel_task(
                 "chapter_index": e.chapter_index,
                 "completed": False,
             }
+        except GenerationCancelledError as e:
+            logger.info(f"Task {self.request.id} cancelled cooperatively: {e}")
+            if task_record is not None:
+                task_record.status = "cancelled"
+                task_record.error_message = str(e)
+                task_record.completed_at = datetime.utcnow()
+                update_workflow_run_status(
+                    db=db,
+                    generation_task=task_record,
+                    task_status="cancelled",
+                    current_step_key="cancelled",
+                    current_chapter=task_record.current_chapter,
+                    metadata_updates={
+                        "cancelled_during_execution": True,
+                        "applied_feedback_item_ids": applied_feedback_item_ids,
+                    },
+                )
+                db.commit()
+            return _cancelled_result(self.request.id, str(e))
 
     except Exception as e:
         logger.error(f"Task {self.request.id} failed: {str(e)}", exc_info=True)

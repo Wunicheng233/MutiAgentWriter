@@ -1,7 +1,11 @@
 import React from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
-import ReactECharts from 'echarts-for-react'
+import ReactEChartsCore from 'echarts-for-react/lib/core'
+import { LineChart, RadarChart } from 'echarts/charts'
+import { GridComponent, RadarComponent, TooltipComponent } from 'echarts/components'
+import * as echarts from 'echarts/core'
+import { CanvasRenderer } from 'echarts/renderers'
 import { Layout } from '../components/Layout'
 import { Card } from '../components/Card'
 import { Badge } from '../components/Badge'
@@ -10,6 +14,15 @@ import { Button } from '../components/Button'
 import { ProgressBar } from '../components/ProgressBar'
 import { getProject, getProjectAnalytics } from '../utils/endpoints'
 import { getProjectStatusText } from '../utils/workflow'
+
+echarts.use([
+  LineChart,
+  RadarChart,
+  GridComponent,
+  RadarComponent,
+  TooltipComponent,
+  CanvasRenderer,
+])
 
 function getScoreColor(score: number): BadgeVariant {
   if (score >= 8) return 'agent'
@@ -286,7 +299,7 @@ export const QualityDashboard: React.FC = () => {
             <h2 className="mt-2 text-2xl">多维度评分雷达图</h2>
             {hasDimensions ? (
               <div className="mt-4 h-[320px]">
-                <ReactECharts option={radarOption} style={{ height: '100%', width: '100%' }} />
+                <ReactEChartsCore echarts={echarts} option={radarOption} style={{ height: '100%', width: '100%' }} />
               </div>
             ) : (
               <div className="mt-5 flex h-[320px] items-center justify-center text-secondary">
@@ -339,7 +352,7 @@ export const QualityDashboard: React.FC = () => {
             <p className="text-xs uppercase tracking-[0.22em] text-secondary">Trend</p>
             <h2 className="mt-2 text-2xl">章节评分趋势</h2>
             <div className="mt-4 h-[320px]">
-              <ReactECharts option={lineOption} style={{ height: '100%', width: '100%' }} />
+              <ReactEChartsCore echarts={echarts} option={lineOption} style={{ height: '100%', width: '100%' }} />
             </div>
           </Card>
         </div>

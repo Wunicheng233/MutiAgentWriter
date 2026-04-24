@@ -3,22 +3,22 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ToastProvider } from './components/Toast'
 import ProtectedRoute from './components/ProtectedRoute'
 import { useAuthStore } from './store/useAuthStore'
-import { useEffect } from 'react'
+import { Suspense, lazy, useEffect } from 'react'
 
 // Pages
-import Login from './pages/Login'
-import Register from './pages/Register'
-import Settings from './pages/Settings'
-import Dashboard from './pages/Dashboard'
-import CreateProject from './pages/CreateProject'
-import ProjectOverview from './pages/ProjectOverview'
-import ChapterList from './pages/ChapterList'
-import WorkflowRunDetail from './pages/WorkflowRunDetail'
-import ArtifactDetail from './pages/ArtifactDetail'
-import Editor from './pages/Editor'
-import QualityDashboard from './pages/QualityDashboard'
-import ShareView from './pages/ShareView'
-import Reader from './components/Reader/index';
+const Login = lazy(() => import('./pages/Login'))
+const Register = lazy(() => import('./pages/Register'))
+const Settings = lazy(() => import('./pages/Settings'))
+const Dashboard = lazy(() => import('./pages/Dashboard'))
+const CreateProject = lazy(() => import('./pages/CreateProject'))
+const ProjectOverview = lazy(() => import('./pages/ProjectOverview'))
+const ChapterList = lazy(() => import('./pages/ChapterList'))
+const WorkflowRunDetail = lazy(() => import('./pages/WorkflowRunDetail'))
+const ArtifactDetail = lazy(() => import('./pages/ArtifactDetail'))
+const Editor = lazy(() => import('./pages/Editor'))
+const QualityDashboard = lazy(() => import('./pages/QualityDashboard'))
+const ShareView = lazy(() => import('./pages/ShareView'))
+const Reader = lazy(() => import('./components/Reader/index'))
 
 import './App.css'
 
@@ -31,6 +31,21 @@ const queryClient = new QueryClient({
   },
 })
 
+function RouteLoader() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-paper px-6 text-center">
+      <div className="space-y-3">
+        <p className="text-xs uppercase tracking-[0.24em] text-secondary">StoryForge AI</p>
+        <p className="text-base text-inkwell">正在加载工作台...</p>
+      </div>
+    </div>
+  )
+}
+
+function ProtectedPage({ children }: { children: React.ReactNode }) {
+  return <ProtectedRoute>{children}</ProtectedRoute>
+}
+
 function App() {
   const initializeAuth = useAuthStore(state => state.initializeAuth)
 
@@ -42,100 +57,101 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <ToastProvider>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route
-              path="/"
-              element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/projects/new"
-              element={
-                <ProtectedRoute>
-                  <CreateProject />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/projects/:id/overview"
-              element={
-                <ProtectedRoute>
-                  <ProjectOverview />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/projects/:id/chapters"
-              element={
-                <ProtectedRoute>
-                  <ChapterList />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/projects/:id/workflows/:runId"
-              element={
-                <ProtectedRoute>
-                  <WorkflowRunDetail />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/projects/:id/artifacts/:artifactId"
-              element={
-                <ProtectedRoute>
-                  <ArtifactDetail />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/projects/:id/write/:chapterIndex"
-              element={
-                <ProtectedRoute>
-                  <Editor />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/projects/:id/read/:chapterIndex"
-              element={
-                <ProtectedRoute>
-                  <Reader />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/projects/:id/analytics"
-              element={
-                <ProtectedRoute>
-                  <QualityDashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/settings"
-              element={
-                <ProtectedRoute>
-                  <Settings />
-                </ProtectedRoute>
-              }
-            />
-            {/* 分享链接不需要登录 */}
-            <Route path="/share/:token" element={<ShareView />} />
-          </Routes>
+          <Suspense fallback={<RouteLoader />}>
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route
+                path="/"
+                element={
+                  <ProtectedPage>
+                    <Dashboard />
+                  </ProtectedPage>
+                }
+              />
+              <Route
+                path="/dashboard"
+                element={
+                  <ProtectedPage>
+                    <Dashboard />
+                  </ProtectedPage>
+                }
+              />
+              <Route
+                path="/projects/new"
+                element={
+                  <ProtectedPage>
+                    <CreateProject />
+                  </ProtectedPage>
+                }
+              />
+              <Route
+                path="/projects/:id/overview"
+                element={
+                  <ProtectedPage>
+                    <ProjectOverview />
+                  </ProtectedPage>
+                }
+              />
+              <Route
+                path="/projects/:id/chapters"
+                element={
+                  <ProtectedPage>
+                    <ChapterList />
+                  </ProtectedPage>
+                }
+              />
+              <Route
+                path="/projects/:id/workflows/:runId"
+                element={
+                  <ProtectedPage>
+                    <WorkflowRunDetail />
+                  </ProtectedPage>
+                }
+              />
+              <Route
+                path="/projects/:id/artifacts/:artifactId"
+                element={
+                  <ProtectedPage>
+                    <ArtifactDetail />
+                  </ProtectedPage>
+                }
+              />
+              <Route
+                path="/projects/:id/write/:chapterIndex"
+                element={
+                  <ProtectedPage>
+                    <Editor />
+                  </ProtectedPage>
+                }
+              />
+              <Route
+                path="/projects/:id/read/:chapterIndex"
+                element={
+                  <ProtectedPage>
+                    <Reader />
+                  </ProtectedPage>
+                }
+              />
+              <Route
+                path="/projects/:id/analytics"
+                element={
+                  <ProtectedPage>
+                    <QualityDashboard />
+                  </ProtectedPage>
+                }
+              />
+              <Route
+                path="/settings"
+                element={
+                  <ProtectedPage>
+                    <Settings />
+                  </ProtectedPage>
+                }
+              />
+              <Route path="/share/:token" element={<ShareView />} />
+            </Routes>
+          </Suspense>
         </ToastProvider>
       </BrowserRouter>
     </QueryClientProvider>

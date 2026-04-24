@@ -1060,7 +1060,7 @@ def reset_project(
         for task in running_tasks:
             try:
                 # 尝试从 Celery 队列中撤销任务；运行中的任务仍依赖任务自身读取 cancelled 状态退出。
-                celery_app.control.revoke(task.celery_task_id, terminate=True)
+                celery_app.control.revoke(task.celery_task_id)
             except Exception as e:
                 logger.warning(f"Failed to revoke celery task {task.celery_task_id}: {e}")
 

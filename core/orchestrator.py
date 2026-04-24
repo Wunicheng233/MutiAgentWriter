@@ -43,6 +43,13 @@ class WaitingForConfirmationError(Exception):
         super().__init__(f"Waiting for user confirmation for chapter {chapter_index}")
 
 
+class GenerationCancelledError(Exception):
+    """异常：当前生成任务已被外部取消，应尽快停止后续流程。"""
+
+    def __init__(self, message: str = "Generation task was cancelled"):
+        super().__init__(message)
+
+
 class NovelOrchestrator:
     """
     小说生成流程编排器（精简架构版）
@@ -56,6 +63,7 @@ class NovelOrchestrator:
         project_dir: Optional[str] = None,
         progress_callback: Optional[Callable[[int, str], None]] = None,
         user_api_key: Optional[str] = None,
+        cancellation_checker: Optional[Callable[[], None]] = None,
     ):
         """
         初始化编排器
@@ -70,6 +78,7 @@ class NovelOrchestrator:
             self.output_dir = None
 
         self.progress_callback = progress_callback
+        self.cancellation_checker = cancellation_checker
         self.project_dir = project_dir
         # 默认字数，防止提前访问导致AttributeError
         self.chapter_word_count = "2000"
@@ -119,12 +128,21 @@ class NovelOrchestrator:
         self.info_path: Optional[Path] = None
         self.content_type: str = "novel"
 
+    def _check_cancellation(self):
+        """在关键阶段主动检查任务是否已被外部取消。"""
+        cancellation_checker = getattr(self, "cancellation_checker", None)
+        if cancellation_checker:
+            cancellation_checker()
+
     def _report_progress(self, percent: int, message: str):
         """上报进度"""
+        self._check_cancellation()
         logger.info(f"进度 {percent}%: {message}")
         if self.progress_callback:
             try:
                 self.progress_callback(percent, message)
+            except GenerationCancelledError:
+                raise
             except Exception as e:
                 logger.error(f"进度回调执行失败: {e}")
 
@@ -269,6 +287,7 @@ class NovelOrchestrator:
         :param confirmation_handler: 人工确认处理函数 f(plan_preview) -> (confirmed: bool, feedback: str)
         :return: 最终设定圣经
         """
+        self._check_cancellation()
         self._report_progress(5, "正在加载用户需求配置文件...")
         logger.info("正在加载用户需求配置文件...")
 
@@ -318,6 +337,7 @@ class NovelOrchestrator:
         use_user_plan = self.req.get("use_user_description_as_plan", False)
 
         if self.start_chapter == 1:
+            self._check_cancellation()
             if use_user_plan and len(novel_description.strip()) > 200:
                 # 用户已提供完整大纲，直接使用
                 self._report_progress(15, "使用用户提供的完整大纲...")
@@ -349,6 +369,7 @@ class NovelOrchestrator:
                         with open(feedback_plan_path, "r", encoding="utf-8") as f:
                             feedback = f.read().strip()
                         if feedback:
+                            self._check_cancellation()
                             logger.info(f"找到策划方案用户反馈，根据反馈重新优化...")
                             self.plan = self.planner.revise_plan(self.plan, feedback, self.original_requirement)
                             self.setting_bible = self.plan
@@ -393,8 +414,10 @@ class NovelOrchestrator:
                     # 使用外部确认处理（Web界面会提供）
                     confirmed = False
                     while not confirmed:
+                        self._check_cancellation()
                         confirmed, feedback = confirmation_handler(self.plan[:2000])
                         if feedback and feedback.strip():
+                            self._check_cancellation()
                             self.plan = self.planner.revise_plan(self.plan, feedback, self.original_requirement)
                             self.setting_bible = self.plan
                 else:
@@ -409,6 +432,7 @@ class NovelOrchestrator:
                         print("="*80)
                         confirm = input("\n请确认方案是否通过？（y/n）：\n").lower()
                         while confirm != "y":
+                            self._check_cancellation()
                             feedback = input("请输入修改意见：\n")
                             self.plan = self.planner.revise_plan(self.plan, feedback, self.original_requirement)
                             self.setting_bible = self.plan
@@ -431,6 +455,7 @@ class NovelOrchestrator:
 
         else:
             # 续写：加载已有策划方案和设定圣经
+            self._check_cancellation()
             self._report_progress(15, "加载已有策划方案和设定圣经...")
             plan_path = self.output_dir / "novel_plan.md"
             setting_path = self.output_dir / "setting_bible.md"
@@ -449,6 +474,7 @@ class NovelOrchestrator:
             logger.info("正在把已有的章节加载到向量数据库...")
             load_setting_bible_to_db()
             for existing_chapter in range(1, self.start_chapter):
+                self._check_cancellation()
                 chapter_file = self.output_dir / f"chapters/chapter_{existing_chapter}.txt"
                 if chapter_file.exists():
                     with open(chapter_file, "r", encoding="utf-8") as f:
@@ -509,6 +535,7 @@ class NovelOrchestrator:
         logger.info(f"{'='*80}")
         logger.info(f"开始生成《{self.novel_name}》第 {chapter_index} 章")
         logger.info(f"{'='*80}")
+        self._check_cancellation()
 
         # 检索相关历史章节和核心设定，控制返回数量节省token
         chapter_plot = self.get_chapter_outline(chapter_index)
@@ -532,6 +559,7 @@ class NovelOrchestrator:
             content_type=content_type
         )
         logger.info(f"第 {chapter_index} 章初稿生成完成")
+        self._check_cancellation()
 
         # Step 2: 系统层防护（纯代码，零Token消耗）
         logger.info(f"运行系统层防护检查...")
@@ -656,6 +684,7 @@ class NovelOrchestrator:
 
         # 如果不通过，进入 Revise → Critic 循环
         while not passed and revise_count < max_revise_loops:
+            self._check_cancellation()
             logger.warning(
                 f"第 {chapter_index} 章Critic评审不通过，问题数 {len(issues)}，"
                 f"正在修订 (第{revise_count + 1}/{max_revise_loops})..."
@@ -668,6 +697,7 @@ class NovelOrchestrator:
                 self.setting_bible
             )
             revise_count += 1
+            self._check_cancellation()
 
             # 再次运行系统层防护（修订后可能格式有变化
             guardrail_result = run_system_guardrails(current_content, guardrail_context)
@@ -770,6 +800,7 @@ class NovelOrchestrator:
                 print("="*80)
                 confirm = input("\n请确认是否通过？（y/n）：\n").lower()
                 while confirm != "y":
+                    self._check_cancellation()
                     feedback = input("请输入修改意见：\n")
                     # 根据用户意见重新修订
                     # 将用户反馈转为issues格式
@@ -844,6 +875,7 @@ class NovelOrchestrator:
 
         try:
             # 步骤1：策划阶段 - Planner生成设定圣经和大纲
+            self._check_cancellation()
             self.run_planner(confirmation_handler)
 
             # 步骤2：逐章生成
@@ -874,6 +906,7 @@ class NovelOrchestrator:
             generated = []
 
             for outline in self.chapter_outlines:
+                self._check_cancellation()
                 chapter_num = outline["chapter_num"]
                 if chapter_num < self.start_chapter or chapter_num > self.end_chapter:
                     continue
@@ -923,6 +956,7 @@ class NovelOrchestrator:
                             self.dimension_scores[dim].append(score_val)
                     # 将修订后的内容写回统一章节目录，确保后续续写与前端读取一致
                     self.save_chapter(chapter_num, current_content)
+                    add_chapter_to_db(chapter_num, f"第{chapter_num}章", current_content)
                     # 删除反馈文件
                     feedback_file.unlink()
                     # 后续流程继续
@@ -932,6 +966,7 @@ class NovelOrchestrator:
                     # 读取已生成内容，更新 prev_chapter_end 用于下一章衔接
                     with open(chapter_file, "r", encoding="utf-8") as f:
                         existing_content = f.read()
+                    add_chapter_to_db(chapter_num, f"第{chapter_num}章", existing_content)
                     prev_chapter_end = existing_content[-500:] if len(existing_content) > 500 else existing_content
                     logger.info(f"第{chapter_num}章已生成文件存在，跳过（断点续跑）")
                     # 统计真实汉字数量（只统计中文字符，不含标点空格）

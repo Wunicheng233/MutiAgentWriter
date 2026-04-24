@@ -122,19 +122,24 @@ def call_volc_api(
                 total_tokens = response.usage.total_tokens
 
                 db = SessionLocal()
-                usage = TokenUsage(
-                    user_id=user_id,
-                    project_id=project_id,
-                    agent_name=agent_role,
-                    model=model,
-                    prompt_tokens=prompt_tokens,
-                    completion_tokens=completion_tokens,
-                    total_tokens=total_tokens,
-                )
-                db.add(usage)
-                db.commit()
-                db.close()
-                logger.debug(f"Token usage recorded: {total_tokens} tokens for {agent_role}")
+                try:
+                    usage = TokenUsage(
+                        user_id=user_id,
+                        project_id=project_id,
+                        agent_name=agent_role,
+                        model=model,
+                        prompt_tokens=prompt_tokens,
+                        completion_tokens=completion_tokens,
+                        total_tokens=total_tokens,
+                    )
+                    db.add(usage)
+                    db.commit()
+                    logger.debug(f"Token usage recorded: {total_tokens} tokens for {agent_role}")
+                except Exception:
+                    db.rollback()
+                    raise
+                finally:
+                    db.close()
             except Exception as e:
                 logger.warning(f"Failed to record token usage: {e}")
 

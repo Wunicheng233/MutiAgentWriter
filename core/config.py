@@ -102,6 +102,10 @@ class Settings(BaseSettings):
         "your-secret-key-change-in-production-keep-it-safe",
         description="JWT签名密钥，从环境变量读取"
     )
+    user_api_key_encryption_key: str = Field(
+        "",
+        description="用户自定义 API Key 的静态加密密钥；为空时回退到 JWT 密钥派生值",
+    )
     access_token_expire_minutes: int = Field(30, description="访问令牌过期时间（分钟）")
 
     # ========== 向量数据库配置 ==========

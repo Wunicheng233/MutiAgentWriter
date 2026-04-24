@@ -10,13 +10,16 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 import backend.api.projects as projects_api
+import backend.database as database_module
 import backend.deps as deps
 import agents.writer_agent as writer_agent
+import config
 import core.orchestrator as orchestrator_module
 import utils.file_utils as file_utils
 import utils.volc_engine as volc_engine
+import utils.vector_db as vector_db
 from backend.api.auth import clear_api_key, refresh_api_key, register
-from backend.auth import get_password_hash
+from backend.auth import get_password_hash, get_user_api_key, set_user_api_key
 from backend.api.chapters import restore_version, update_chapter
 from backend.chapter_sync import html_content_to_plain_text
 from backend.database import Base, get_db
@@ -25,6 +28,7 @@ from backend.main import app
 from backend.models import Chapter, ChapterVersion, GenerationTask, Project, ProjectCollaborator, ShareLink, User
 from backend.schemas import ChapterUpdate, UserCreate
 from core.orchestrator import NovelOrchestrator
+from utils.runtime_context import set_current_output_dir
 
 
 class ReviewFixRegressionTests(unittest.TestCase):
@@ -45,6 +49,7 @@ class ReviewFixRegressionTests(unittest.TestCase):
 
     def tearDown(self):
         app.dependency_overrides.clear()
+        set_current_output_dir(None)
         self.engine.dispose()
         self.temp_dir.cleanup()
 
@@ -159,16 +164,39 @@ class ReviewFixRegressionTests(unittest.TestCase):
         db = self.SessionLocal()
         try:
             user = db.query(User).filter(User.id == owner.id).one()
-            user.api_key = "custom-model-key"
+            set_user_api_key(user, "custom-model-key")
             db.commit()
 
             refreshed_user = refresh_api_key(current_user=user, db=db)
             self.assertIsNone(refreshed_user.api_key)
+            self.assertIsNone(db.query(User).filter(User.id == owner.id).one().encrypted_api_key)
 
-            user.api_key = "another-custom-key"
+            set_user_api_key(user, "another-custom-key")
             db.commit()
             cleared_user = clear_api_key(current_user=user, db=db)
             self.assertIsNone(cleared_user.api_key)
+            self.assertIsNone(db.query(User).filter(User.id == owner.id).one().encrypted_api_key)
+        finally:
+            db.close()
+
+    def test_update_api_key_endpoint_stores_encrypted_value_and_masks_response(self):
+        owner = self._create_user("encrypted_owner", "encrypted_owner@example.com")
+        self._set_current_user(owner)
+
+        response = self.client.put(
+            "/api/auth/api-key",
+            json={"api_key": "abcd1234efgh5678"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["api_key"], "abcd...5678")
+
+        db = self.SessionLocal()
+        try:
+            user = db.query(User).filter(User.id == owner.id).one()
+            self.assertIsNone(user.api_key)
+            self.assertIsNotNone(user.encrypted_api_key)
+            self.assertNotEqual(user.encrypted_api_key, "abcd1234efgh5678")
+            self.assertEqual(get_user_api_key(user), "abcd1234efgh5678")
         finally:
             db.close()
 
@@ -179,7 +207,7 @@ class ReviewFixRegressionTests(unittest.TestCase):
         db = self.SessionLocal()
         try:
             user = db.query(User).filter(User.id == owner.id).one()
-            user.api_key = "abcd1234efgh5678"
+            set_user_api_key(user, "abcd1234efgh5678")
             user.hashed_password = get_password_hash("secret123")
             db.commit()
             db.refresh(user)
@@ -283,6 +311,138 @@ class ReviewFixRegressionTests(unittest.TestCase):
 
         self.assertEqual(result, "成功")
         self.assertEqual(captured_contexts, [{"world_bible": "设定"}, {"world_bible": "设定"}])
+
+    def test_volc_token_usage_failure_rolls_back_and_closes_session(self):
+        class FakeMessage:
+            content = "成功"
+
+        class FakeChoice:
+            message = FakeMessage()
+
+        class FakeUsage:
+            prompt_tokens = 10
+            completion_tokens = 5
+            total_tokens = 15
+
+        class FakeResponse:
+            choices = [FakeChoice()]
+            usage = FakeUsage()
+
+        class FakeCompletions:
+            def create(self, **kwargs):
+                return FakeResponse()
+
+        class FakeClient:
+            def __init__(self):
+                self.chat = SimpleNamespace(completions=FakeCompletions())
+
+        class FakeSession:
+            def __init__(self):
+                self.added = False
+                self.rolled_back = False
+                self.closed = False
+
+            def add(self, usage):
+                self.added = True
+
+            def commit(self):
+                raise RuntimeError("db write failed")
+
+            def rollback(self):
+                self.rolled_back = True
+
+            def close(self):
+                self.closed = True
+
+        fake_session = FakeSession()
+        original_load_prompt = file_utils.load_prompt
+        original_session_local = database_module.SessionLocal
+        try:
+            file_utils.load_prompt = lambda *args, **kwargs: "system"
+            database_module.SessionLocal = lambda: fake_session
+            result = volc_engine.call_volc_api(
+                agent_role="writer",
+                user_input="input",
+                client=FakeClient(),
+                user_id=1,
+                project_id=1,
+            )
+        finally:
+            file_utils.load_prompt = original_load_prompt
+            database_module.SessionLocal = original_session_local
+
+        self.assertEqual(result, "成功")
+        self.assertTrue(fake_session.added)
+        self.assertTrue(fake_session.rolled_back)
+        self.assertTrue(fake_session.closed)
+
+    def test_vector_db_writes_use_upsert_for_chapter_and_setting(self):
+        class FakeCollection:
+            def __init__(self):
+                self.calls = []
+
+            def add(self, **kwargs):
+                raise AssertionError("should use upsert instead of add")
+
+            def upsert(self, **kwargs):
+                self.calls.append(kwargs)
+
+        chapter_collection = FakeCollection()
+        setting_collection = FakeCollection()
+        project_dir = self.workspace / "vector-project"
+        project_dir.mkdir()
+        (project_dir / "setting_bible.md").write_text("核心设定", encoding="utf-8")
+
+        original_chapter_collection = vector_db.get_chapter_collection
+        original_setting_collection = vector_db.get_setting_collection
+        try:
+            set_current_output_dir(project_dir)
+            vector_db.get_chapter_collection = lambda: chapter_collection
+            vector_db.get_setting_collection = lambda: setting_collection
+
+            vector_db.add_chapter_to_db(1, "第一章", "这是正文内容")
+            vector_db.load_setting_bible_to_db()
+        finally:
+            vector_db.get_chapter_collection = original_chapter_collection
+            vector_db.get_setting_collection = original_setting_collection
+            set_current_output_dir(None)
+
+        self.assertEqual(len(chapter_collection.calls), 1)
+        self.assertEqual(chapter_collection.calls[0]["ids"], ["chapter_1_chunk_0"])
+        self.assertEqual(len(setting_collection.calls), 1)
+        self.assertEqual(setting_collection.calls[0]["ids"], ["core_setting_bible"])
+
+    def test_init_reference_collection_uses_project_root_reference_dir(self):
+        class FakeReferenceCollection:
+            def __init__(self):
+                self.items = []
+
+            def count(self):
+                return 0
+
+            def add(self, **kwargs):
+                raise AssertionError("should use upsert instead of add")
+
+            def upsert(self, **kwargs):
+                self.items.append(kwargs)
+
+        fake_collection = FakeReferenceCollection()
+        references_dir = self.workspace / "references"
+        references_dir.mkdir()
+        (references_dir / "sample.txt").write_text("参考文风内容", encoding="utf-8")
+
+        original_root_dir = config.ROOT_DIR
+        original_reference_collection = vector_db.get_reference_collection
+        try:
+            config.ROOT_DIR = self.workspace
+            vector_db.get_reference_collection = lambda: fake_collection
+            vector_db.init_reference_collection()
+        finally:
+            config.ROOT_DIR = original_root_dir
+            vector_db.get_reference_collection = original_reference_collection
+
+        self.assertEqual(len(fake_collection.items), 1)
+        self.assertEqual(fake_collection.items[0]["ids"], ["sample.txt"])
 
     def test_writer_title_retry_preserves_prompt_context(self):
         captured_contexts = []
@@ -437,19 +597,66 @@ class ReviewFixRegressionTests(unittest.TestCase):
         orchestrator.critic = FakeCritic()
 
         original_guardrails = orchestrator_module.run_system_guardrails
+        original_add_chapter_to_db = orchestrator_module.add_chapter_to_db
+        synced_chapters = []
         try:
+            orchestrator_module.add_chapter_to_db = lambda chapter_num, chapter_title, content: synced_chapters.append(
+                (chapter_num, chapter_title, content)
+            )
             orchestrator_module.run_system_guardrails = lambda content, context: SimpleNamespace(corrected_content=content)
             result = orchestrator.run_full_novel()
         finally:
             orchestrator_module.run_system_guardrails = original_guardrails
+            orchestrator_module.add_chapter_to_db = original_add_chapter_to_db
 
         self.assertEqual(chapter_path.read_text(encoding="utf-8"), "重写后的章节内容")
         self.assertFalse(feedback_path.exists())
+        self.assertEqual(synced_chapters, [(1, "第1章", "重写后的章节内容")])
         self.assertEqual(result["generated_chapters"], 1)
         info = json.loads((project_dir / "info.json").read_text(encoding="utf-8"))
         self.assertEqual(info["evaluation_harness_version"], "chapter-evaluation-v1")
         self.assertEqual(info["evaluation_reports"][0]["chapter_index"], 1)
         self.assertEqual(info["evaluation_reports"][0]["score"], 9.0)
+
+    def test_resume_skip_existing_chapter_rehydrates_vector_index(self):
+        project_dir = self.workspace / "orchestrator-skip-project"
+        chapters_dir = project_dir / "chapters"
+        chapters_dir.mkdir(parents=True)
+        chapter_path = chapters_dir / "chapter_1.txt"
+        chapter_path.write_text("已存在章节内容", encoding="utf-8")
+
+        orchestrator = NovelOrchestrator.__new__(NovelOrchestrator)
+        orchestrator.output_dir = project_dir
+        orchestrator.info_path = project_dir / "info.json"
+        orchestrator.start_chapter = 1
+        orchestrator.end_chapter = 1
+        orchestrator.chapter_word_count = "2000"
+        orchestrator.chapter_outlines = [{"chapter_num": 1, "title": "第一章", "outline": "剧情", "target_word_count": 2000}]
+        orchestrator.novel_name = "Test Novel"
+        orchestrator.plan = "plan"
+        orchestrator.setting_bible = "bible"
+        orchestrator.req = {"content_type": "novel"}
+        orchestrator.content_type = "novel"
+        orchestrator.dimension_scores = {"plot": [], "character": [], "hook": [], "writing": [], "setting": []}
+        orchestrator.allow_plot_adjustment = False
+        orchestrator.run_planner = lambda confirmation_handler=None: "bible"
+        orchestrator._report_progress = lambda *args, **kwargs: None
+        orchestrator.run_chapter_generation = lambda *args, **kwargs: (_ for _ in ()).throw(
+            AssertionError("should skip existing chapter instead of regenerating")
+        )
+
+        original_add_chapter_to_db = orchestrator_module.add_chapter_to_db
+        synced_chapters = []
+        try:
+            orchestrator_module.add_chapter_to_db = lambda chapter_num, chapter_title, content: synced_chapters.append(
+                (chapter_num, chapter_title, content)
+            )
+            result = orchestrator.run_full_novel()
+        finally:
+            orchestrator_module.add_chapter_to_db = original_add_chapter_to_db
+
+        self.assertEqual(synced_chapters, [(1, "第1章", "已存在章节内容")])
+        self.assertEqual(result["generated_chapters"], 1)
 
     def test_export_download_requires_authenticated_access(self):
         owner = self._create_user("owner5", "owner5@example.com")
@@ -524,6 +731,38 @@ class ReviewFixRegressionTests(unittest.TestCase):
         self._set_current_user(owner)
         response = self.client.post(f"/api/projects/{project.id}/share")
         self.assertEqual(response.status_code, 200)
+
+    def test_reset_project_revokes_tasks_without_force_terminate(self):
+        owner = self._create_user("reset_revoke_owner", "reset_revoke_owner@example.com")
+        project = self._create_project(owner, name="Reset Revoke Novel")
+        self._set_current_user(owner)
+
+        db = self.SessionLocal()
+        try:
+            task = GenerationTask(
+                project_id=project.id,
+                celery_task_id="celery-reset-revoke-1",
+                status="progress",
+                progress=0.5,
+            )
+            db.add(task)
+            db.commit()
+        finally:
+            db.close()
+
+        captured_calls = []
+        original_celery_available = projects_api.CELERY_AVAILABLE
+        original_revoke = projects_api.celery_app.control.revoke
+        try:
+            projects_api.CELERY_AVAILABLE = True
+            projects_api.celery_app.control.revoke = lambda task_id, **kwargs: captured_calls.append((task_id, kwargs))
+            response = self.client.post(f"/api/projects/{project.id}/reset")
+        finally:
+            projects_api.CELERY_AVAILABLE = original_celery_available
+            projects_api.celery_app.control.revoke = original_revoke
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(captured_calls, [("celery-reset-revoke-1", {})])
 
 
 if __name__ == "__main__":
