@@ -18,7 +18,7 @@ from .config import settings
 from utils.logger import logger
 
 # 导入各个Agent模块
-from agents import (
+from backend.agents import (
     planner_agent,
     writer_agent,
     critic_agent,
@@ -204,7 +204,7 @@ class AgentPool:
 
 
 # 导出常用类给orchestrator
-from agents.critic_agent import critic_chapter
+from backend.agents.critic_agent import critic_chapter
 
 __all__ = [
     "BaseAgent",
