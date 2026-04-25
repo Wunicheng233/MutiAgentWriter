@@ -132,7 +132,7 @@ const Reader: React.FC = () => {
   if (isLoading || !project) {
     return (
       <Layout>
-        <p className="text-secondary">加载中...</p>
+        <p className="text-[var(--text-secondary)]">加载中...</p>
       </Layout>
     );
   }
@@ -140,7 +140,7 @@ const Reader: React.FC = () => {
   if (!chapter) {
     return (
       <Layout>
-        <p className="text-secondary">章节不存在</p>
+        <p className="text-[var(--text-secondary)]">章节不存在</p>
       </Layout>
     );
   }

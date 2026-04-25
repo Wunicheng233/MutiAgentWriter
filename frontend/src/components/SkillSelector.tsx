@@ -84,7 +84,7 @@ export const SkillSelector: React.FC<SkillSelectorProps> = ({
   }
 
   if (isLoading) {
-    return <div className="text-sm text-secondary">正在加载 Skill...</div>
+    return <div className="text-sm text-[var(--text-secondary)]">正在加载 Skill...</div>
   }
 
   return (
@@ -102,8 +102,8 @@ export const SkillSelector: React.FC<SkillSelectorProps> = ({
           return (
             <label
               key={skill.id}
-              className={`block cursor-pointer rounded-standard border p-4 transition-all ${
-                checked ? 'border-sage bg-sage/10' : 'border-border hover:border-sage/40 hover:bg-white/50'
+              className={`block cursor-pointer rounded-lg border p-4 transition-all ${
+                checked ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)] bg-opacity-10' : 'border-[var(--border-default)] hover:border-sage/40 hover:bg-[var(--bg-secondary)] bg-opacity-50'
               }`}
             >
               <div className="flex items-start gap-3">
@@ -119,7 +119,7 @@ export const SkillSelector: React.FC<SkillSelectorProps> = ({
                     <p className="font-medium">{skill.name}</p>
                     <Badge variant="secondary">priority {skill.priority}</Badge>
                   </div>
-                  <p className="mt-1 text-sm text-secondary">{skill.description}</p>
+                  <p className="mt-1 text-sm text-[var(--text-secondary)]">{skill.description}</p>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {skill.tags.slice(0, 4).map(tag => (
                       <Badge key={tag} variant={tag === 'author-style' ? 'agent' : 'secondary'}>
@@ -127,7 +127,7 @@ export const SkillSelector: React.FC<SkillSelectorProps> = ({
                       </Badge>
                     ))}
                   </div>
-                  <p className="mt-2 text-xs text-secondary">
+                  <p className="mt-2 text-xs text-[var(--text-secondary)]">
                     默认作用于：{(skill.applies_to || DEFAULT_APPLIES_TO).join(' / ')}
                   </p>
                 </div>
@@ -138,7 +138,7 @@ export const SkillSelector: React.FC<SkillSelectorProps> = ({
       </div>
 
       {filteredSkills.length === 0 && (
-        <div className="rounded-standard border border-dashed border-border p-4 text-sm text-secondary">
+        <div className="rounded-lg border border-dashed border-[var(--border-default)] p-4 text-sm text-[var(--text-secondary)]">
           没有匹配的 Skill。
         </div>
       )}

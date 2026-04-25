@@ -14,13 +14,13 @@ export const Badge: React.FC<BadgeProps> = ({
   className = '',
 }) => {
   const variantClasses: Record<BadgeVariant, string> = {
-    agent: 'bg-sage/12 text-sage border border-sage/25',
-    status: 'bg-terracotta/10 text-terracotta',
-    genre: 'bg-faded-rose/08 text-faded-rose',
-    secondary: 'bg-secondary/10 text-secondary',
+    agent: 'bg-[var(--accent-primary)] bg-opacity-12 text-[var(--accent-primary)] border border-[var(--accent-primary)] border-opacity-25',
+    status: 'bg-[var(--accent-warm)] bg-opacity-10 text-[var(--accent-warm)]',
+    genre: 'bg-[var(--accent-soft)] bg-opacity-8 text-[var(--accent-soft)]',
+    secondary: 'bg-[var(--text-secondary)] bg-opacity-10 text-[var(--text-secondary)]',
   }
 
-  const classes = `${variantClasses[variant]} px-3 py-1 rounded-pill text-sm font-medium tracking-wider uppercase ${className}`
+  const classes = `${variantClasses[variant]} px-3 py-1 rounded-full text-sm font-medium tracking-wider uppercase ${className}`
 
   return (
     <span className={classes}>

@@ -172,5 +172,6 @@ class WorldviewManager:
                 return
         logger.warning(f"⚠️ 未找到伏笔{foreshadow_id}，无法标记完成")
 
-# ===================== 全局单例（整个系统共用一个实例，确保状态唯一） =====================
-worldview_manager = WorldviewManager()
+# ===================== 注意：不再提供模块级单例 =====================
+# 使用方应按需实例化 WorldviewManager(output_dir)
+# 这样可以避免多任务/多项目并行时的状态交叉污染

@@ -4,6 +4,53 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Responsive Breakpoints */
+@layer base {
+  /* Mobile-first responsive adjustments */
+  @media (max-width: 640px) {
+    .app-layout {
+      flex-direction: column;
+    }
+
+    /* Hide nav rail on mobile by default, can be toggled */
+    .nav-rail {
+      width: 0 !important;
+      overflow: hidden;
+    }
+
+    .nav-rail.nav-expanded {
+      width: 60px !important;
+    }
+
+    /* Right panel takes full width on mobile when open */
+    .right-panel {
+      position: fixed !important;
+      top: 0;
+      right: 0;
+      height: 100vh !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      z-index: 100;
+    }
+
+    /* Canvas takes full width on mobile */
+    .canvas-container {
+      padding: 16px !important;
+    }
+
+    .canvas-container .max-w-content {
+      max-width: 100% !important;
+    }
+  }
+
+  /* Tablet adjustments */
+  @media (min-width: 641px) and (max-width: 1024px) {
+    .right-panel {
+      max-width: 280px !important;
+    }
+  }
+}
+
 /* Theme Variables */
 :root {
   /* Theme 1: Warm Parchment (DEFAULT) */

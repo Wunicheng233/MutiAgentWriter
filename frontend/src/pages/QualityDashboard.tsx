@@ -6,7 +6,6 @@ import { LineChart, RadarChart } from 'echarts/charts'
 import { GridComponent, RadarComponent, TooltipComponent } from 'echarts/components'
 import * as echarts from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
-import { Layout } from '../components/Layout'
 import { Card } from '../components/Card'
 import { Badge } from '../components/Badge'
 import type { BadgeVariant } from '../components/Badge'
@@ -49,27 +48,15 @@ export const QualityDashboard: React.FC = () => {
   })
 
   if (!isValidProjectId) {
-    return (
-      <Layout>
-        <p className="text-secondary">项目ID无效</p>
-      </Layout>
-    )
+    return <p className="text-[var(--text-secondary)]">项目ID无效</p>
   }
 
   if (isLoading) {
-    return (
-      <Layout>
-        <p className="text-secondary">加载中...</p>
-      </Layout>
-    )
+    return <p className="text-[var(--text-secondary)]">加载中...</p>
   }
 
   if (!analytics) {
-    return (
-      <Layout>
-        <p className="text-secondary">暂无数据分析数据</p>
-      </Layout>
-    )
+    return <p className="text-[var(--text-secondary)]">暂无数据分析数据</p>
   }
 
   const dimensionMapping: Record<string, string> = {
@@ -222,9 +209,8 @@ export const QualityDashboard: React.FC = () => {
   }
 
   return (
-    <Layout>
-      <div className="mx-auto max-w-content space-y-6">
-        <Card className="border-sage/20 bg-[linear-gradient(135deg,rgba(91,127,110,0.12),rgba(255,255,255,0.9),rgba(192,107,78,0.08))]">
+    <div className="space-y-6">
+        <Card className="border-[var(--accent-primary)] border-opacity-20 bg-[linear-gradient(135deg,rgba(91,127,110,0.12),rgba(255,255,255,0.9),rgba(192,107,78,0.08))]">
           <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
             <div className="max-w-3xl">
               <div className="mb-4 flex flex-wrap items-center gap-3">
@@ -237,7 +223,7 @@ export const QualityDashboard: React.FC = () => {
                 </Badge>
               </div>
               <h1 className="text-3xl md:text-4xl">质量分析</h1>
-              <p className="mt-3 text-body">
+              <p className="mt-3 text-[var(--text-body)]">
                 这里不只是展示图表，而是把章节评审结果收成一套长期可复用的质量闭环视图，帮助我们定位当前作品最强和最弱的部分。
               </p>
             </div>
@@ -245,21 +231,21 @@ export const QualityDashboard: React.FC = () => {
             <div className="w-full max-w-xl space-y-3">
               <ProgressBar progress={analytics.overall_quality_score * 10} message={`总体质量 ${analytics.overall_quality_score.toFixed(1)}/10`} />
               <div className="grid grid-cols-2 gap-3 md:grid-cols-4 text-sm">
-                <div className="rounded-standard border border-border bg-parchment/70 p-3">
-                  <p className="text-secondary">总章节数</p>
-                  <p className="mt-1 text-body">{totalChapters}</p>
+                <div className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-3">
+                  <p className="text-[var(--text-secondary)]">总章节数</p>
+                  <p className="mt-1 text-[var(--text-body)]">{totalChapters}</p>
                 </div>
-                <div className="rounded-standard border border-border bg-parchment/70 p-3">
-                  <p className="text-secondary">合格章节</p>
-                  <p className="mt-1 text-body">{passedChapters}</p>
+                <div className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-3">
+                  <p className="text-[var(--text-secondary)]">合格章节</p>
+                  <p className="mt-1 text-[var(--text-body)]">{passedChapters}</p>
                 </div>
-                <div className="rounded-standard border border-border bg-parchment/70 p-3">
-                  <p className="text-secondary">通过率</p>
-                  <p className="mt-1 text-body">{passRate.toFixed(0)}%</p>
+                <div className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-3">
+                  <p className="text-[var(--text-secondary)]">通过率</p>
+                  <p className="mt-1 text-[var(--text-body)]">{passRate.toFixed(0)}%</p>
                 </div>
-                <div className="rounded-standard border border-border bg-parchment/70 p-3">
-                  <p className="text-secondary">待重点处理</p>
-                  <p className="mt-1 text-body">{scoreBuckets.weak}</p>
+                <div className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-3">
+                  <p className="text-[var(--text-secondary)]">待重点处理</p>
+                  <p className="mt-1 text-[var(--text-body)]">{scoreBuckets.weak}</p>
                 </div>
               </div>
             </div>
@@ -268,57 +254,57 @@ export const QualityDashboard: React.FC = () => {
 
         <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
           <Card>
-            <p className="text-xs uppercase tracking-[0.22em] text-secondary">Dimension Summary</p>
+            <p className="text-xs uppercase tracking-[0.22em] text-[var(--text-secondary)]">Dimension Summary</p>
             <h2 className="mt-2 text-2xl">维度概览</h2>
             <div className="mt-5 grid gap-4 md:grid-cols-2">
-              <div className="rounded-comfortable border border-border bg-parchment/60 p-4">
-                <p className="text-secondary">最强维度</p>
-                <p className="mt-2 text-xl text-inkwell">
+              <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-4">
+                <p className="text-[var(--text-secondary)]">最强维度</p>
+                <p className="mt-2 text-xl text-[var(--text-primary)]">
                   {strongestDimensionEntry
                     ? `${dimensionMapping[strongestDimensionEntry[0]] || strongestDimensionEntry[0]} ${strongestDimensionEntry[1].toFixed(1)}`
                     : '暂无数据'}
                 </p>
-                <p className="mt-2 text-sm text-secondary">这是目前最有可能成为作品差异化优势的部分。</p>
+                <p className="mt-2 text-sm text-[var(--text-secondary)]">这是目前最有可能成为作品差异化优势的部分。</p>
               </div>
-              <div className="rounded-comfortable border border-border bg-parchment/60 p-4">
-                <p className="text-secondary">最弱维度</p>
-                <p className="mt-2 text-xl text-inkwell">
+              <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-4">
+                <p className="text-[var(--text-secondary)]">最弱维度</p>
+                <p className="mt-2 text-xl text-[var(--text-primary)]">
                   {weakestDimensionEntry
                     ? `${dimensionMapping[weakestDimensionEntry[0]] || weakestDimensionEntry[0]} ${weakestDimensionEntry[1].toFixed(1)}`
                     : '暂无数据'}
                 </p>
-                <p className="mt-2 text-sm text-secondary">这里最适合作为下一轮 prompt 调优或修订策略的重点。</p>
+                <p className="mt-2 text-sm text-[var(--text-secondary)]">这里最适合作为下一轮 prompt 调优或修订策略的重点。</p>
               </div>
             </div>
 
             <div className="mt-5 grid gap-3 md:grid-cols-3">
-              <div className="rounded-standard border border-border bg-white/75 p-4">
-                <p className="text-secondary">高质量章节</p>
-                <p className="mt-1 text-2xl text-inkwell">{scoreBuckets.strong}</p>
-                <p className="mt-2 text-sm text-secondary">评分 8 分以上，适合作为样例章节。</p>
+              <div className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-secondary)] p-4">
+                <p className="text-[var(--text-secondary)]">高质量章节</p>
+                <p className="mt-1 text-2xl text-[var(--text-primary)]">{scoreBuckets.strong}</p>
+                <p className="mt-2 text-sm text-[var(--text-secondary)]">评分 8 分以上，适合作为样例章节。</p>
               </div>
-              <div className="rounded-standard border border-border bg-white/75 p-4">
-                <p className="text-secondary">可接受章节</p>
-                <p className="mt-1 text-2xl text-inkwell">{scoreBuckets.watch}</p>
-                <p className="mt-2 text-sm text-secondary">评分 6-8 分，需要局部打磨但已具备基础质量。</p>
+              <div className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-secondary)] p-4">
+                <p className="text-[var(--text-secondary)]">可接受章节</p>
+                <p className="mt-1 text-2xl text-[var(--text-primary)]">{scoreBuckets.watch}</p>
+                <p className="mt-2 text-sm text-[var(--text-secondary)]">评分 6-8 分，需要局部打磨但已具备基础质量。</p>
               </div>
-              <div className="rounded-standard border border-border bg-white/75 p-4">
-                <p className="text-secondary">需重点返工</p>
-                <p className="mt-1 text-2xl text-inkwell">{scoreBuckets.weak}</p>
-                <p className="mt-2 text-sm text-secondary">评分低于 6 分，建议优先检查剧情、人物和节奏。</p>
+              <div className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-secondary)] p-4">
+                <p className="text-[var(--text-secondary)]">需重点返工</p>
+                <p className="mt-1 text-2xl text-[var(--text-primary)]">{scoreBuckets.weak}</p>
+                <p className="mt-2 text-sm text-[var(--text-secondary)]">评分低于 6 分，建议优先检查剧情、人物和节奏。</p>
               </div>
             </div>
           </Card>
 
           <Card>
-            <p className="text-xs uppercase tracking-[0.22em] text-secondary">Quality Radar</p>
+            <p className="text-xs uppercase tracking-[0.22em] text-[var(--text-secondary)]">Quality Radar</p>
             <h2 className="mt-2 text-2xl">多维度评分雷达图</h2>
             {hasDimensions ? (
               <div className="mt-4 h-[320px]">
                 <ReactEChartsCore echarts={echarts} option={radarOption} style={{ height: '100%', width: '100%' }} />
               </div>
             ) : (
-              <div className="mt-5 flex h-[320px] items-center justify-center text-secondary">
+              <div className="mt-5 flex h-[320px] items-center justify-center text-[var(--text-secondary)]">
                 <p>多维度评分数据生成后会显示在这里。</p>
               </div>
             )}
@@ -327,14 +313,14 @@ export const QualityDashboard: React.FC = () => {
 
         <div className="grid gap-6 lg:grid-cols-2">
           <Card>
-            <p className="text-xs uppercase tracking-[0.22em] text-secondary">Best / Worst</p>
+            <p className="text-xs uppercase tracking-[0.22em] text-[var(--text-secondary)]">Best / Worst</p>
             <h2 className="mt-2 text-2xl">章节极值</h2>
             <div className="mt-5 space-y-4">
-              <div className="rounded-comfortable border border-border bg-parchment/60 p-4">
+              <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-4">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-secondary">最佳章节</p>
-                    <p className="mt-1 text-lg text-inkwell">
+                    <p className="text-[var(--text-secondary)]">最佳章节</p>
+                    <p className="mt-1 text-lg text-[var(--text-primary)]">
                       {highestChapter ? highestChapter.title || `第${highestChapter.chapter_index}章` : '暂无数据'}
                     </p>
                   </div>
@@ -346,11 +332,11 @@ export const QualityDashboard: React.FC = () => {
                 </div>
               </div>
 
-              <div className="rounded-comfortable border border-border bg-parchment/60 p-4">
+              <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-4">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-secondary">最弱章节</p>
-                    <p className="mt-1 text-lg text-inkwell">
+                    <p className="text-[var(--text-secondary)]">最弱章节</p>
+                    <p className="mt-1 text-lg text-[var(--text-primary)]">
                       {lowestChapter ? lowestChapter.title || `第${lowestChapter.chapter_index}章` : '暂无数据'}
                     </p>
                   </div>
@@ -365,7 +351,7 @@ export const QualityDashboard: React.FC = () => {
           </Card>
 
           <Card>
-            <p className="text-xs uppercase tracking-[0.22em] text-secondary">Trend</p>
+            <p className="text-xs uppercase tracking-[0.22em] text-[var(--text-secondary)]">Trend</p>
             <h2 className="mt-2 text-2xl">章节评分趋势</h2>
             <div className="mt-4 h-[320px]">
               <ReactEChartsCore echarts={echarts} option={lineOption} style={{ height: '100%', width: '100%' }} />
@@ -376,9 +362,9 @@ export const QualityDashboard: React.FC = () => {
         <Card>
           <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
-              <p className="text-xs uppercase tracking-[0.22em] text-secondary">Chapter Detail</p>
+              <p className="text-xs uppercase tracking-[0.22em] text-[var(--text-secondary)]">Chapter Detail</p>
               <h2 className="mt-2 text-2xl">章节评分明细</h2>
-              <p className="mt-2 text-secondary">这部分适合做逐章复盘，也能直接告诉我们下一轮该先修哪几章。</p>
+              <p className="mt-2 text-[var(--text-secondary)]">这部分适合做逐章复盘，也能直接告诉我们下一轮该先修哪几章。</p>
             </div>
             <Link to={`/projects/${projectId}/chapters`}>
               <Button variant="secondary">回到章节列表</Button>
@@ -389,7 +375,7 @@ export const QualityDashboard: React.FC = () => {
             {chapterScores.map(chapter => (
               <div
                 key={chapter.chapter_index}
-                className="rounded-comfortable border border-border p-4 transition-colors hover:border-sage/30"
+                className="rounded-xl border border-[var(--border-default)] p-4 transition-colors hover:border-[var(--accent-primary)]"
               >
                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                   <div>
@@ -415,7 +401,6 @@ export const QualityDashboard: React.FC = () => {
           </div>
         </Card>
       </div>
-    </Layout>
   )
 }
 

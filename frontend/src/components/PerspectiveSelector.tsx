@@ -116,7 +116,7 @@ export const PerspectiveSelector: React.FC<PerspectiveSelectorProps> = ({
 
   if (isLoading) {
     return (
-      <div className="p-4 text-secondary text-center">
+      <div className="p-4 text-[var(--text-secondary)] text-center">
         正在加载视角列表...
       </div>
     );
@@ -135,7 +135,7 @@ export const PerspectiveSelector: React.FC<PerspectiveSelectorProps> = ({
       <div className="space-y-6">
         {Object.entries(groupedPerspectives).map(([genre, items]) => (
           <div key={genre}>
-            <p className="text-sm font-medium text-secondary mb-3 flex items-center gap-2">
+            <p className="text-sm font-medium text-[var(--text-secondary)] mb-3 flex items-center gap-2">
               <span>{genreIcons[genre] || '📝'}</span>
               <span>{genre}</span>
               <span className="text-xs">({items.length})</span>
@@ -145,10 +145,10 @@ export const PerspectiveSelector: React.FC<PerspectiveSelectorProps> = ({
                 <label
                   key={p.id}
                   className={`
-                    block p-4 rounded-standard border cursor-pointer transition-all
+                    block p-4 rounded-lg border cursor-pointer transition-all
                     ${value === p.id
-                      ? 'border-sage bg-sage/10 shadow-sm'
-                      : 'border-border hover:border-sage/40 hover:bg-white/50'
+                      ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)] bg-opacity-10 shadow-[var(--shadow-subtle)]'
+                      : 'border-[var(--border-default)] hover:border-[var(--accent-primary)] border-opacity-40 hover:bg-[var(--bg-secondary)] bg-opacity-50'
                     }
                   `}
                 >
@@ -163,7 +163,7 @@ export const PerspectiveSelector: React.FC<PerspectiveSelectorProps> = ({
                     />
                     <div className="flex-1 min-w-0">
                       <p className="font-medium">{p.name}</p>
-                      <p className="text-sm text-secondary mt-1">{p.description}</p>
+                      <p className="text-sm text-[var(--text-secondary)] mt-1">{p.description}</p>
                       <div className="mt-2 flex flex-wrap gap-2">
                         {p.strengths.slice(0, 3).map((s) => (
                           <Badge key={s} variant="secondary">
@@ -181,7 +181,7 @@ export const PerspectiveSelector: React.FC<PerspectiveSelectorProps> = ({
       </div>
 
       {/* 不使用特定风格选项 */}
-      <label className="block p-4 rounded-standard border border-border cursor-pointer hover:bg-white/50 transition-all">
+      <label className="block p-4 rounded-lg border border-[var(--border-default)] cursor-pointer hover:bg-[var(--bg-secondary)] bg-opacity-50 transition-all">
         <div className="flex items-center gap-3">
           <input
             type="radio"
@@ -207,12 +207,12 @@ export const PerspectiveSelector: React.FC<PerspectiveSelectorProps> = ({
                 onChange={(e) => handleStrengthChange(Number(e.target.value) / 100)}
                 className="w-full"
               />
-              <div className="flex justify-between text-xs text-secondary mt-1">
+              <div className="flex justify-between text-xs text-[var(--text-secondary)] mt-1">
                 <span>轻微影响</span>
                 <span>平衡</span>
                 <span>强烈风格</span>
               </div>
-              <p className="text-center text-sm mt-2 text-secondary">
+              <p className="text-center text-sm mt-2 text-[var(--text-secondary)]">
                 当前强度: {Math.round(strength * 100)}%
                 {strength <= 0.3 && '（仅影响句式和词汇）'}
                 {strength > 0.3 && strength <= 0.7 && '（完整融入心智模型）'}
@@ -220,7 +220,7 @@ export const PerspectiveSelector: React.FC<PerspectiveSelectorProps> = ({
               </p>
             </div>
 
-            <div className="pt-2 border-t border-border">
+            <div className="pt-2 border-t border-[var(--border-default)]">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
@@ -233,7 +233,7 @@ export const PerspectiveSelector: React.FC<PerspectiveSelectorProps> = ({
                   同时使用该作家的审美标准来评审质量
                 </span>
               </label>
-              <p className="text-xs text-secondary mt-1 ml-6">
+              <p className="text-xs text-[var(--text-secondary)] mt-1 ml-6">
                 启用后，Critic 会按照该作家的创作标准来评估章节质量
               </p>
             </div>

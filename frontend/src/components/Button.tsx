@@ -14,13 +14,13 @@ export const Button: React.FC<ButtonProps> = ({
   children,
   ...props
 }) => {
-  const baseClasses = 'rounded-full font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-sage/25 disabled:cursor-not-allowed disabled:opacity-50'
+  const baseClasses = 'rounded-full font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)] focus:ring-opacity-25 disabled:cursor-not-allowed disabled:opacity-50'
 
   const variantClasses: Record<Variant, string> = {
-    primary: 'bg-sage text-parchment shadow-ambient hover:-translate-y-0.5 hover:bg-sage/90 hover:shadow-standard active:translate-y-0',
-    secondary: 'border border-border bg-white/30 text-inkwell hover:border-sage/70 hover:bg-sage/5',
-    tertiary: 'bg-transparent text-sage hover:bg-sage/5 hover:text-inkwell',
-    ghost: 'bg-transparent text-secondary hover:bg-inkwell/5 hover:text-inkwell rounded-full p-2',
+    primary: 'bg-[var(--accent-primary)] text-white shadow-[var(--shadow-default)] hover:-translate-y-0.5 hover:opacity-90 hover:shadow-[var(--shadow-elevated)] active:translate-y-0',
+    secondary: 'border border-[var(--border-default)] bg-[var(--bg-tertiary)] text-[var(--text-primary)] hover:border-[var(--accent-primary)] hover:bg-[var(--accent-primary)] hover:bg-opacity-5',
+    tertiary: 'bg-transparent text-[var(--accent-primary)] hover:bg-[var(--accent-primary)] hover:bg-opacity-5 hover:text-[var(--text-primary)]',
+    ghost: 'bg-transparent text-[var(--text-secondary)] hover:bg-[var(--text-primary)] hover:bg-opacity-5 hover:text-[var(--text-primary)] rounded-full p-2',
   }
 
   const sizeClasses = {

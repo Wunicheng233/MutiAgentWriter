@@ -9,24 +9,39 @@ interface NavItemProps {
 }
 
 const NavItem: React.FC<NavItemProps> = React.memo(({ icon, label, active, onClick }) => {
+  const [showTooltip, setShowTooltip] = useState(false)
+
   return (
-    <button
-      onClick={onClick}
-      className={`
-        w-11 h-11 flex items-center justify-center rounded-lg transition-all duration-150
-        focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)] focus:ring-opacity-50
-        ${active
-          ? 'bg-[var(--accent-primary)] bg-opacity-10 text-[var(--accent-primary)]'
-          : 'text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)]'
-        }
-      `}
-      title={label}
-      aria-label={label}
-      aria-current={active ? 'page' : undefined}
-      data-testid="nav-item"
-    >
-      {icon}
-    </button>
+    <div className="relative">
+      <button
+        onClick={onClick}
+        onMouseEnter={() => setShowTooltip(true)}
+        onMouseLeave={() => setShowTooltip(false)}
+        className={`
+          w-11 h-11 flex items-center justify-center rounded-lg transition-all duration-150
+          focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)] focus:ring-opacity-50
+          ${active
+            ? 'bg-[var(--accent-primary)] bg-opacity-10 text-[var(--accent-primary)]'
+            : 'text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)]'
+          }
+        `}
+        aria-label={label}
+        aria-current={active ? 'page' : undefined}
+        data-testid="nav-item"
+      >
+        {icon}
+      </button>
+
+      {/* Tooltip */}
+      {showTooltip && (
+        <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 z-50">
+          <div className="px-3 py-2 rounded-lg bg-[var(--bg-secondary)] text-[var(--text-primary)] text-sm whitespace-nowrap shadow-[var(--shadow-default)] border border-[var(--border-default)]">
+            {label}
+            <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-[var(--bg-secondary)]"></div>
+          </div>
+        </div>
+      )}
+    </div>
   )
 })
 
@@ -45,13 +60,6 @@ const ProjectIcon = () => (
   </svg>
 )
 
-const EditorIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-  </svg>
-)
-
 const ChaptersIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <line x1="8" y1="6" x2="21" y2="6" />
@@ -60,15 +68,6 @@ const ChaptersIcon = () => (
     <line x1="3" y1="6" x2="3.01" y2="6" />
     <line x1="3" y1="12" x2="3.01" y2="12" />
     <line x1="3" y1="18" x2="3.01" y2="18" />
-  </svg>
-)
-
-const CharactersIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-    <circle cx="9" cy="7" r="4" />
-    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
   </svg>
 )
 
@@ -98,18 +97,37 @@ export const NavRail: React.FC<NavRailProps> = React.memo(({ collapsed, onToggle
   const location = useLocation()
   const [hovered, setHovered] = useState(false)
 
-  const navItems = useMemo(() => [
-    { path: '/projects', icon: <ProjectIcon />, label: 'Project Overview' },
-    { path: '/write', icon: <EditorIcon />, label: 'Editor' },
-    { path: '/chapters', icon: <ChaptersIcon />, label: 'Chapters' },
-    { path: '/characters', icon: <CharactersIcon />, label: 'Characters' },
-    { path: '/analytics', icon: <AnalyticsIcon />, label: 'Analytics' },
-    { path: '/settings', icon: <SettingsIcon />, label: 'Settings' },
-  ], [])
+  // Extract project ID from current URL
+  const projectIdMatch = location.pathname.match(/\/projects\/(\d+)/)
+  const projectId = projectIdMatch ? projectIdMatch[1] : null
 
-  const isActive = useCallback((path: string) => {
+  const navItems = useMemo(() => [
+    { path: '/dashboard', icon: <ProjectIcon />, label: '工作台' },
+    projectId && {
+      path: `/projects/${projectId}/overview`,
+      icon: <ProjectIcon />,
+      label: '项目总览',
+      requiresProject: true
+    },
+    projectId && {
+      path: `/projects/${projectId}/chapters`,
+      icon: <ChaptersIcon />,
+      label: '章节列表',
+      requiresProject: true
+    },
+    projectId && {
+      path: `/projects/${projectId}/analytics`,
+      icon: <AnalyticsIcon />,
+      label: '质量分析',
+      requiresProject: true
+    },
+    { path: '/settings', icon: <SettingsIcon />, label: '设置' },
+  ].filter(Boolean) as Array<{ path: string; icon: React.ReactNode; label: string; requiresProject?: boolean }>, [projectId])
+
+  const isActive = useCallback((path: string, requiresProject: boolean = false) => {
+    if (!projectId && requiresProject) return false
     return location.pathname.startsWith(path)
-  }, [location.pathname])
+  }, [location.pathname, projectId])
 
   const handleNavigate = useCallback((path: string) => {
     navigate(path)
@@ -128,10 +146,10 @@ export const NavRail: React.FC<NavRailProps> = React.memo(({ collapsed, onToggle
 
   return (
     <nav
-      className={`h-full flex flex-col items-center py-4 bg-[var(--bg-secondary)] transition-all duration-200 ease-out ${
+      className={`h-full flex flex-col items-center py-4 bg-[var(--bg-secondary)] transition-all duration-200 ease-out nav-rail ${
         effectiveCollapsed ? 'justify-center' : 'justify-between'
-      }`}
-      style={{ willChange: 'width' }}
+      } ${!collapsed ? 'nav-expanded' : ''}`}
+      style={{ width: collapsed && !hovered ? '12px' : '64px' }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       data-testid="nav-rail"
@@ -142,8 +160,8 @@ export const NavRail: React.FC<NavRailProps> = React.memo(({ collapsed, onToggle
         <button
           onClick={onToggleCollapse}
           className="w-8 h-8 flex items-center justify-center rounded-lg text-[var(--text-muted)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-secondary)] transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)] focus:ring-opacity-50"
-          title="Expand sidebar"
-          aria-label="Expand sidebar"
+          title="展开侧边栏"
+          aria-label="展开侧边栏"
           data-testid="collapse-button"
         >
           <span style={{ transform: 'rotate(180deg)', display: 'inline-block' }}>
@@ -152,13 +170,13 @@ export const NavRail: React.FC<NavRailProps> = React.memo(({ collapsed, onToggle
         </button>
       ) : (
         <>
-          <div className="flex flex-col gap-2 items-center" role="menubar">
+          <div className="flex flex-col gap-3 items-center" role="menubar">
             {navItems.map((item) => (
               <NavItem
                 key={item.path}
                 icon={item.icon}
                 label={item.label}
-                active={isActive(item.path)}
+                active={isActive(item.path, item.requiresProject)}
                 onClick={() => handleNavigate(item.path)}
               />
             ))}
@@ -167,8 +185,8 @@ export const NavRail: React.FC<NavRailProps> = React.memo(({ collapsed, onToggle
           <button
             onClick={onToggleCollapse}
             className="w-8 h-8 flex items-center justify-center rounded-lg text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)] focus:ring-opacity-50"
-            title="Collapse sidebar"
-            aria-label="Collapse sidebar"
+            title="收起侧边栏"
+            aria-label="收起侧边栏"
             data-testid="collapse-button"
           >
             <CollapseIcon />

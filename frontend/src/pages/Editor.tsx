@@ -4,19 +4,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
-import { ThreeColumnLayout } from '../components/layout/ThreeColumnLayout'
-import { NavRail } from '../components/layout/NavRail'
-import { CanvasContainer } from '../components/layout/CanvasContainer'
-import { RightPanel } from '../components/layout/RightPanel'
-import { AIChatPanel } from '../components/ai/AIChatPanel'
-import { FloatingToggleButton } from '../components/FloatingToggleButton'
 import { Button } from '../components/Button'
 import { Card } from '../components/Card'
 import { Badge } from '../components/Badge'
 import { ProgressBar } from '../components/ProgressBar'
 import AgentCard from '../components/AgentCard'
 import { useLayoutStore } from '../store/useLayoutStore'
-import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import {
   getChapter,
   updateChapter,
@@ -370,18 +363,8 @@ export const Editor: React.FC = () => {
     ? chapterContentToPreviewText(chapter.content)
     : ''
 
-  // Initialize keyboard shortcuts
-  useKeyboardShortcuts()
-
   // Get layout state from store
-  const {
-    navCollapsed,
-    rightPanelOpen,
-    rightPanelWidth,
-    focusMode,
-    toggleNavCollapsed,
-    setRightPanelWidth,
-  } = useLayoutStore()
+  const { focusMode } = useLayoutStore()
 
   // Handle missing route parameters - must be after all hooks (React Hooks rule)
   const isValidParams = id && chapterIndex && projectId > 0 && !Number.isNaN(chapterIdx)
@@ -398,21 +381,14 @@ export const Editor: React.FC = () => {
 
   if (isLoading) {
     return (
-      <ThreeColumnLayout
-        nav={<NavRail collapsed={navCollapsed} onToggleCollapse={toggleNavCollapsed} />}
-        canvas={<div className="p-8 text-[var(--text-secondary)]">加载中...</div>}
-        rightPanel={<div />}
-        rightPanelOpen={false}
-      />
+      <div className="p-8 text-[var(--text-secondary)]">加载中...</div>
     )
   }
 
   return (
-    <>
-      <ThreeColumnLayout
-        nav={<NavRail collapsed={navCollapsed} onToggleCollapse={toggleNavCollapsed} />}
-        canvas={
-          <CanvasContainer focusMode={focusMode}>
+    <div className="h-full overflow-y-auto p-6">
+      {/* Page content wrapped in container for proper scroll */}
+      <div className={`mx-auto transition-all duration-200 ${focusMode ? 'max-w-[900px]' : 'max-w-full'}`}>
             {/* Chapter Header Card */}
             <Card className="mb-6 border-[var(--border-default)] bg-[var(--bg-secondary)] p-4">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -579,24 +555,7 @@ export const Editor: React.FC = () => {
                 </div>
               </div>
             </div>
-          </CanvasContainer>
-        }
-        rightPanel={
-          <RightPanel
-            open={rightPanelOpen}
-            width={rightPanelWidth}
-            onResize={setRightPanelWidth}
-          >
-            <AIChatPanel />
-          </RightPanel>
-        }
-        rightPanelOpen={rightPanelOpen}
-        rightPanelWidth={rightPanelWidth}
-        navCollapsed={navCollapsed}
-      />
-
-      {/* Floating Toggle Button */}
-      <FloatingToggleButton />
+    </div>
 
       {/* 人工确认对话框 */}
       {showConfirmDialog && (
@@ -671,7 +630,7 @@ export const Editor: React.FC = () => {
           </Card>
         </div>
       )}
-    </>
+    </div>
   )
 }
 

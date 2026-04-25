@@ -64,7 +64,7 @@ function renderInlineMarkdown(value: string): string {
     if (!isSafeHref(normalizedHref)) {
       return label
     }
-    return `<a href="${escapeAttribute(normalizedHref)}" class="underline text-sage" target="_blank" rel="noopener noreferrer">${label}</a>`
+    return `<a href="${escapeAttribute(normalizedHref)}" class="underline text-[var(--accent-primary)]" target="_blank" rel="noopener noreferrer">${label}</a>`
   })
 
   return withLinks
@@ -106,12 +106,12 @@ export function renderSafeMarkdown(text: string): string {
       if (isSeparator) continue
 
       if (!tableOpen) {
-        renderedLines.push('<table class="border-collapse my-3 w-full bg-bg rounded border border-border overflow-hidden"><tbody>')
+        renderedLines.push('<table class="border-collapse my-3 w-full bg-[var(--bg-secondary)] rounded border border-[var(--border-default)] overflow-hidden"><tbody>')
         tableOpen = true
       }
       renderedLines.push(
         `<tr>${cells
-          .map(cell => `<td class="border border-border p-2 align-top">${renderInlineMarkdown(escapeHtml(cell.trim()))}</td>`)
+          .map(cell => `<td class="border border-[var(--border-default)] p-2 align-top">${renderInlineMarkdown(escapeHtml(cell.trim()))}</td>`)
           .join('')}</tr>`
       )
       continue

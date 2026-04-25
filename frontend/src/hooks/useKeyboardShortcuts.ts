@@ -42,11 +42,11 @@ export const useKeyboardShortcuts = () => {
         return
       }
 
-      // Command/Ctrl + 1-6: Navigate to pages
-      if ((e.metaKey || e.ctrlKey) && /^[1-6]$/.test(e.key) && !e.shiftKey) {
+      // Command/Ctrl + 1-4: Navigate to pages
+      if ((e.metaKey || e.ctrlKey) && /^[1-4]$/.test(e.key) && !e.shiftKey) {
         e.preventDefault()
         e.stopPropagation()
-        const paths = ['/projects', '/write', '/chapters', '/characters', '/analytics', '/settings']
+        const paths = ['/dashboard', '/projects/new', '/analytics', '/settings']
         const index = parseInt(e.key) - 1
         if (paths[index]) {
           navigate(paths[index])

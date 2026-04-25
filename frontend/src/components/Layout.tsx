@@ -1,22 +1,14 @@
 import React from 'react'
-import NavBar from './NavBar'
-import ToastProvider from './Toast'
 
 interface LayoutProps {
   children: React.ReactNode
 }
 
+// Simplified Layout - only wraps children
+// NavBar is now integrated into AppLayout for protected routes
+// This Layout is kept for backward compatibility and used by pages that need a simple container
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
-  return (
-    <ToastProvider>
-      <div className="min-h-screen bg-parchment">
-        <NavBar />
-        <main className="max-w-content mx-auto px-4 py-8">
-          {children}
-        </main>
-      </div>
-    </ToastProvider>
-  )
+  return <>{children}</>
 }
 
 export default Layout

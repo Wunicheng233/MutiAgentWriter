@@ -1,12 +1,12 @@
 import React from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { Layout } from '../components/Layout'
 import { Card } from '../components/Card'
 import { Badge } from '../components/Badge'
 import type { BadgeVariant } from '../components/Badge'
 import { Button } from '../components/Button'
 import { ProgressBar } from '../components/ProgressBar'
+import { CanvasContainer } from '../components/layout/CanvasContainer'
 import { listProjects } from '../utils/endpoints'
 import type { Project } from '../types/api'
 
@@ -37,19 +37,19 @@ export const Dashboard: React.FC = () => {
   }
 
   return (
-    <Layout>
+    <CanvasContainer maxWidth={1200}>
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-serif text-inkwell">我的书架</h1>
+        <h1 className="text-3xl font-serif text-[var(--text-primary)]">我的书架</h1>
         <Link to="/projects/new">
           <Button variant="primary">新建项目</Button>
         </Link>
       </div>
 
-      {isLoading && <p className="text-secondary">加载中...</p>}
+      {isLoading && <p className="text-[var(--text-secondary)]">加载中...</p>}
 
       {data && data.items.length === 0 && (
         <Card hoverable className="text-center py-12">
-          <p className="text-secondary mb-6">还没有项目，创建第一个项目开始创作吧</p>
+          <p className="text-[var(--text-secondary)] mb-6">还没有项目，创建第一个项目开始创作吧</p>
           <Link to="/projects/new">
             <Button variant="primary">创建新项目</Button>
           </Link>
@@ -61,38 +61,38 @@ export const Dashboard: React.FC = () => {
           <Link key={project.id} to={`/projects/${project.id}/overview`}>
             <Card hoverable className="h-full flex flex-col relative overflow-hidden">
               {/* 书脊 - 左侧深色条，模拟书本效果 */}
-              <div className="absolute left-0 top-0 bottom-0 w-[8px] bg-[rgba(60,40,20,0.28)]"></div>
+              <div className="absolute left-0 top-0 bottom-0 w-[8px] bg-[var(--text-primary)] bg-opacity-15"></div>
 
               <div className="flex justify-between items-start mb-4 pl-3">
-                <h3 className="text-card text-xl font-serif text-inkwell">{project.name}</h3>
+                <h3 className="text-card text-xl font-serif text-[var(--text-primary)]">{project.name}</h3>
                 <Badge variant={getStatusColor(project.status)}>
                   {getStatusText(project.status)}
                 </Badge>
               </div>
               {project.description && (
-                <p className="text-secondary text-sm mb-4 line-clamp-2 pl-3">
+                <p className="text-[var(--text-secondary)] text-sm mb-4 line-clamp-2 pl-3">
                   {project.description}
                 </p>
               )}
               {project.overall_quality_score > 0 && (
                 <div className="mb-4 pl-3">
                   <div className="flex justify-between text-sm mb-1">
-                    <span className="text-secondary">总体质量</span>
-                    <span className="text-body font-medium">{project.overall_quality_score.toFixed(1)}/10</span>
+                    <span className="text-[var(--text-secondary)]">总体质量</span>
+                    <span className="text-[var(--text-body)] font-medium">{project.overall_quality_score.toFixed(1)}/10</span>
                   </div>
                   <ProgressBar
                     progress={project.overall_quality_score * 10}
                   />
                 </div>
               )}
-              <div className="text-xs text-secondary mt-auto pt-4 pl-3">
+              <div className="text-xs text-[var(--text-secondary)] mt-auto pt-4 pl-3">
                 更新于 {new Date(project.updated_at).toLocaleString()}
               </div>
             </Card>
           </Link>
         ))}
       </div>
-    </Layout>
+    </CanvasContainer>
   )
 }
 

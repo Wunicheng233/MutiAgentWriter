@@ -13,14 +13,14 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({ progress, message }) =
   return (
     <div className="w-full space-y-2">
       {message && (
-        <div className="flex justify-between text-sm text-secondary">
+        <div className="flex justify-between text-sm text-[var(--text-secondary)]">
           <span>{message}</span>
           <span>{Math.round(safeProgress)}%</span>
         </div>
       )}
-      <div className="h-1.5 w-full overflow-hidden rounded-full bg-border/70">
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--border-default)] bg-opacity-70">
         <div
-          className="h-full rounded-full bg-sage transition-all duration-300 ease-out"
+          className="h-full rounded-full bg-[var(--accent-primary)] transition-all duration-300 ease-out"
           style={{ width: `${safeProgress}%` }}
         />
       </div>

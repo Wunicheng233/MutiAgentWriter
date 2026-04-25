@@ -44,26 +44,26 @@ export const GenerationStatus: React.FC<GenerationStatusProps> = ({
   const isGenerating = status === 'processing' || status === 'planning'
 
   return (
-    <div className="rounded-standard border border-border bg-white/70 p-5">
+    <div className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-secondary)] p-5">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-xs uppercase tracking-[0.25em] text-secondary">
+          <p className="text-xs uppercase tracking-[0.25em] text-[var(--text-secondary)]">
             生成状态
           </p>
-          <h3 className="mt-2 text-xl font-semibold">
+          <h3 className="mt-2 text-xl font-semibold text-[var(--text-primary)]">
             {getStatusText(status)}
           </h3>
         </div>
         <div className="flex items-center gap-3">
           <div
             className={`text-sm font-medium ${
-              isGenerating ? 'text-sage' : 'text-secondary'
+              isGenerating ? 'text-[var(--accent-primary)]' : 'text-[var(--text-secondary)]'
             }`}
           >
             {completedChapters}/{targetChapters} 章
           </div>
           {isGenerating && (
-            <div className="h-2 w-2 animate-pulse rounded-full bg-sage" />
+            <div className="h-2 w-2 animate-pulse rounded-full bg-[var(--accent-primary)]" />
           )}
         </div>
       </div>
@@ -79,7 +79,7 @@ export const GenerationStatus: React.FC<GenerationStatusProps> = ({
       </div>
 
       {currentTask?.current_chapter && (
-        <div className="mt-3 rounded-lg bg-sage/10 px-3 py-2 text-sm text-sage">
+        <div className="mt-3 rounded-lg bg-[var(--accent-primary)] bg-opacity-10 px-3 py-2 text-sm text-[var(--accent-primary)]">
           正在生成第 {currentTask.current_chapter} 章...
         </div>
       )}

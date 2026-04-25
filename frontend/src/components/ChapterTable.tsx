@@ -48,7 +48,7 @@ export const ChapterTable: React.FC<ChapterTableProps> = ({
 
   if (status === 'draft') {
     return (
-      <div className="rounded-standard border border-dashed border-border p-4 text-secondary">
+      <div className="rounded-lg border border-dashed border-[var(--border-default)] p-4 text-[var(--text-secondary)]">
         完成策划并启动生成后，这里会显示章节实时进度、Critic 评分和修订历史。
       </div>
     )
@@ -58,19 +58,19 @@ export const ChapterTable: React.FC<ChapterTableProps> = ({
     <Card>
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-xs uppercase tracking-[0.25em] text-secondary">
+          <p className="text-xs uppercase tracking-[0.25em] text-[var(--text-secondary)]">
             Chapters
           </p>
-          <h2 className="mt-2 text-2xl">
+          <h2 className="mt-2 text-2xl text-[var(--text-primary)]">
             章节进度 ({completedChapters}/{chapters.length})
           </h2>
         </div>
         {overallQualityScore > 0 && (
           <div className="text-right">
-            <p className="text-xs uppercase tracking-[0.22em] text-secondary">
+            <p className="text-xs uppercase tracking-[0.22em] text-[var(--text-secondary)]">
               Overall
             </p>
-            <p className="mt-1 text-2xl font-semibold text-sage">
+            <p className="mt-1 text-2xl font-semibold text-[var(--accent-primary)]">
               {overallQualityScore.toFixed(1)}/10
             </p>
           </div>
@@ -79,42 +79,42 @@ export const ChapterTable: React.FC<ChapterTableProps> = ({
 
       <div className="mt-6 space-y-3">
         {chapters.map(chapter => (
-          <div
-            key={chapter.id}
-            className="rounded-standard border border-border bg-parchment/60 p-4"
-          >
-            <div className="flex items-center justify-between gap-4">
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-3">
-                  <span className="font-medium text-inkwell">
-                    第 {chapter.chapter_index} 章
-                    {chapter.title && ` · ${chapter.title}`}
-                  </span>
-                  <Badge variant={getChapterBadge(chapter.status)}>
-                    {getChapterStatusText(chapter.status)}
-                  </Badge>
-                </div>
-                {chapter.quality_score > 0 && (
-                  <div className="mt-1 text-sm text-secondary">
-                    Critic 评分: {chapter.quality_score}/10
-                  </div>
-                )}
-                <div className="mt-1 text-xs text-secondary">
-                  {chapter.word_count} 字
-                </div>
+        <div
+          key={chapter.id}
+          className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-4"
+        >
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-3">
+                <span className="font-medium text-[var(--text-primary)]">
+                  第 {chapter.chapter_index} 章
+                  {chapter.title && ` · ${chapter.title}`}
+                </span>
+                <Badge variant={getChapterBadge(chapter.status)}>
+                  {getChapterStatusText(chapter.status)}
+                </Badge>
               </div>
-              <div className="flex flex-wrap gap-2">
-                {chapter.status === 'completed' && (
-                  <Link to={`/projects/${projectId}/chapters/${chapter.chapter_index}`}>
-                    <Button variant="tertiary" size="sm">
-                      编辑
-                    </Button>
-                  </Link>
-                )}
+              {chapter.quality_score > 0 && (
+                <div className="mt-1 text-sm text-[var(--text-secondary)]">
+                  Critic 评分: {chapter.quality_score}/10
+                </div>
+              )}
+              <div className="mt-1 text-xs text-[var(--text-secondary)]">
+                {chapter.word_count} 字
               </div>
             </div>
+            <div className="flex flex-wrap gap-2">
+              {chapter.status === 'completed' && (
+                <Link to={`/projects/${projectId}/chapters/${chapter.chapter_index}`}>
+                  <Button variant="tertiary" size="sm">
+                    编辑
+                  </Button>
+                </Link>
+              )}
+            </div>
           </div>
-        ))}
+        </div>
+      ))}
       </div>
     </Card>
   )

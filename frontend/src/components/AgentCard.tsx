@@ -15,10 +15,10 @@ const statusText = {
 }
 
 const statusClasses = {
-  idle: 'bg-secondary/10 text-secondary',
-  running: 'bg-sage/10 text-sage',
-  done: 'bg-muted-gold/15 text-muted-gold',
-  error: 'bg-terracotta/10 text-terracotta',
+  idle: 'bg-[var(--text-secondary)] bg-opacity-10 text-[var(--text-secondary)]',
+  running: 'bg-[var(--accent-primary)] bg-opacity-10 text-[var(--accent-primary)]',
+  done: 'bg-[var(--accent-gold)] bg-opacity-15 text-[var(--accent-gold)]',
+  error: 'bg-[var(--accent-warm)] bg-opacity-10 text-[var(--accent-warm)]',
 }
 
 export const AgentCard: React.FC<AgentCardProps> = ({
@@ -30,8 +30,8 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 
   return (
     <div
-      className={`border border-border rounded-standard mb-3 overflow-hidden cursor-pointer ${
-        status === 'running' ? 'shadow-ambient' : ''
+      className={`border border-[var(--border-default)] rounded-lg mb-3 overflow-hidden cursor-pointer ${
+        status === 'running' ? 'shadow-[var(--shadow-default)]' : ''
       }`}
       onClick={() => output && setExpanded(!expanded)}
     >
@@ -42,7 +42,7 @@ export const AgentCard: React.FC<AgentCardProps> = ({
         </span>
         {output && (
           <svg
-            className={`w-5 h-5 text-secondary transition-transform ${
+            className={`w-5 h-5 text-[var(--text-secondary)] transition-transform ${
               expanded ? 'rotate-180' : ''
             }`}
             fill="none"
@@ -59,8 +59,8 @@ export const AgentCard: React.FC<AgentCardProps> = ({
         )}
       </div>
       {expanded && output && (
-        <div className="px-4 pb-4 border-t border-border">
-          <div className="mt-3 prose-novel text-sm whitespace-pre-line">
+        <div className="px-4 pb-4 border-t border-[var(--border-default)]">
+          <div className="mt-3 text-sm whitespace-pre-line text-[var(--text-body)]">
             {output}
           </div>
         </div>

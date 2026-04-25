@@ -17,22 +17,21 @@ export const CanvasContainer: React.FC<CanvasContainerProps> = React.memo(({
   )
 
   return (
-    <main
-      className={`w-full h-full overflow-auto transition-all duration-200 ease-out content-visibility-auto ${
+    <div
+      className={`w-full h-full transition-all duration-200 ease-out canvas-container ${
         focusMode ? 'focus-mode-active' : ''
       }`}
       style={{
-        paddingTop: '64px',
-        paddingBottom: '128px',
+        padding: '32px',
       }}
       data-testid="canvas-container"
       role="main"
       aria-label="Main content area"
     >
       <div
-        className="mx-auto"
         style={{
-          maxWidth: contentMaxWidth,
+          maxWidth: `${contentMaxWidth}px`,
+          margin: '0 auto',
           transition: 'max-width 200ms ease-out',
           willChange: 'max-width',
         }}
@@ -40,7 +39,7 @@ export const CanvasContainer: React.FC<CanvasContainerProps> = React.memo(({
       >
         {children}
       </div>
-    </main>
+    </div>
   )
 })
 

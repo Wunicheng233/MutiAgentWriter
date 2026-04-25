@@ -8,7 +8,6 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const showToast = useCallback((message: string, type: Toast['type']) => {
     const id = Date.now()
     setToasts(prev => [...prev, { id, message, type }])
-    // 自动移除
     setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id))
     }, 3000)
@@ -16,9 +15,9 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const getTypeClasses = (type: Toast['type']) => {
     switch (type) {
-      case 'success': return 'bg-sage text-white'
-      case 'error': return 'bg-terracotta text-white'
-      case 'info': return 'bg-secondary text-white'
+      case 'success': return 'bg-[var(--accent-primary)] text-white'
+      case 'error': return 'bg-[var(--accent-warm)] text-white'
+      case 'info': return 'bg-[var(--text-secondary)] text-white'
     }
   }
 
@@ -29,7 +28,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         {toasts.map(toast => (
           <div
             key={toast.id}
-            className={`px-4 py-3 rounded-standard shadow-elevated min-w-[200px] ${getTypeClasses(toast.type)}`}
+            className={`px-4 py-3 rounded-lg shadow-[var(--shadow-elevated)] min-w-[200px] ${getTypeClasses(toast.type)}`}
           >
             {toast.message}
           </div>
