@@ -49,7 +49,7 @@ def check_project_access(
         return project
     return None
 from celery_app import celery_app
-from tasks.writing_tasks import generate_novel_task
+from backend.tasks.writing_tasks import generate_novel_task
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 

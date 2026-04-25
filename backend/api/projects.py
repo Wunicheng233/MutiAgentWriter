@@ -44,7 +44,7 @@ from backend.core.config import settings
 
 # 导入Celery任务（可选）
 try:
-    from tasks.writing_tasks import generate_novel_task
+    from backend.tasks.writing_tasks import generate_novel_task
     from celery.result import AsyncResult
     from celery_app import celery_app
     CELERY_AVAILABLE = True
@@ -707,7 +707,7 @@ def trigger_export(
         )
 
     # 导入导出任务
-    from tasks.export_tasks import export_project_task
+    from backend.tasks.export_tasks import export_project_task
     celery_task_id = make_task_id("export")
 
     # 创建任务记录

@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 # 导入Celery任务
 try:
-    from tasks.writing_tasks import generate_novel_task
+    from backend.tasks.writing_tasks import generate_novel_task
     CELERY_AVAILABLE = True
 except ImportError:
     CELERY_AVAILABLE = False
