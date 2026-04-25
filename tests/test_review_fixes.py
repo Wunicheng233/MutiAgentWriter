@@ -9,7 +9,7 @@ from types import SimpleNamespace
 import backend.api.projects as projects_api
 import backend.database as database_module
 import backend.deps as deps
-import agents.writer_agent as writer_agent
+import backend.agents.writer_agent as writer_agent
 import backend.config as config
 import backend.core.orchestrator as orchestrator_module
 import backend.utils.file_utils as file_utils

@@ -8,8 +8,8 @@ from types import SimpleNamespace
 import backend.api.projects as projects_api
 import backend.api.chapters as chapters_api
 import backend.api.tasks as tasks_api
-import tasks.export_tasks as export_tasks
-import tasks.writing_tasks as writing_tasks
+import backend.tasks.export_tasks as export_tasks
+import backend.tasks.writing_tasks as writing_tasks
 from backend.auth import set_user_api_key
 from backend.utils.runtime_context import get_current_output_dir_optional, get_current_run_context_optional, set_current_output_dir
 from backend.models import Artifact, Chapter, FeedbackItem, GenerationTask, Project, User, WorkflowRun, WorkflowStepRun
