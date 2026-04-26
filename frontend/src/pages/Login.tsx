@@ -63,7 +63,7 @@ export const Login: React.FC = () => {
               登录
             </Button>
           </form>
-          <div className="mt-6 text-center text-secondary">
+          <div className="mt-6 text-center text-[var(--text-secondary)]">
             还没有账号？ <Link to="/register" className="text-[var(--accent-primary)] hover:underline">去注册</Link>
           </div>
         </Card>
