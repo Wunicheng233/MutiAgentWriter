@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
 
-import { Card, Badge, Button, Input, Progress } from '../components/v2'
+import { Card, Badge, Button, Input, Progress, AgentCard } from '../components/v2'
 import type { BadgeVariant } from '../components/v2'
 import SkillSelector from '../components/SkillSelector'
 import {
@@ -717,32 +717,14 @@ export const ProjectOverview: React.FC = () => {
             </div>
           </div>
           <div className="grid gap-4 md:grid-cols-4">
-          {agentCards.map(agent => {
-            const state = agentStates[agent.key]
-
-            return (
-              <div
+            {agentCards.map(agent => (
+              <AgentCard
                 key={agent.key}
-                className={`rounded-standard border px-4 py-3 ${
-                  state === 'running'
-                    ? 'border-sage/35 bg-sage/10'
-                    : state === 'done'
-                      ? 'border-sage/20 bg-[var(--bg-secondary)]'
-                      : state === 'error'
-                        ? 'border-terracotta/30 bg-terracotta/5'
-                        : 'border-[var(--border-default)] bg-[var(--bg-tertiary)]'
-                }`}
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <span className="font-sans text-sm font-medium text-[var(--text-primary)]">{agent.title}</span>
-                  <Badge variant={getAgentBadgeVariant(state)}>
-                    {state === 'done' ? 'done' : state === 'running' ? 'running' : state === 'error' ? 'error' : 'idle'}
-                  </Badge>
-                </div>
-                <p className="mt-2 text-sm text-[var(--text-secondary)]">{agent.subtitle}</p>
-              </div>
-            )
-          })}
+                name={agent.title}
+                subtitle={agent.subtitle}
+                status={agentStates[agent.key]}
+              />
+            ))}
           </div>
         </Card>
 
