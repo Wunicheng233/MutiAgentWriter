@@ -565,7 +565,7 @@ export const ProjectOverview: React.FC = () => {
               </div>
 
               <h1 className="text-[clamp(2rem,4vw,2.75rem)] leading-tight">{data.name}</h1>
-              <p className="mt-4 max-w-xl text-body">
+              <p className="mt-4 max-w-xl text-[var(--text-body)]">
                 {data.description}
               </p>
 
@@ -578,7 +578,7 @@ export const ProjectOverview: React.FC = () => {
               {config?.core_hook && (
                 <div className="mt-6 rounded-comfortable border border-terracotta/15 bg-terracotta/5 p-5">
                   <p className="text-xs uppercase tracking-[0.22em] text-terracotta/70">Concept</p>
-                  <p className="mt-2 text-lg text-inkwell">{config.core_hook}</p>
+                  <p className="mt-2 text-lg text-[var(--text-primary)]">{config.core_hook}</p>
                 </div>
               )}
             </div>
@@ -614,7 +614,7 @@ export const ProjectOverview: React.FC = () => {
           <Progress value={exportProgress} />
         )}
 
-        <div className="grid gap-3 rounded-comfortable border border-border bg-white/35 p-2 shadow-ambient md:grid-cols-3">
+        <div className="grid gap-3 rounded-comfortable border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-2 shadow-ambient md:grid-cols-3">
           {overviewTabs.map(tab => {
             const active = activeTab === tab.key
 
@@ -625,8 +625,8 @@ export const ProjectOverview: React.FC = () => {
                 onClick={() => setActiveTab(tab.key)}
                 className={`rounded-standard px-4 py-3 text-left transition-all ${
                   active
-                    ? 'bg-white text-inkwell shadow-ambient'
-                    : 'text-[var(--text-secondary)] hover:bg-white/50 hover:text-inkwell'
+                    ? 'bg-[var(--bg-secondary)] text-[var(--text-primary)] shadow-ambient'
+                    : 'text-[var(--text-secondary)] hover:bg-white/50 hover:text-[var(--text-primary)]'
                 }`}
               >
                 <span className="block font-sans text-sm font-medium">{tab.label}</span>
@@ -657,8 +657,8 @@ export const ProjectOverview: React.FC = () => {
                       status === 'active'
                         ? 'border-sage/35 bg-sage/10'
                         : status === 'done'
-                          ? 'border-sage/20 bg-white'
-                          : 'border-border bg-parchment/50'
+                          ? 'border-sage/20 bg-[var(--bg-secondary)]'
+                          : 'border-[var(--border-default)] bg-[var(--bg-tertiary)]'
                     }`}
                   >
                     <div className="flex items-center justify-between gap-3">
@@ -682,23 +682,23 @@ export const ProjectOverview: React.FC = () => {
             <div className="mt-6 space-y-3">
               {workflowMeta.length > 0 ? (
                 workflowMeta.map(item => (
-                  <div key={item.label} className="rounded-standard border border-border bg-parchment/60 p-3">
+                  <div key={item.label} className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-3">
                     <p className="text-xs uppercase tracking-[0.18em] text-[var(--text-secondary)]">{item.label}</p>
                     <p className="mt-1 text-body">{item.value}</p>
                   </div>
                 ))
               ) : (
-                <div className="rounded-standard border border-dashed border-border p-4 text-[var(--text-secondary)]">
+                <div className="rounded-standard border border-dashed border-[var(--border-default)] p-4 text-[var(--text-secondary)]">
                   当前还没有活动中的 workflow run。启动生成后，这里会展示真实运行状态。
                 </div>
               )}
 
               <div className="grid grid-cols-2 gap-3 text-sm">
-                <div className="rounded-standard border border-border bg-parchment/60 p-3">
+                <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-3">
                   <p className="text-[var(--text-secondary)]">开始时间</p>
                   <p className="mt-1 text-body">{formatDateTime(data.current_generation_task?.started_at)}</p>
                 </div>
-                <div className="rounded-standard border border-border bg-parchment/60 p-3">
+                <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-3">
                   <p className="text-[var(--text-secondary)]">当前章节</p>
                   <p className="mt-1 text-body">
                     {workflow?.current_chapter ?? data.current_generation_task?.current_chapter ?? '待生成'}
@@ -727,14 +727,14 @@ export const ProjectOverview: React.FC = () => {
                   state === 'running'
                     ? 'border-sage/35 bg-sage/10'
                     : state === 'done'
-                      ? 'border-sage/20 bg-white/70'
+                      ? 'border-sage/20 bg-[var(--bg-secondary)]'
                       : state === 'error'
                         ? 'border-terracotta/30 bg-terracotta/5'
-                        : 'border-border bg-parchment/45'
+                        : 'border-[var(--border-default)] bg-[var(--bg-tertiary)]'
                 }`}
               >
                 <div className="flex items-center justify-between gap-3">
-                  <span className="font-sans text-sm font-medium text-inkwell">{agent.title}</span>
+                  <span className="font-sans text-sm font-medium text-[var(--text-primary)]">{agent.title}</span>
                   <Badge variant={getAgentBadgeVariant(state)}>
                     {state === 'done' ? 'done' : state === 'running' ? 'running' : state === 'error' ? 'error' : 'idle'}
                   </Badge>
@@ -767,19 +767,19 @@ export const ProjectOverview: React.FC = () => {
             {!editingConfig ? (
               <div className="mt-5 space-y-5">
                 <div className="grid gap-4 md:grid-cols-2">
-                  <div className="rounded-standard border border-border bg-parchment/60 p-4">
+                  <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-4">
                     <p className="text-[var(--text-secondary)]">小说名称</p>
                     <p className="mt-1 text-body">{config?.novel_name || data.name}</p>
                   </div>
-                  <div className="rounded-standard border border-border bg-parchment/60 p-4">
+                  <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-4">
                     <p className="text-[var(--text-secondary)]">生成模式</p>
                     <p className="mt-1 text-body">{getModeLabel(data)}</p>
                   </div>
-                  <div className="rounded-standard border border-border bg-parchment/60 p-4">
+                  <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-4">
                     <p className="text-[var(--text-secondary)]">章节范围</p>
                     <p className="mt-1 text-body">{targetStart} - {targetEnd}</p>
                   </div>
-                  <div className="rounded-standard border border-border bg-parchment/60 p-4">
+                  <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-4">
                     <p className="text-[var(--text-secondary)]">Token 消耗</p>
                     <p className="mt-1 text-body">
                       {tokenStats && tokenStats.total_tokens > 0
@@ -793,7 +793,7 @@ export const ProjectOverview: React.FC = () => {
                 </div>
 
                 {config?.core_requirement && (
-                  <div className="rounded-comfortable border border-border bg-white/70 p-4">
+                  <div className="rounded-comfortable border border-[var(--border-default)] bg-[var(--bg-secondary)] p-4">
                     <p className="text-xs uppercase tracking-[0.2em] text-[var(--text-secondary)]">Core Requirement</p>
                     <div className="mt-3 max-h-72 overflow-y-auto whitespace-pre-line pr-2 text-body">
                       {config.core_requirement}
@@ -802,15 +802,15 @@ export const ProjectOverview: React.FC = () => {
                 )}
 
                 <div className="grid gap-4 md:grid-cols-3">
-                  <div className="rounded-standard border border-border bg-parchment/60 p-4">
+                  <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-4">
                     <p className="text-[var(--text-secondary)]">跳过策划确认</p>
                     <p className="mt-1 text-body">{config?.skip_plan_confirmation ? '是' : '否'}</p>
                   </div>
-                  <div className="rounded-standard border border-border bg-parchment/60 p-4">
+                  <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-4">
                     <p className="text-[var(--text-secondary)]">跳过章节确认</p>
                     <p className="mt-1 text-body">{config?.skip_chapter_confirmation ? '是' : '否'}</p>
                   </div>
-                  <div className="rounded-standard border border-border bg-parchment/60 p-4">
+                  <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-4">
                     <p className="text-[var(--text-secondary)]">允许剧情调整</p>
                     <p className="mt-1 text-body">{config?.allow_plot_adjustment ? '是' : '否'}</p>
                   </div>
@@ -846,7 +846,7 @@ export const ProjectOverview: React.FC = () => {
                       type="checkbox"
                       checked={configForm.skip_plan_confirmation}
                       onChange={event => setConfigForm(prev => ({ ...prev, skip_plan_confirmation: event.target.checked }))}
-                      className="rounded border-border text-sage focus:ring-sage"
+                      className="rounded border-[var(--border-default)] text-sage focus:ring-sage"
                     />
                     <span>跳过策划方案人工确认</span>
                   </label>
@@ -855,7 +855,7 @@ export const ProjectOverview: React.FC = () => {
                       type="checkbox"
                       checked={configForm.skip_chapter_confirmation}
                       onChange={event => setConfigForm(prev => ({ ...prev, skip_chapter_confirmation: event.target.checked }))}
-                      className="rounded border-border text-sage focus:ring-sage"
+                      className="rounded border-[var(--border-default)] text-sage focus:ring-sage"
                     />
                     <span>跳过章节级人工确认</span>
                   </label>
@@ -864,7 +864,7 @@ export const ProjectOverview: React.FC = () => {
                       type="checkbox"
                       checked={configForm.allow_plot_adjustment}
                       onChange={event => setConfigForm(prev => ({ ...prev, allow_plot_adjustment: event.target.checked }))}
-                      className="rounded border-border text-sage focus:ring-sage"
+                      className="rounded border-[var(--border-default)] text-sage focus:ring-sage"
                     />
                     <span>允许每章后调整下一章剧情</span>
                   </label>
@@ -882,7 +882,7 @@ export const ProjectOverview: React.FC = () => {
             )}
 
             {/* Skill 配置 */}
-            <div className="mt-8 pt-6 border-t border-border">
+            <div className="mt-8 pt-6 border-t border-[var(--border-default)]">
               <div className="mb-4 flex items-center justify-between">
                 <div>
                   <p className="text-xs uppercase tracking-wider text-[var(--text-secondary)]">
@@ -913,17 +913,17 @@ export const ProjectOverview: React.FC = () => {
                     <Progress value={data.overall_quality_score * 10} />
                   </div>
                 ) : (
-                  <div className="rounded-standard border border-dashed border-border p-4 text-[var(--text-secondary)]">
+                  <div className="rounded-standard border border-dashed border-[var(--border-default)] p-4 text-[var(--text-secondary)]">
                     尚无评分数据。完成至少一章评审后，这里会显示质量闭环结果。
                   </div>
                 )}
 
                 <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div className="rounded-standard border border-border bg-parchment/60 p-3">
+                  <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-3">
                     <p className="text-[var(--text-secondary)]">已完成章节</p>
                     <p className="mt-1 text-body">{completedChapters}</p>
                   </div>
-                  <div className="rounded-standard border border-border bg-parchment/60 p-3">
+                  <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-3">
                     <p className="text-[var(--text-secondary)]">分享状态</p>
                     <p className="mt-1 text-body">{shareUrl ? '已生成链接' : '待创建'}</p>
                   </div>
@@ -963,13 +963,13 @@ export const ProjectOverview: React.FC = () => {
                     </Button>
                   </div>
                   {shareUrl && (
-                    <div className="rounded-standard border border-border bg-parchment/60 p-3 text-sm text-[var(--text-secondary)] break-all">
+                    <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-3 text-sm text-[var(--text-secondary)] break-all">
                       {shareUrl}
                     </div>
                   )}
                 </div>
               ) : (
-                <div className="mt-5 rounded-standard border border-dashed border-border p-4 text-[var(--text-secondary)]">
+                <div className="mt-5 rounded-standard border border-dashed border-[var(--border-default)] p-4 text-[var(--text-secondary)]">
                   项目完成后即可在这里一键导出成品，并生成无需登录的只读分享页。
                 </div>
               )}
@@ -984,11 +984,11 @@ export const ProjectOverview: React.FC = () => {
 
               <div className="mt-5 space-y-3">
                 {recentArtifacts?.items.map(artifact => (
-                  <div key={artifact.id} className="rounded-standard border border-border bg-parchment/60 p-3 text-sm">
+                  <div key={artifact.id} className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-3 text-sm">
                     <div className="flex items-center justify-between gap-3">
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="font-medium text-inkwell">{getArtifactDisplayName(artifact.artifact_type)}</span>
+                          <span className="font-medium text-[var(--text-primary)]">{getArtifactDisplayName(artifact.artifact_type)}</span>
                           <Badge variant="secondary">{artifact.scope}</Badge>
                           {artifact.is_current && <Badge variant="agent">current</Badge>}
                         </div>
@@ -1011,7 +1011,7 @@ export const ProjectOverview: React.FC = () => {
                 ))}
 
                 {!recentArtifacts?.items.length && (
-                  <div className="rounded-standard border border-dashed border-border p-4 text-[var(--text-secondary)]">
+                  <div className="rounded-standard border border-dashed border-[var(--border-default)] p-4 text-[var(--text-secondary)]">
                     还没有沉淀可展示的当前 artifacts。
                   </div>
                 )}
@@ -1045,10 +1045,10 @@ export const ProjectOverview: React.FC = () => {
               {collaborators.length > 0 ? (
                 <div className="grid gap-3 md:grid-cols-2">
                   {collaborators.map(collab => (
-                    <div key={collab.id} className="rounded-standard border border-border bg-parchment/60 p-4">
+                    <div key={collab.id} className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-4">
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <div className="font-medium text-inkwell">{collab.username}</div>
+                          <div className="font-medium text-[var(--text-primary)]">{collab.username}</div>
                           <div className="mt-1 text-sm text-[var(--text-secondary)]">{collab.email}</div>
                           <div className="mt-1 text-xs uppercase tracking-[0.18em] text-[var(--text-secondary)]">{collab.role}</div>
                         </div>
