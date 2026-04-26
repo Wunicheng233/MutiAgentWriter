@@ -8,6 +8,7 @@ export * from './Checkbox/Checkbox'
 export * from './Radio/Radio'
 export * from './Skeleton/Skeleton'
 export * from './Progress/Progress'
+export * from './Slider/Slider'
 
 // New components
 export * from './Switch/Switch'
