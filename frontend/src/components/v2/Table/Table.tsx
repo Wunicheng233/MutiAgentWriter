@@ -1,14 +1,14 @@
 import React from 'react'
 
-export interface Column<T = any> {
+export interface Column<T extends object = object> {
   key: string
   title: React.ReactNode
-  render?: (value: any, record: T, index: number) => React.ReactNode
+  render?: (value: unknown, record: T, index: number) => React.ReactNode
   width?: string | number
   align?: 'left' | 'center' | 'right'
 }
 
-export interface TableProps<T = any> {
+export interface TableProps<T extends object = object> {
   columns: Column<T>[]
   dataSource: T[]
   rowKey?: string
@@ -25,7 +25,7 @@ const sizeClasses = {
   lg: 'py-4 px-5',
 }
 
-export function Table<T extends Record<string, any>>({
+export function Table<T extends Record<string, unknown>>({
   columns,
   dataSource,
   rowKey = 'id',
