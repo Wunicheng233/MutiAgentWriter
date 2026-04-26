@@ -76,15 +76,28 @@ export const ProjectOutline: React.FC = () => {
   useEffect(() => {
     if (!data?.config) return
 
-    setConfigForm({
+    const newConfig = {
       skip_plan_confirmation: data.config.skip_plan_confirmation ?? false,
       skip_chapter_confirmation: data.config.skip_chapter_confirmation ?? false,
       allow_plot_adjustment: data.config.allow_plot_adjustment ?? false,
       chapter_word_count: data.config.chapter_word_count ?? 2000,
       start_chapter: data.config.start_chapter ?? 1,
       end_chapter: data.config.end_chapter ?? 10,
-    })
-  }, [data])
+    }
+
+    // Only update if values actually changed to avoid cascading renders
+    const hasChanges = Object.entries(newConfig).some(
+      ([key, value]) => configForm[key as keyof typeof configForm] !== value
+    )
+
+    if (hasChanges) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- guarded by hasChanges check to avoid cascading renders
+      setConfigForm(newConfig)
+    }
+  }, [
+    data?.config,
+    configForm,
+  ])
 
   const { autoExpandHeaderInProject, setHeaderCollapsed } = useLayoutStore()
 
