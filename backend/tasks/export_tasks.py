@@ -16,7 +16,7 @@ logger = get_task_logger(__name__)
 
 
 @celery_app.task(bind=True, name="export_project", ignore_result=False)
-def export_project_task(self, project_id: int, format: str) -> dict:
+def export_project_task(self, project_id: int, export_format: str) -> dict:
     """异步导出项目任务"""
     db = SessionLocal()
     try:
@@ -28,7 +28,7 @@ def export_project_task(self, project_id: int, format: str) -> dict:
 
         self.update_state(state='PROGRESS', meta={
             'progress': 0.1,
-            'current_step': f'准备导出 {format} 格式...'
+            'current_step': f'准备导出 {export_format} 格式...'
         })
         if task_record:
             task_record.status = "progress"
@@ -38,21 +38,21 @@ def export_project_task(self, project_id: int, format: str) -> dict:
 
         self.update_state(state='PROGRESS', meta={
             'progress': 0.3,
-            'current_step': f'正在生成 {format} 文件...'
+            'current_step': f'正在生成 {export_format} 文件...'
         })
 
         # 导出到临时目录
         temp_dir = '/tmp/storyforge-exports'
         os.makedirs(temp_dir, exist_ok=True)
 
-        if format == 'epub':
+        if export_format == 'epub':
             file_path, filename = export_service.export_epub(temp_dir)
-        elif format == 'docx':
+        elif export_format == 'docx':
             file_path, filename = export_service.export_docx(temp_dir)
-        elif format == 'html':
+        elif export_format == 'html':
             file_path, filename = export_service.export_html(temp_dir)
         else:
-            raise ValueError(f'Unsupported format: {format}')
+            raise ValueError(f'Unsupported format: {export_format}')
 
         # 清理旧文件
         ExportService.cleanup_old_files(temp_dir)
@@ -75,7 +75,7 @@ def export_project_task(self, project_id: int, format: str) -> dict:
             'success': True,
             'file_path': file_path,
             'filename': filename,
-            'format': format,
+            'format': export_format,
         }
         return result
 
