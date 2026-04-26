@@ -133,7 +133,7 @@ const projectNavItems = [
 export const NavRail: React.FC<NavRailProps> = React.memo(({ collapsed, onToggleCollapse }) => {
   const navigate = useNavigate()
   const location = useLocation()
-  const [hovered, setHovered] = useState(false)
+  const [, setHovered] = useState(false)
   const { isInProject, currentProjectId } = useProjectStore()
 
   const navItems = isInProject ? projectNavItems : globalNavItems
