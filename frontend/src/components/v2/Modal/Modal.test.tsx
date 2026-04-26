@@ -13,9 +13,13 @@ describe('Modal', () => {
     cleanup()
   })
 
-  it('does not render children when isOpen is false', () => {
+  it('hides children visually when isOpen is false', () => {
     render(<Modal isOpen={false}>Modal Content</Modal>)
-    expect(screen.queryByText(/Modal Content/i)).not.toBeInTheDocument()
+    // Content exists in DOM for animation, but is hidden via opacity
+    expect(screen.getByText(/Modal Content/i)).toBeInTheDocument()
+    const backdrop = screen.getByTestId('modal-backdrop')
+    expect(backdrop).toHaveClass('opacity-0')
+    expect(backdrop).toHaveClass('pointer-events-none')
   })
 
   it('renders children when isOpen is true', () => {

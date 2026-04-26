@@ -85,20 +85,18 @@ export const Modal = forwardRef<HTMLDivElement, ModalProps>(
       }
     }, [isOpen])
 
-    if (!isOpen) return null
-
     const modalContent = (
       <div
-        className="fixed inset-0 z-50 flex items-center justify-center"
+        className={`fixed inset-0 z-50 flex items-center justify-center transition-opacity duration-150 ease-out ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
         data-testid="modal-backdrop"
         onClick={handleBackdropClick}
       >
         {/* Backdrop */}
-        <div className="absolute inset-0 bg-black bg-opacity-50 transition-opacity duration-[var(--duration-normal)] ease-[var(--ease-out)]" />
+        <div className="absolute inset-0 bg-black bg-opacity-50 transition-opacity duration-150 ease-out" />
 
         {/* Modal Panel */}
         <div
-          className={`relative w-full ${sizeClasses[size]} mx-4 transform transition-all duration-[var(--duration-normal)] ease-[var(--ease-out)]`}
+          className={`relative w-full ${sizeClasses[size]} mx-4 transform transition-all duration-150 ease-out ${isOpen ? 'translate-y-0 opacity-100' : '-translate-y-4 opacity-0 pointer-events-none'}`}
         >
           <div
             ref={ref}
