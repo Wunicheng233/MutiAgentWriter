@@ -15,6 +15,7 @@ import openai
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Callable
 from datetime import datetime
+from collections import defaultdict
 
 from .config import settings
 from backend.utils.file_utils import write_file_atomic
@@ -671,57 +672,68 @@ class NovelOrchestrator:
         used_local_repair = False
         normalized_issues = [self._normalize_repair_issue(issue) for issue in (issues or [])]
         local_revise = getattr(self.revise, "revise_local_patch", None)
+
+        # 按 scene_id 分组修复，同一个 scene 的问题批量处理
+        issues_by_scene: Dict[str, List[Dict]] = defaultdict(list)
+        for issue in normalized_issues:
+            scene_id = issue.get("scene_id", "chapter")
+            issues_by_scene[scene_id].append(issue)
+
         if normalized_issues:
             strategies = ", ".join(issue.get("fix_strategy", "local_rewrite") for issue in normalized_issues[:3])
             self._report_workflow_event(
-                f"Workflow v2 · 第{chapter_index}章 Failure Router：本轮策略 {strategies}"
+                f"Workflow v2 · 第{chapter_index}章 Failure Router：本轮策略 {strategies}，跨 {len(issues_by_scene)} 个scene"
             )
 
-        for issue in normalized_issues[:3]:
-            evidence_quote = str((issue.get("evidence_span") or {}).get("quote") or issue.get("location") or "")
-            if not local_revise or not evidence_quote or evidence_quote == "全文":
-                continue
-            local_context = build_local_repair_context(current_content, evidence_quote)
-            if not local_context.get("target"):
-                continue
+        # 每个 scene 最多修复前2个问题，避免过度修改
+        for scene_id, scene_issues in issues_by_scene.items():
+            for issue in scene_issues[:2]:
+                evidence_quote = str((issue.get("evidence_span") or {}).get("quote") or issue.get("location") or "")
+                if not local_revise or not evidence_quote or evidence_quote == "全文":
+                    continue
+                local_context = build_local_repair_context(current_content, evidence_quote)
+                if not local_context.get("target"):
+                    continue
 
-            before_content = current_content
-            patch = local_revise(
-                current_content,
-                issue,
-                {
-                    **local_context,
-                    "chapter_outline": chapter_outline,
-                    "repair_strategy": issue.get("fix_strategy"),
-                },
-                self.setting_bible,
-                perspective=self.writer_perspective,
-                perspective_strength=self.perspective_strength,
-            )
-            patched_content, applied = apply_local_patch(current_content, patch or {})
-            trace_item = {
-                "artifact_type": "repair_trace",
-                "chapter_index": chapter_index,
-                "revision_round": revise_round,
-                "issue": issue,
-                "repair_strategy": issue.get("fix_strategy"),
-                "evidence": issue.get("evidence_span"),
-                "target_text": (patch or {}).get("target_text") if isinstance(patch, dict) else "",
-                "replacement_applied": bool(applied),
-            }
-            repair_trace.append(trace_item)
-            if applied and patched_content != before_content:
-                current_content = patched_content
-                used_local_repair = True
-                self._report_workflow_event(
-                    f"Workflow v2 · 第{chapter_index}章 Local Revise：已局部替换 {issue.get('fix_strategy')}"
+                before_content = current_content
+                patch = local_revise(
+                    current_content,
+                    issue,
+                    {
+                        **local_context,
+                        "chapter_outline": chapter_outline,
+                        "repair_strategy": issue.get("fix_strategy"),
+                    },
+                    self.setting_bible,
+                    perspective=self.writer_perspective,
+                    perspective_strength=self.perspective_strength,
                 )
+                patched_content, applied = apply_local_patch(current_content, patch or {})
+                trace_item = {
+                    "artifact_type": "repair_trace",
+                    "chapter_index": chapter_index,
+                    "revision_round": revise_round,
+                    "issue": issue,
+                    "repair_strategy": issue.get("fix_strategy"),
+                    "evidence": issue.get("evidence_span"),
+                    "target_text": (patch or {}).get("target_text") if isinstance(patch, dict) else "",
+                    "replacement_applied": bool(applied),
+                    "scene_id": scene_id,
+                }
+                repair_trace.append(trace_item)
+                if applied and patched_content != before_content:
+                    current_content = patched_content
+                    used_local_repair = True
+                    self._report_workflow_event(
+                        f"Workflow v2 · 第{chapter_index}章 {scene_id} Local Revise：已局部替换 {issue.get('fix_strategy')}"
+                    )
 
         if used_local_repair:
             current_content = self.run_stitching_pass(chapter_index, current_content, repair_trace)
             self.repair_traces.extend(repair_trace)
             return current_content, True, repair_trace
 
+        # 局部修复全部失败，回退到整章修订
         current_content = self.revise.revise_chapter(
             current_content,
             issues,
