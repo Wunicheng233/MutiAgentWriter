@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { Card, Badge, Button, Progress, Modal, ModalHeader, ModalContent, ModalFooter } from '../components/v2'
+import { Card, Badge, Button, Progress, Modal, ModalHeader, ModalContent, ModalFooter, Empty } from '../components/v2'
 import type { BadgeVariant } from '../components/v2'
 import { CanvasContainer } from '../components/layout/CanvasContainer'
 import { listProjects, deleteProject } from '../utils/endpoints'
@@ -74,12 +74,16 @@ export const Dashboard: React.FC = () => {
       {isLoading && <p className="text-[var(--text-secondary)]">加载中...</p>}
 
       {data && data.items.length === 0 && (
-        <Card hoverable className="text-center py-12">
-          <p className="text-[var(--text-secondary)] mb-6">还没有项目，创建第一个项目开始创作吧</p>
-          <Link to="/projects/new">
-            <Button variant="primary">创建新项目</Button>
-          </Link>
-        </Card>
+        <Empty
+          icon="folder"
+          title="还没有项目"
+          description="创建第一个项目开始创作吧"
+          action={
+            <Link to="/projects/new">
+              <Button variant="primary">创建新项目</Button>
+            </Link>
+          }
+        />
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

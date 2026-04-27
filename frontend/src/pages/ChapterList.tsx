@@ -2,7 +2,7 @@ import React, { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useParams, useNavigate } from 'react-router-dom'
 
-import { Card, Badge, Button, Progress, DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '../components/v2'
+import { Card, Badge, Button, Progress, DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, Empty } from '../components/v2'
 import type { BadgeVariant } from '../components/v2'
 import { useProjectStore, type ProjectStatus } from '../store/useProjectStore'
 import { getProject, getProjectWorkflowRuns, listChapters } from '../utils/endpoints'
@@ -264,14 +264,11 @@ export const ChapterList: React.FC = () => {
               ))}
 
               {!chapters?.length && (
-                <div className="rounded-standard border-2 border-dashed border-[var(--border-default)] bg-[var(--bg-tertiary)] p-12 text-center">
-                  <svg className="w-12 h-12 mx-auto mb-4 text-[var(--text-muted)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-                  </svg>
-                  <p className="text-[var(--text-primary)] font-medium mb-2">还没有章节</p>
-                  <p className="text-[var(--text-secondary)] text-sm">开始生成后，章节会在这里出现。你可以随时编辑和润色。</p>
-                </div>
+                <Empty
+                  icon="list"
+                  title="还没有章节"
+                  description="开始生成后，章节会在这里出现。你可以随时编辑和润色。"
+                />
               )}
             </div>
           </Card>
@@ -348,14 +345,11 @@ export const ChapterList: React.FC = () => {
               })}
 
               {!workflowHistory?.items.length && (
-                <div className="rounded-standard border-2 border-dashed border-[var(--border-default)] bg-[var(--bg-tertiary)] p-12 text-center">
-                  <svg className="w-12 h-12 mx-auto mb-4 text-[var(--text-muted)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                    <circle cx="12" cy="12" r="3" />
-                    <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
-                  </svg>
-                  <p className="text-[var(--text-primary)] font-medium mb-2">还没有运行记录</p>
-                  <p className="text-[var(--text-secondary)] text-sm">触发生成后，这里会开始沉淀项目运行记录，方便后续回放和问题定位。</p>
-                </div>
+                <Empty
+                  icon="document"
+                  title="还没有运行记录"
+                  description="触发生成后，这里会开始沉淀项目运行记录，方便后续回放和问题定位。"
+                />
               )}
             </div>
           </Card>

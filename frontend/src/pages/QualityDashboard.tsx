@@ -2,7 +2,7 @@ import React, { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
 import ReactECharts from 'echarts-for-react'
-import { Card, Badge, Button, Progress } from '../components/v2'
+import { Card, Badge, Button, Progress, Empty } from '../components/v2'
 import type { BadgeVariant } from '../components/v2'
 import { useProjectStore, type ProjectStatus } from '../store/useProjectStore'
 import { getProject, getProjectAnalytics } from '../utils/endpoints'
@@ -66,7 +66,13 @@ export const QualityDashboard: React.FC = () => {
   }
 
   if (!analytics) {
-    return <p className="text-[var(--text-secondary)]">暂无数据分析数据，请先生成章节并运行质量分析</p>
+    return (
+      <Empty
+        icon="document"
+        title="暂无分析数据"
+        description="先生成章节并运行质量分析后再来查看"
+      />
+    )
   }
 
   const dimensionMapping: Record<string, string> = {
