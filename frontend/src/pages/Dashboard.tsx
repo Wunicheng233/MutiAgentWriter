@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { Card, Badge, Button, Progress, Modal, ModalHeader, ModalContent, ModalFooter, Empty } from '../components/v2'
+import { Card, Badge, Button, Progress, Modal, ModalHeader, ModalContent, ModalFooter, Empty, Skeleton } from '../components/v2'
 import type { BadgeVariant } from '../components/v2'
 import { CanvasContainer } from '../components/layout/CanvasContainer'
 import { listProjects, deleteProject } from '../utils/endpoints'
@@ -71,7 +71,13 @@ export const Dashboard: React.FC = () => {
         </Link>
       </div>
 
-      {isLoading && <p className="text-[var(--text-secondary)]">加载中...</p>}
+      {isLoading && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-32 rounded-lg" />
+          ))}
+        </div>
+      )}
 
       {data && data.items.length === 0 && (
         <Empty

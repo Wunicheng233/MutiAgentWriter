@@ -2,7 +2,7 @@ import React, { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
 import ReactECharts from 'echarts-for-react'
-import { Card, Badge, Button, Progress, Empty, Alert, StatsCard } from '../components/v2'
+import { Card, Badge, Button, Progress, Empty, Alert, StatsCard, Skeleton } from '../components/v2'
 import type { BadgeVariant } from '../components/v2'
 import { useProjectStore, type ProjectStatus } from '../store/useProjectStore'
 import { getProject, getProjectAnalytics } from '../utils/endpoints'
@@ -51,7 +51,15 @@ export const QualityDashboard: React.FC = () => {
   }
 
   if (isLoading) {
-    return <p className="text-[var(--text-secondary)]">加载中...</p>
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-24 rounded-lg" />
+        <div className="grid gap-6 xl:grid-cols-2">
+          <Skeleton className="h-40 rounded-lg" />
+          <Skeleton className="h-40 rounded-lg" />
+        </div>
+      </div>
+    )
   }
 
   if (isError) {

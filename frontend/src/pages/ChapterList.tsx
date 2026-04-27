@@ -2,7 +2,7 @@ import React, { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useParams, useNavigate } from 'react-router-dom'
 
-import { Card, Badge, Button, Progress, DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, Empty, StatsCard } from '../components/v2'
+import { Card, Badge, Button, Progress, DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, Empty, StatsCard, Skeleton } from '../components/v2'
 import type { BadgeVariant } from '../components/v2'
 import { useProjectStore, type ProjectStatus } from '../store/useProjectStore'
 import { getProject, getProjectWorkflowRuns, listChapters } from '../utils/endpoints'
@@ -190,7 +190,13 @@ export const ChapterList: React.FC = () => {
               </div>
             </div>
 
-            {isLoading && <p className="mt-5 text-[var(--text-secondary)]">加载中...</p>}
+            {isLoading && (
+                <div className="mt-5 space-y-3">
+                  <Skeleton className="h-20 rounded-lg" />
+                  <Skeleton className="h-20 rounded-lg" />
+                  <Skeleton className="h-20 rounded-lg" />
+                </div>
+              )}
 
             <div className="space-y-3">
               {chapters?.map(chapter => (

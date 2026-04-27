@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
 
-import { Card, Badge, Button, Input, Alert } from '../components/v2'
+import { Card, Badge, Button, Input, Alert, Skeleton } from '../components/v2'
 import { useLayoutStore } from '../store/useLayoutStore'
 import { useProjectStore, type ProjectStatus } from '../store/useProjectStore'
 import {
@@ -142,7 +142,12 @@ export const ProjectOutline: React.FC = () => {
   }, [data, refetch])
 
   if (isLoading) {
-    return <p className="text-[var(--text-secondary)]">加载中...</p>
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-32 rounded-lg" />
+        <Skeleton className="h-40 rounded-lg" />
+      </div>
+    )
   }
 
   if (!data) {
