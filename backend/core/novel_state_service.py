@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any, Mapping, List, Dict, Tuple
 
 from backend.utils.file_utils import write_file_atomic
+from backend.utils.logger import logger
 
 
 DEFAULT_NOVEL_STATE: dict[str, Any] = {
@@ -258,10 +259,14 @@ class NovelStateValidator:
         Returns:
             (是否通过, 发现的硬错误列表)
         """
+        logger.info(f"开始校验第 {chapter_index} 章状态一致性...")
         state = self.state_service.load_state()
         issues: List[Dict] = []
 
         # 检查1：角色一致性 - 已标记为死亡/离开的角色不应出现（除非回忆）
+        char_count = len(state.get("characters", {}))
+        logger.debug(f"当前 NovelState 中有 {char_count} 个角色记录")
+
         for char_name, char_state in state.get("characters", {}).items():
             char_state_str = str(char_state)
             if ("死亡" in char_state_str or "离开" in char_state_str or "不在" in char_state_str):
@@ -271,6 +276,10 @@ class NovelStateValidator:
                     flashback_indicators = ["回忆", "想起", "记得", "当年", "以前", "恍惚", "仿佛"]
                     is_flashback = any(indicator in context_window for indicator in flashback_indicators)
                     if not is_flashback:
+                        logger.warning(
+                            f"发现角色状态冲突：{char_name} (状态: {char_state_str}) "
+                            f"在第 {chapter_index} 章内容中出现（非回忆场景）"
+                        )
                         issues.append({
                             "type": "character_state_violation",
                             "issue_type": "character_consistency",
@@ -286,6 +295,7 @@ class NovelStateValidator:
             if isinstance(v, dict) and v.get("status") == "open"
         ]
         if len(open_foreshadows) > 5 and chapter_index > 5:
+            logger.info(f"伏笔追踪提醒：当前有 {len(open_foreshadows)} 个未回收伏笔")
             issues.append({
                 "type": "too_many_open_foreshadows",
                 "issue_type": "plot_progress",
@@ -294,6 +304,7 @@ class NovelStateValidator:
                 "fix_instruction": f"当前有 {len(open_foreshadows)} 个未回收伏笔，建议在后续章节逐步回收",
             })
 
+        logger.info(f"第 {chapter_index} 章状态校验完成，发现 {len(issues)} 个问题")
         return len(issues) == 0, issues
 
     @staticmethod

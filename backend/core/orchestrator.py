@@ -245,13 +245,13 @@ class NovelOrchestrator:
         self.info_path: Optional[Path] = None
         self.content_type: str = "novel"
 
-    def _check_cancellation(self):
+    def _check_cancellation(self) -> None:
         """在关键阶段主动检查任务是否已被外部取消。"""
         cancellation_checker = getattr(self, "cancellation_checker", None)
         if cancellation_checker:
             cancellation_checker()
 
-    def _report_progress(self, percent: int, message: str):
+    def _report_progress(self, percent: int, message: str) -> None:
         """上报进度"""
         self._check_cancellation()
         self._last_progress_percent = percent
@@ -265,7 +265,7 @@ class NovelOrchestrator:
             except Exception as e:
                 logger.error(f"进度回调执行失败: {e}")
 
-    def _report_workflow_event(self, message: str):
+    def _report_workflow_event(self, message: str) -> None:
         """上报细粒度工作流事件，不推进主进度条。"""
         self._check_cancellation()
         percent = getattr(self, "_last_progress_percent", 0)
@@ -869,7 +869,7 @@ class NovelOrchestrator:
 
         return len(issues) == 0, issues
 
-    def _record_novel_state_snapshot(self, chapter_index: int, chapter_content: str, scene_anchors: List[Dict]):
+    def _record_novel_state_snapshot(self, chapter_index: int, chapter_content: str, scene_anchors: List[Dict]) -> None:
         delta = self.novel_state_service.extract_state_delta_from_chapter(
             chapter_index,
             chapter_content,
@@ -1154,7 +1154,7 @@ class NovelOrchestrator:
 
         return current_content, score, passed, issues
 
-    def save_chapter(self, chapter_index: int, content: str):
+    def save_chapter(self, chapter_index: int, content: str) -> None:
         """保存章节到 chapters 子目录。"""
         chapter_file = self.output_dir / "chapters" / f"chapter_{chapter_index}.txt"
         write_file_atomic(chapter_file, content)
@@ -1414,7 +1414,7 @@ class NovelOrchestrator:
             raise
 
 
-def main():
+def main() -> None:
     """命令行入口"""
     import sys
     project_dir = sys.argv[1] if len(sys.argv) > 1 else None
