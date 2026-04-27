@@ -6,7 +6,7 @@ import json
 from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Mapping, List, Dict, Tuple
 
 from backend.utils.file_utils import write_file_atomic
 
@@ -189,3 +189,73 @@ class NovelStateService:
             f"pacing={style.get('pacing', '')}; "
             f"notes={style.get('reference_notes', '')}"
         )
+
+
+class NovelStateValidator:
+    """
+    纯代码状态校验器，零token消耗
+    在 Critic 评审前运行，抓出硬错误
+    """
+
+    def __init__(self, state_service: NovelStateService):
+        self.state_service = state_service
+
+    def validate_chapter(
+        self,
+        chapter_index: int,
+        chapter_content: str,
+        scene_anchors: List[Dict],
+    ) -> Tuple[bool, List[Dict]]:
+        """
+        校验本章内容与当前状态快照的一致性
+
+        Returns:
+            (是否通过, 发现的硬错误列表)
+        """
+        state = self.state_service.load_state()
+        issues: List[Dict] = []
+
+        # 检查1：角色一致性 - 已标记为死亡/离开的角色不应出现（除非回忆）
+        for char_name, char_state in state.get("characters", {}).items():
+            char_state_str = str(char_state)
+            if ("死亡" in char_state_str or "离开" in char_state_str or "不在" in char_state_str):
+                if char_name in chapter_content:
+                    context_window = self._get_name_context(chapter_content, char_name)
+                    # 检查是否是回忆/闪回上下文
+                    flashback_indicators = ["回忆", "想起", "记得", "当年", "以前", "恍惚", "仿佛"]
+                    is_flashback = any(indicator in context_window for indicator in flashback_indicators)
+                    if not is_flashback:
+                        issues.append({
+                            "type": "character_state_violation",
+                            "issue_type": "character_consistency",
+                            "evidence_span": {"quote": char_name},
+                            "severity": "high",
+                            "fix_strategy": "state_consistency_repair",
+                            "fix_instruction": f"{char_name} 状态为'{char_state}'，不应在本章出现，除非是回忆场景",
+                        })
+
+        # 检查2：伏笔堆积提醒（不强制失败，只作为参考）
+        open_foreshadows = [
+            k for k, v in state.get("foreshadows", {}).items()
+            if isinstance(v, dict) and v.get("status") == "open"
+        ]
+        if len(open_foreshadows) > 5 and chapter_index > 5:
+            issues.append({
+                "type": "too_many_open_foreshadows",
+                "issue_type": "plot_progress",
+                "severity": "low",
+                "fix_strategy": "foreshadow_review",
+                "fix_instruction": f"当前有 {len(open_foreshadows)} 个未回收伏笔，建议在后续章节逐步回收",
+            })
+
+        return len(issues) == 0, issues
+
+    @staticmethod
+    def _get_name_context(content: str, name: str) -> str:
+        """提取名字出现的上下文窗口"""
+        idx = content.find(name)
+        if idx < 0:
+            return ""
+        start = max(0, idx - 20)
+        end = min(len(content), idx + 20)
+        return content[start:end]
