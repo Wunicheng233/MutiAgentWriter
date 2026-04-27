@@ -117,7 +117,48 @@ class NovelStateService:
             },
         }
 
-    def merge_delta(self, delta: Mapping[str, Any]) -> dict[str, Any]:
+    def register_foreshadow(
+        self,
+        foreshadow_id: str,
+        chapter_index: int,
+        scene_id: str,
+        description: str,
+    ):
+        """登记一个新埋设的伏笔"""
+        state = self.load_state()
+        state.setdefault("foreshadows", {})[foreshadow_id] = {
+            "status": "open",
+            "planted_chapter": chapter_index,
+            "planted_scene": scene_id,
+            "description": description,
+            "planted_at": datetime.utcnow().isoformat(),
+        }
+        self.save_state(state)
+
+    def resolve_foreshadow(
+        self,
+        foreshadow_id: str,
+        chapter_index: int,
+        scene_id: str,
+        resolution: str,
+    ):
+        """标记伏笔已回收"""
+        state = self.load_state()
+        if foreshadow_id in state.get("foreshadows", {}):
+            state["foreshadows"][foreshadow_id]["status"] = "resolved"
+            state["foreshadows"][foreshadow_id]["resolved_chapter"] = chapter_index
+            state["foreshadows"][foreshadow_id]["resolved_scene"] = scene_id
+            state["foreshadows"][foreshadow_id]["resolution"] = resolution
+            self.save_state(state)
+
+    def merge_delta(self, delta: Mapping[str, Any], source_scene: str = None) -> dict[str, Any]:
+        """
+        合并状态变更
+
+        Args:
+            delta: 状态增量
+            source_scene: 导致此变更的 scene_id，用于追溯
+        """
         state = self.load_state()
 
         for character_name, character_state in dict(delta.get("characters") or {}).items():
@@ -129,6 +170,11 @@ class NovelStateService:
 
         timeline_delta = delta.get("timeline") or []
         if isinstance(timeline_delta, list):
+            # 新增：记录来源和时间戳
+            for event in timeline_delta:
+                if isinstance(event, dict):
+                    event["source_scene"] = source_scene or "unknown"
+                    event["timestamp"] = datetime.utcnow().isoformat()
             state.setdefault("timeline", []).extend(timeline_delta)
             state["timeline"] = state["timeline"][-30:]
 

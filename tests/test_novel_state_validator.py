@@ -58,3 +58,40 @@ class NovelStateValidatorTests(unittest.TestCase):
             # Should pass - flashback is valid context
             self.assertTrue(passed)
             self.assertEqual(len(issues), 0)
+
+    def test_register_foreshadow_creates_open_entry(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            service = NovelStateService(Path(tmpdir))
+
+            service.register_foreshadow(
+                foreshadow_id="mysterious_key",
+                chapter_index=3,
+                scene_id="scene-2",
+                description="一把生锈的铜钥匙，刻着看不懂的符号",
+            )
+
+            state = service.load_state()
+            foreshadow = state["foreshadows"]["mysterious_key"]
+
+            self.assertEqual(foreshadow["status"], "open")
+            self.assertEqual(foreshadow["planted_chapter"], 3)
+            self.assertEqual(foreshadow["planted_scene"], "scene-2")
+
+    def test_resolve_foreshadow_marks_as_resolved(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            service = NovelStateService(Path(tmpdir))
+
+            service.register_foreshadow("mysterious_key", 3, "scene-2", "描述")
+            service.resolve_foreshadow(
+                foreshadow_id="mysterious_key",
+                chapter_index=7,
+                scene_id="scene-1",
+                resolution="钥匙打开了老王家的地下室门，里面是父亲留下的日记",
+            )
+
+            state = service.load_state()
+            foreshadow = state["foreshadows"]["mysterious_key"]
+
+            self.assertEqual(foreshadow["status"], "resolved")
+            self.assertEqual(foreshadow["resolved_chapter"], 7)
+            self.assertIn("日记", foreshadow["resolution"])
