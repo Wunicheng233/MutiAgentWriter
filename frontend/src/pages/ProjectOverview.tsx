@@ -2,7 +2,7 @@ import React, { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
 
-import { Card, Badge, Button, Progress } from '../components/v2'
+import { Card, Badge, Button, Progress, Divider } from '../components/v2'
 import { useLayoutStore } from '../store/useLayoutStore'
 import { useProjectStore, type ProjectStatus } from '../store/useProjectStore'
 import type { BadgeVariant } from '../components/v2'
@@ -344,9 +344,9 @@ export const ProjectOverview: React.FC = () => {
           </div>
         </div>
 
-        <div className="mt-4 pt-4 border-t border-[var(--border-default)]">
-          <div className="flex flex-col gap-4 md:flex-row md:justify-between">
-            <div className="flex-1">
+        <Divider className="my-4" />
+        <div className="flex flex-col gap-4 md:flex-row md:justify-between">
+          <div className="flex-1">
               <h1 className="text-2xl md:text-3xl font-semibold text-[var(--text-primary)]">{data.name}</h1>
               {config?.core_hook && (
                 <p className="mt-2 text-[var(--text-secondary)]">{config.core_hook}</p>
@@ -381,7 +381,6 @@ export const ProjectOverview: React.FC = () => {
                   <Button variant="secondary" size="sm">导出</Button>
                 </Link>
               </div>
-            </div>
           </div>
         </div>
       </Card>

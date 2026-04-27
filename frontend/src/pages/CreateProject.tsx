@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
 
-import { Card, Input, Textarea, Button, Progress } from '../components/v2'
+import { Card, Input, Textarea, Button, Progress, Divider } from '../components/v2'
 import { createProject } from '../utils/endpoints'
 import { useToast } from '../components/toastContext'
 import { getErrorMessage } from '../utils/errorMessage'
@@ -373,7 +373,8 @@ export const CreateProject: React.FC = () => {
               </div>
             )}
 
-            <div className="mt-8 flex flex-col gap-3 border-t border-border pt-6 md:flex-row md:items-center md:justify-between">
+            <Divider className="my-6" />
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <Button
                 variant="secondary"
                 onClick={prevStep}

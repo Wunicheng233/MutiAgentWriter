@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Card, Button, Input, Checkbox } from '../components/v2'
+import { Card, Button, Input, Checkbox, Divider } from '../components/v2'
 import { ThemeSelector } from '../components/ThemeSelector'
 import { CanvasContainer } from '../components/layout/CanvasContainer'
 import { useAuthStore } from '../store/useAuthStore'
@@ -131,7 +131,8 @@ export const Settings: React.FC = () => {
             </Button>
           </div>
 
-          <div className="mt-6 pt-6 border-t border-[var(--border-default)]">
+          <Divider className="my-6" />
+          <div>
             <Button
               variant="secondary"
               onClick={handleClear}
