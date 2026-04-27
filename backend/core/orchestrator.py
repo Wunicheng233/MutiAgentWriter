@@ -47,6 +47,10 @@ from backend.utils.vector_db import (
 )
 
 
+# Severity priority mapping: higher = more important
+SEVERITY_PRIORITY = {"high": 3, "medium": 2, "low": 1}
+
+
 def _merge_guardrail_issues_into_review(guardrail_result: GuardrailResult, issues: List[Dict], guardrail_context: Dict) -> bool:
     """
     将系统防护发现的问题合并到 Critic issues，让 Revise 真正修复这些问题。
@@ -686,8 +690,14 @@ class NovelOrchestrator:
             )
 
         # 每个 scene 最多修复前2个问题，避免过度修改
+        # 按严重程度排序，优先修复高严重度问题
         for scene_id, scene_issues in issues_by_scene.items():
-            for issue in scene_issues[:2]:
+            sorted_issues = sorted(
+                scene_issues,
+                key=lambda i: SEVERITY_PRIORITY.get(i.get("severity", "medium"), 2),
+                reverse=True
+            )
+            for issue in sorted_issues[:2]:
                 evidence_quote = str((issue.get("evidence_span") or {}).get("quote") or issue.get("location") or "")
                 if not local_revise or not evidence_quote or evidence_quote == "全文":
                     continue
