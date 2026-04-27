@@ -1,6 +1,6 @@
 import React from 'react'
 
-export type StatsCardVariant = 'default' | 'primary' | 'success' | 'warning'
+export type StatsCardVariant = 'default' | 'primary' | 'success' | 'warning' | 'error'
 
 export interface StatsCardProps {
   label: string
@@ -15,6 +15,7 @@ const variantClasses: Record<StatsCardVariant, string> = {
   primary: 'bg-[var(--accent-primary)]/10 border-[var(--accent-primary)]/20',
   success: 'bg-[var(--accent-success)]/10 border-[var(--accent-success)]/20',
   warning: 'bg-[var(--accent-gold)]/10 border-[var(--accent-gold)]/20',
+  error: 'bg-[var(--accent-error)]/10 border-[var(--accent-error)]/20',
 }
 
 export const StatsCard: React.FC<StatsCardProps> = ({

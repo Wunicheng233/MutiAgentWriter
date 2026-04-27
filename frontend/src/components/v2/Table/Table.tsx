@@ -25,7 +25,7 @@ const sizeClasses = {
   lg: 'py-4 px-5',
 }
 
-export function Table<T extends Record<string, unknown>>({
+export function Table<T extends object>({
   columns,
   dataSource,
   rowKey = 'id',
@@ -71,7 +71,7 @@ export function Table<T extends Record<string, unknown>>({
           ) : (
             dataSource.map((record, index) => (
               <tr
-                key={(record[rowKey] as React.Key) ?? index}
+                key={(record[rowKey as keyof T] as React.Key) ?? index}
                 className={`
                   border-b border-[var(--border-default)]
                   ${striped && index % 2 === 1 ? 'bg-[var(--bg-tertiary)]' : ''}
@@ -79,7 +79,7 @@ export function Table<T extends Record<string, unknown>>({
                 `}
               >
                 {columns.map((col) => {
-                  const value = record[col.key]
+                  const value = record[col.key as keyof T]
                   return (
                     <td
                       key={col.key}
