@@ -947,6 +947,18 @@ class NovelOrchestrator:
 
         logger.info(f"系统层防护完成，通过: {guardrail_result.passed}")
 
+        # Step 2.5: NovelStateValidator 纯代码状态校验（零token消耗，硬错误检查）
+        state_validator = self.novel_state_service.NovelStateValidator(self.novel_state_service)
+        state_passed, state_issues = state_validator.validate_chapter(
+            chapter_index=chapter_index,
+            chapter_content=current_content,
+            scene_anchors=scene_anchors,
+        )
+        if state_issues:
+            logger.warning(f"状态校验发现 {len(state_issues)} 个硬错误：")
+            for issue in state_issues:
+                logger.warning(f"  - {issue.get('type')}: {issue.get('fix_instruction', issue.get('fix', ''))[:80]}")
+
         # Step 3: Critic 评审
         chapter_outline = self.get_chapter_outline(chapter_index)
         passed, score, dimensions, issues = self._run_critic_harness(
@@ -960,6 +972,12 @@ class NovelOrchestrator:
         for dim, score_val in dimensions.items():
             if dim in self.dimension_scores:
                 self.dimension_scores[dim].append(score_val)
+
+        # 合并 NovelStateValidator 发现的问题到 issues 列表
+        issues.extend(state_issues)
+        # 如果有状态校验问题，标记为不通过，确保进入修复流程
+        if not state_passed:
+            passed = False
 
         passed = passed and _merge_guardrail_issues_into_review(guardrail_result, issues, guardrail_context)
 
