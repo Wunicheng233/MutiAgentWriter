@@ -2,7 +2,7 @@ import React, { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
 import ReactECharts from 'echarts-for-react'
-import { Card, Badge, Button, Progress, Empty, Alert, StatsCard, Skeleton } from '../components/v2'
+import { Card, Badge, Button, Progress, Empty, Alert, StatsCard, Skeleton, Table } from '../components/v2'
 import type { BadgeVariant } from '../components/v2'
 import { useProjectStore, type ProjectStatus } from '../store/useProjectStore'
 import { getProject, getProjectAnalytics } from '../utils/endpoints'
@@ -367,34 +367,56 @@ export const QualityDashboard: React.FC = () => {
             </Link>
           </div>
 
-          <div className="space-y-3">
-            {chapterScores.map(chapter => (
-              <div
-                key={chapter.chapter_index}
-                className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-secondary)] p-4 transition-all hover:border-[var(--border-strong)]"
-              >
-                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex flex-wrap items-center gap-3">
-                      <span className="font-medium text-[var(--text-primary)] truncate">{chapter.title || `第${chapter.chapter_index}章`}</span>
-                      <Badge variant="secondary">{chapter.status}</Badge>
-                    </div>
-                    <div className="mt-3 max-w-md">
-                      <Progress value={chapter.quality_score * 10} />
+          <Table
+            columns={[
+              {
+                key: 'title',
+                title: '章节',
+                render: (_: unknown, record: any) => (
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium truncate">
+                      {record.title || `第${record.chapter_index}章`}
+                    </span>
+                    <Badge variant="secondary">{record.status}</Badge>
+                  </div>
+                ),
+              },
+              {
+                key: 'quality_score',
+                title: '评分',
+                render: (value: unknown, record: any) => (
+                  <div className="w-32">
+                    <Progress value={(value as number) * 10} />
+                    <div className="mt-1 text-sm text-right">
+                      <Badge variant={getScoreColor(record.quality_score)}>
+                        {(value as number).toFixed(1)}
+                      </Badge>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <Badge variant={getScoreColor(chapter.quality_score)}>
-                      {chapter.quality_score.toFixed(1)}
-                    </Badge>
-                    <Link to={`/projects/${projectId}/write/${chapter.chapter_index}`}>
-                      <Button variant="tertiary" size="sm">编辑</Button>
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+                ),
+              },
+              {
+                key: 'word_count',
+                title: '字数',
+                render: (value: unknown) => (value as number)?.toLocaleString() || '-',
+                align: 'right',
+              },
+              {
+                key: 'actions',
+                title: '操作',
+                align: 'right',
+                render: (_: unknown, record: any) => (
+                  <Link to={`/projects/${projectId}/write/${record.chapter_index}`}>
+                    <Button variant="tertiary" size="sm">编辑</Button>
+                  </Link>
+                ),
+              },
+            ]}
+            dataSource={chapterScores}
+            rowKey="chapter_index"
+            hoverable
+            striped
+          />
         </Card>
       </div>
   )
