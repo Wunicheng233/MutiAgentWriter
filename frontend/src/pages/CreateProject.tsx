@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
 
-import { Card, Input, Textarea, Button, Progress, Divider } from '../components/v2'
+import { Card, Input, Textarea, Button, Progress, Divider, Alert } from '../components/v2'
 import { createProject } from '../utils/endpoints'
 import { useToast } from '../components/toastContext'
 import { getErrorMessage } from '../utils/errorMessage'
@@ -257,6 +257,12 @@ export const CreateProject: React.FC = () => {
             {currentStep === 3 && (
               <div className="space-y-5">
                 <h2 className="text-2xl font-medium">协作方式</h2>
+
+                {(formData.end_chapter ?? 1) < (formData.start_chapter ?? 1) && (
+                  <Alert variant="warning" title="章节范围冲突" className="mb-4">
+                    结束章节不能小于起始章节，请检查输入
+                  </Alert>
+                )}
 
                 <div className="grid gap-4 md:grid-cols-2">
                   <Input

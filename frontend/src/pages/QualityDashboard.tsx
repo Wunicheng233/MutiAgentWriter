@@ -2,7 +2,7 @@ import React, { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
 import ReactECharts from 'echarts-for-react'
-import { Card, Badge, Button, Progress, Empty } from '../components/v2'
+import { Card, Badge, Button, Progress, Empty, Alert } from '../components/v2'
 import type { BadgeVariant } from '../components/v2'
 import { useProjectStore, type ProjectStatus } from '../store/useProjectStore'
 import { getProject, getProjectAnalytics } from '../utils/endpoints'
@@ -56,12 +56,9 @@ export const QualityDashboard: React.FC = () => {
 
   if (isError) {
     return (
-      <div className="space-y-4">
-        <p className="text-[var(--text-danger)]">加载分析数据失败</p>
-        <p className="text-sm text-[var(--text-secondary)]">
-          {error instanceof Error ? error.message : '请稍后重试'}
-        </p>
-      </div>
+      <Alert variant="error" title="加载分析数据失败">
+        {error instanceof Error ? error.message : '请稍后重试'}
+      </Alert>
     )
   }
 

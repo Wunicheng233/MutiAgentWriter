@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
 
-import { Card, Badge, Button, Input } from '../components/v2'
+import { Card, Badge, Button, Input, Alert } from '../components/v2'
 import { useLayoutStore } from '../store/useLayoutStore'
 import { useProjectStore, type ProjectStatus } from '../store/useProjectStore'
 import {
@@ -62,6 +62,7 @@ export const ProjectOutline: React.FC = () => {
   }, [data, skillsData])
 
   const [editingConfig, setEditingConfig] = useState(false)
+  const [showSuccess, setShowSuccess] = useState(false)
   const [configForm, setConfigForm] = useState({
     skip_plan_confirmation: false,
     skip_chapter_confirmation: false,
@@ -80,8 +81,10 @@ export const ProjectOutline: React.FC = () => {
     }),
     onSuccess: () => {
       showToast('配置已更新', 'success')
+      setShowSuccess(true)
       queryClient.invalidateQueries({ queryKey: ['project', projectId] })
       setEditingConfig(false)
+      setTimeout(() => setShowSuccess(false), 3000)
     },
     onError: () => {
       showToast('更新失败', 'error')
@@ -238,6 +241,11 @@ export const ProjectOutline: React.FC = () => {
           </div>
         ) : (
           <div className="mt-5 space-y-4">
+            {showSuccess && (
+              <Alert variant="success" title="配置已更新" className="mb-4">
+                你的项目配置已成功保存
+              </Alert>
+            )}
             <div className="grid grid-cols-2 gap-4">
               <Input
                 label="每章字数"

@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Card, Button, Input, Checkbox, Divider } from '../components/v2'
+import { Card, Button, Input, Checkbox, Divider, Alert } from '../components/v2'
 import { ThemeSelector } from '../components/ThemeSelector'
 import { CanvasContainer } from '../components/layout/CanvasContainer'
 import { useAuthStore } from '../store/useAuthStore'
@@ -16,6 +16,7 @@ export const Settings: React.FC = () => {
   const { showToast } = useToast()
   const [loading, setLoading] = useState(false)
   const [newApiKey, setNewApiKey] = useState('')
+  const [alert, setAlert] = useState<{ variant: 'success' | 'error' | 'warning' | 'info'; message: string } | null>(null)
 
   const { data: monthlyStats } = useQuery({
     queryKey: ['user-monthly-token-stats'],
@@ -27,8 +28,9 @@ export const Settings: React.FC = () => {
     onSuccess: (data) => {
       setUser(data)
       queryClient.invalidateQueries({ queryKey: ['me'] })
-      showToast('已切换为系统默认 API Key', 'success')
+      setAlert({ variant: 'success', message: '已切换为系统默认 API Key' })
       setLoading(false)
+      setTimeout(() => setAlert(null), 3000)
     },
     onError: () => {
       showToast('清除失败', 'error')
@@ -41,9 +43,10 @@ export const Settings: React.FC = () => {
     onSuccess: (data) => {
       setUser(data)
       queryClient.invalidateQueries({ queryKey: ['me'] })
-      showToast('API Key 已更新', 'success')
+      setAlert({ variant: 'success', message: 'API Key 已更新' })
       setNewApiKey('')
       setLoading(false)
+      setTimeout(() => setAlert(null), 3000)
     },
     onError: () => {
       showToast('更新失败', 'error')
@@ -74,6 +77,12 @@ export const Settings: React.FC = () => {
   return (
     <CanvasContainer maxWidth={600}>
       <h1 className="text-3xl font-medium text-[var(--text-primary)] mb-8">设置</h1>
+
+      {alert && (
+        <Alert variant={alert.variant} className="mb-6">
+          {alert.message}
+        </Alert>
+      )}
 
       <div className="grid gap-6">
         <Card>
