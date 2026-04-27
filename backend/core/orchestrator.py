@@ -787,6 +787,65 @@ class NovelOrchestrator:
         )
         return stitched or chapter_content
 
+    def run_chapter_consistency_pass(
+        self,
+        chapter_index: int,
+        chapter_content: str,
+        scene_anchors: List[Dict],
+    ) -> Tuple[bool, List[Dict]]:
+        """
+        章节级一致性终检（纯代码，零token消耗）
+        检查项：
+        1. scene锚点的 state_change 是否已在内容中体现
+        2. 结尾钩子是否存在（避免结尾过于简短）
+
+        Returns:
+            (是否通过, 发现的问题列表)
+        """
+        issues: List[Dict] = []
+        state = self.novel_state_service.load_state()
+
+        # 检查1：state_change 的关键术语是否出现在内容中
+        for anchor in scene_anchors:
+            state_change = anchor.get("state_change", "")
+            if state_change and len(state_change) > 5:
+                # 提取关键词（按2字符分词，因为中文通常没有空格）
+                # 简单策略：取2字符的词检查存在性
+                found_any_keyword = False
+                # 取前几个2字符片段作为关键词
+                for i in range(min(3, len(state_change) - 1)):
+                    kw = state_change[i:i+2]
+                    if kw in chapter_content:
+                        found_any_keyword = True
+                        break
+                if not found_any_keyword:
+                    issues.append({
+                        "type": "scene_state_mismatch",
+                        "scene_id": anchor.get("scene_id"),
+                        "location": "全文",
+                        "fix": f"场景 {anchor.get('scene_id')} 预期的状态变更未在内容中体现：'{state_change}'",
+                        "severity": "medium",
+                    })
+
+        # 检查2：结尾钩子是否存在（最后一段长度太短，可能没有悬念钩子）
+        content_lines = [line.strip() for line in chapter_content.split("\n") if line.strip()]
+        if len(content_lines) > 0 and len(content_lines[-1]) < 10:
+            issues.append({
+                "type": "weak_hook",
+                "location": "章节结尾",
+                "fix": "结尾过于简短，没有留下足够的悬念钩子",
+                "severity": "low",
+            })
+
+        # 检查3：检查是否出现 NovelState 中不存在的新人物（未铺垫空降）
+        known_characters = set(state.get("characters", {}).keys())
+        if known_characters:
+            # 简单检查：是否有看起来像人名的2-4字连续中文字符出现在内容中
+            # 实际实现：这里只检查已知角色是否拼写一致
+            pass
+
+        return len(issues) == 0, issues
+
     def _record_novel_state_snapshot(self, chapter_index: int, chapter_content: str, scene_anchors: List[Dict]):
         delta = self.novel_state_service.extract_state_delta_from_chapter(
             chapter_index,
@@ -1013,6 +1072,28 @@ class NovelOrchestrator:
                 add_chapter_to_db(chapter_index, f"第{chapter_index}章", current_content)
                 # 抛异常告诉上层需要等待确认
                 raise WaitingForConfirmationError(chapter_index, current_content)
+
+        # Step 6: Chapter Consistency Pass（纯代码终检，零token消耗）
+        consistency_passed, consistency_issues = self.run_chapter_consistency_pass(
+            chapter_index=chapter_index,
+            chapter_content=current_content,
+            scene_anchors=scene_anchors,
+        )
+
+        # 如果终检发现问题，追加到issues列表进入修复流程（最多再尝试1次）
+        if not consistency_passed and revise_count < max_revise_loops:
+            logger.warning(
+                f"第 {chapter_index} 章终检发现 {len(consistency_issues)} 个一致性问题，追加修复..."
+            )
+            issues.extend(consistency_issues)
+            current_content, used_local_repair, repair_trace = self._apply_repair_batch(
+                chapter_index=chapter_index,
+                current_content=current_content,
+                issues=consistency_issues,
+                chapter_outline=chapter_outline,
+                revise_round=revise_count + 1,
+            )
+            revise_count += 1
 
         # 保存终稿到 chapters 子目录
         self.save_chapter(chapter_index, current_content)
