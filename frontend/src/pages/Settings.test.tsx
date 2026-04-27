@@ -64,34 +64,34 @@ describe('Settings - 布局偏好', () => {
     expect(screen.getByText('布局偏好')).toBeInTheDocument()
   })
 
-  test('显示"进入项目时自动展开顶栏"的 Checkbox', () => {
+  test('显示"进入项目时自动展开顶栏"的 Switch', () => {
     renderWithProviders(<Settings />)
     expect(screen.getByText('进入项目时自动展开顶栏')).toBeInTheDocument()
   })
 
-  test('点击 Checkbox 调用 setAutoExpandHeaderInProject', () => {
+  test('点击 Switch 调用 setAutoExpandHeaderInProject', () => {
     renderWithProviders(<Settings />)
 
-    // 找到 checkbox 并点击
-    const checkbox = screen.getByRole('checkbox')
-    fireEvent.click(checkbox)
+    // 找到 switch 并点击
+    const switchEl = screen.getByRole('switch')
+    fireEvent.click(switchEl)
 
     expect(mockSetAutoExpandHeaderInProject).toHaveBeenCalledWith(false)
   })
 
-  test('当 autoExpandHeaderInProject 为 false 时，Checkbox 状态正确', () => {
+  test('当 autoExpandHeaderInProject 为 false 时，Switch 状态正确', () => {
     mockAutoExpandHeaderInProject.current = false
     renderWithProviders(<Settings />)
 
-    const checkbox = screen.getByRole('checkbox')
-    expect(checkbox).not.toBeChecked()
+    const switchEl = screen.getByRole('switch')
+    expect(switchEl).not.toBeChecked()
   })
 
-  test('当 autoExpandHeaderInProject 为 true 时，Checkbox 状态正确', () => {
+  test('当 autoExpandHeaderInProject 为 true 时，Switch 状态正确', () => {
     mockAutoExpandHeaderInProject.current = true
     renderWithProviders(<Settings />)
 
-    const checkbox = screen.getByRole('checkbox')
-    expect(checkbox).toBeChecked()
+    const switchEl = screen.getByRole('switch')
+    expect(switchEl).toBeChecked()
   })
 })

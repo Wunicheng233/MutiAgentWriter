@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Card, Button, Input, Checkbox, Divider, Alert } from '../components/v2'
+import { Card, Button, Input, Divider, Alert, Switch } from '../components/v2'
 import { ThemeSelector } from '../components/ThemeSelector'
 import { CanvasContainer } from '../components/layout/CanvasContainer'
 import { useAuthStore } from '../store/useAuthStore'
@@ -92,13 +92,13 @@ export const Settings: React.FC = () => {
         <Card>
           <h2 className="text-lg font-medium mb-4 text-[var(--text-primary)]">布局偏好</h2>
           <div className="space-y-4">
-            <label className="flex items-center gap-3 cursor-pointer">
-              <Checkbox
+            <div className="flex items-center justify-between">
+              <span className="text-[var(--text-body)]">进入项目时自动展开顶栏</span>
+              <Switch
                 checked={autoExpandHeaderInProject}
                 onChange={setAutoExpandHeaderInProject}
               />
-              <span className="text-[var(--text-body)]">进入项目时自动展开顶栏</span>
-            </label>
+            </div>
           </div>
         </Card>
 
