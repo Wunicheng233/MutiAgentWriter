@@ -178,15 +178,25 @@ def evaluate_chapter_with_critic(
     scene_anchors_context: str = "",
     novel_state_snapshot: str = "",
 ) -> ChapterEvaluationReport:
+    # Build kwargs dict for compatibility with both old and new Critic interfaces
+    critic_kwargs = {
+        "perspective": perspective,
+        "perspective_strength": perspective_strength,
+    }
+    # Only add new args if they have values or method supports them
+    import inspect
+    sig = inspect.signature(critic.critic_chapter)
+    if "scene_anchors_context" in sig.parameters:
+        critic_kwargs["scene_anchors_context"] = scene_anchors_context
+    if "novel_state_snapshot" in sig.parameters:
+        critic_kwargs["novel_state_snapshot"] = novel_state_snapshot
+
     critic_result = critic.critic_chapter(
         chapter_content,
         setting_bible,
         chapter_outline,
         content_type,
-        perspective=perspective,
-        perspective_strength=perspective_strength,
-        scene_anchors_context=scene_anchors_context,
-        novel_state_snapshot=novel_state_snapshot,
+        **critic_kwargs,
     )
     if not isinstance(critic_result, tuple):
         raise TypeError("Critic must return a tuple")

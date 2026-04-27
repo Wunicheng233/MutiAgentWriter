@@ -309,8 +309,13 @@ class NovelOrchestrator:
         revision_round: int = 0,
     ) -> Tuple[bool, float, Dict[str, float], List[Dict]]:
         """Run Critic through the stable evaluation harness boundary."""
-        scene_anchors_context = self._format_scene_anchors_for_critic(chapter_index)
-        novel_state_snapshot = self.novel_state_service.build_prewrite_context(chapter_outline, [])
+        from backend.core.config import settings
+        scene_anchors_context = ""
+        novel_state_snapshot = ""
+        if settings.enable_scene_aware_critic:
+            scene_anchors_context = self._format_scene_anchors_for_critic(chapter_index)
+            if hasattr(self, 'novel_state_service') and self.novel_state_service:
+                novel_state_snapshot = self.novel_state_service.build_prewrite_context(chapter_outline, [])
         report = evaluate_chapter_with_critic(
             critic=self.critic,
             chapter_content=chapter_content,
@@ -677,66 +682,84 @@ class NovelOrchestrator:
         normalized_issues = [self._normalize_repair_issue(issue) for issue in (issues or [])]
         local_revise = getattr(self.revise, "revise_local_patch", None)
 
-        # 按 scene_id 分组修复，同一个 scene 的问题批量处理
-        issues_by_scene: Dict[str, List[Dict]] = defaultdict(list)
-        for issue in normalized_issues:
-            scene_id = issue.get("scene_id", "chapter")
-            issues_by_scene[scene_id].append(issue)
+        from backend.core.config import settings
 
-        if normalized_issues:
-            strategies = ", ".join(issue.get("fix_strategy", "local_rewrite") for issue in normalized_issues[:3])
-            self._report_workflow_event(
-                f"Workflow v2 · 第{chapter_index}章 Failure Router：本轮策略 {strategies}，跨 {len(issues_by_scene)} 个scene"
-            )
+        def _apply_single_repair(issue: Dict, scene_id_label: str) -> None:
+            """应用单个修复的共享逻辑"""
+            nonlocal current_content, used_local_repair, repair_trace
+            evidence_quote = str((issue.get("evidence_span") or {}).get("quote") or issue.get("location") or "")
+            if not local_revise or not evidence_quote or evidence_quote == "全文":
+                return
+            local_context = build_local_repair_context(current_content, evidence_quote)
+            if not local_context.get("target"):
+                return
 
-        # 每个 scene 最多修复前2个问题，避免过度修改
-        # 按严重程度排序，优先修复高严重度问题
-        for scene_id, scene_issues in issues_by_scene.items():
-            sorted_issues = sorted(
-                scene_issues,
-                key=lambda i: SEVERITY_PRIORITY.get(i.get("severity", "medium"), 2),
-                reverse=True
-            )
-            for issue in sorted_issues[:2]:
-                evidence_quote = str((issue.get("evidence_span") or {}).get("quote") or issue.get("location") or "")
-                if not local_revise or not evidence_quote or evidence_quote == "全文":
-                    continue
-                local_context = build_local_repair_context(current_content, evidence_quote)
-                if not local_context.get("target"):
-                    continue
-
-                before_content = current_content
-                patch = local_revise(
-                    current_content,
-                    issue,
-                    {
-                        **local_context,
-                        "chapter_outline": chapter_outline,
-                        "repair_strategy": issue.get("fix_strategy"),
-                    },
-                    self.setting_bible,
-                    perspective=self.writer_perspective,
-                    perspective_strength=self.perspective_strength,
-                )
-                patched_content, applied = apply_local_patch(current_content, patch or {})
-                trace_item = {
-                    "artifact_type": "repair_trace",
-                    "chapter_index": chapter_index,
-                    "revision_round": revise_round,
-                    "issue": issue,
+            before_content = current_content
+            patch = local_revise(
+                current_content,
+                issue,
+                {
+                    **local_context,
+                    "chapter_outline": chapter_outline,
                     "repair_strategy": issue.get("fix_strategy"),
-                    "evidence": issue.get("evidence_span"),
-                    "target_text": (patch or {}).get("target_text") if isinstance(patch, dict) else "",
-                    "replacement_applied": bool(applied),
-                    "scene_id": scene_id,
-                }
-                repair_trace.append(trace_item)
-                if applied and patched_content != before_content:
-                    current_content = patched_content
-                    used_local_repair = True
-                    self._report_workflow_event(
-                        f"Workflow v2 · 第{chapter_index}章 {scene_id} Local Revise：已局部替换 {issue.get('fix_strategy')}"
-                    )
+                },
+                self.setting_bible,
+                perspective=self.writer_perspective,
+                perspective_strength=self.perspective_strength,
+            )
+            patched_content, applied = apply_local_patch(current_content, patch or {})
+            trace_item = {
+                "artifact_type": "repair_trace",
+                "chapter_index": chapter_index,
+                "revision_round": revise_round,
+                "issue": issue,
+                "repair_strategy": issue.get("fix_strategy"),
+                "evidence": issue.get("evidence_span"),
+                "target_text": (patch or {}).get("target_text") if isinstance(patch, dict) else "",
+                "replacement_applied": bool(applied),
+                "scene_id": scene_id_label,
+            }
+            repair_trace.append(trace_item)
+            if applied and patched_content != before_content:
+                current_content = patched_content
+                used_local_repair = True
+                self._report_workflow_event(
+                    f"Workflow v2 · 第{chapter_index}章 {scene_id_label} Local Revise：已局部替换 {issue.get('fix_strategy')}"
+                )
+
+        if settings.enable_scene_grouped_repair:
+            # 按 scene_id 分组修复，同一个 scene 的问题批量处理
+            issues_by_scene: Dict[str, List[Dict]] = defaultdict(list)
+            for issue in normalized_issues:
+                scene_id = issue.get("scene_id", "chapter")
+                issues_by_scene[scene_id].append(issue)
+
+            if normalized_issues:
+                strategies = ", ".join(issue.get("fix_strategy", "local_rewrite") for issue in normalized_issues[:3])
+                self._report_workflow_event(
+                    f"Workflow v2 · 第{chapter_index}章 Failure Router：本轮策略 {strategies}，跨 {len(issues_by_scene)} 个scene"
+                )
+
+            # 每个 scene 最多修复前2个问题，避免过度修改
+            # 按严重程度排序，优先修复高严重度问题
+            for scene_id, scene_issues in issues_by_scene.items():
+                sorted_issues = sorted(
+                    scene_issues,
+                    key=lambda i: SEVERITY_PRIORITY.get(i.get("severity", "medium"), 2),
+                    reverse=True
+                )
+                for issue in sorted_issues[:2]:
+                    _apply_single_repair(issue, scene_id)
+        else:
+            # 兼容旧行为：不分组，全局最多尝试3个问题
+            if normalized_issues:
+                strategies = ", ".join(issue.get("fix_strategy", "local_rewrite") for issue in normalized_issues[:3])
+                self._report_workflow_event(
+                    f"Workflow v2 · 第{chapter_index}章 Failure Router：本轮策略 {strategies}（兼容模式）"
+                )
+            for issue in normalized_issues[:3]:
+                scene_id_label = issue.get("scene_id", "chapter")
+                _apply_single_repair(issue, scene_id_label)
 
         if used_local_repair:
             current_content = self.run_stitching_pass(chapter_index, current_content, repair_trace)
@@ -948,16 +971,21 @@ class NovelOrchestrator:
         logger.info(f"系统层防护完成，通过: {guardrail_result.passed}")
 
         # Step 2.5: NovelStateValidator 纯代码状态校验（零token消耗，硬错误检查）
-        state_validator = self.novel_state_service.NovelStateValidator(self.novel_state_service)
-        state_passed, state_issues = state_validator.validate_chapter(
-            chapter_index=chapter_index,
-            chapter_content=current_content,
-            scene_anchors=scene_anchors,
-        )
-        if state_issues:
-            logger.warning(f"状态校验发现 {len(state_issues)} 个硬错误：")
-            for issue in state_issues:
-                logger.warning(f"  - {issue.get('type')}: {issue.get('fix_instruction', issue.get('fix', ''))[:80]}")
+        from backend.core.config import settings
+        from backend.core.novel_state_service import NovelStateValidator
+        state_issues = []
+        state_passed = True
+        if settings.enable_novel_state_validator:
+            state_validator = NovelStateValidator(self.novel_state_service)
+            state_passed, state_issues = state_validator.validate_chapter(
+                chapter_index=chapter_index,
+                chapter_content=current_content,
+                scene_anchors=scene_anchors,
+            )
+            if state_issues:
+                logger.warning(f"状态校验发现 {len(state_issues)} 个硬错误：")
+                for issue in state_issues:
+                    logger.warning(f"  - {issue.get('type')}: {issue.get('fix_instruction', issue.get('fix', ''))[:80]}")
 
         # Step 3: Critic 评审
         chapter_outline = self.get_chapter_outline(chapter_index)
@@ -1092,26 +1120,28 @@ class NovelOrchestrator:
                 raise WaitingForConfirmationError(chapter_index, current_content)
 
         # Step 6: Chapter Consistency Pass（纯代码终检，零token消耗）
-        consistency_passed, consistency_issues = self.run_chapter_consistency_pass(
-            chapter_index=chapter_index,
-            chapter_content=current_content,
-            scene_anchors=scene_anchors,
-        )
-
-        # 如果终检发现问题，追加到issues列表进入修复流程（最多再尝试1次）
-        if not consistency_passed and revise_count < max_revise_loops:
-            logger.warning(
-                f"第 {chapter_index} 章终检发现 {len(consistency_issues)} 个一致性问题，追加修复..."
-            )
-            issues.extend(consistency_issues)
-            current_content, used_local_repair, repair_trace = self._apply_repair_batch(
+        from backend.core.config import settings
+        if settings.enable_chapter_consistency_pass:
+            consistency_passed, consistency_issues = self.run_chapter_consistency_pass(
                 chapter_index=chapter_index,
-                current_content=current_content,
-                issues=consistency_issues,
-                chapter_outline=chapter_outline,
-                revise_round=revise_count + 1,
+                chapter_content=current_content,
+                scene_anchors=scene_anchors,
             )
-            revise_count += 1
+
+            # 如果终检发现问题，追加到issues列表进入修复流程（最多再尝试1次）
+            if not consistency_passed and revise_count < max_revise_loops:
+                logger.warning(
+                    f"第 {chapter_index} 章终检发现 {len(consistency_issues)} 个一致性问题，追加修复..."
+                )
+                issues.extend(consistency_issues)
+                current_content, used_local_repair, repair_trace = self._apply_repair_batch(
+                    chapter_index=chapter_index,
+                    current_content=current_content,
+                    issues=consistency_issues,
+                    chapter_outline=chapter_outline,
+                    revise_round=revise_count + 1,
+                )
+                revise_count += 1
 
         # 保存终稿到 chapters 子目录
         self.save_chapter(chapter_index, current_content)

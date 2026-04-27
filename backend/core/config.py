@@ -91,6 +91,13 @@ class Settings(BaseSettings):
     long_paragraph_threshold: int = Field(300, description="长段落判断阈值（字符数）")
     ai_cliche_repeat_threshold: int = Field(2, description="AI套话多少次算重复过多")
 
+    # ========== 质量工作流 v2 功能开关 ==========
+    # 所有增强功能可独立开关，支持A/B测试和逐步回滚
+    enable_novel_state_validator: bool = Field(True, description="启用NovelStateValidator硬错误检查（零token消耗）")
+    enable_scene_aware_critic: bool = Field(True, description="启用Critic scene感知上下文注入")
+    enable_scene_grouped_repair: bool = Field(True, description="启用按scene分组局部修复策略")
+    enable_chapter_consistency_pass: bool = Field(True, description="启用章节一致性终检（纯代码检查）")
+
     # ========== 定价配置（美元 / 1K tokens） ==========
     # 默认价格适用于 OpenAI GPT-3.5/GPT-4 标准定价
     # 火山方舟等其他平台按实际计费调整

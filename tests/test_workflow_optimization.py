@@ -273,7 +273,15 @@ class WorkflowOptimizationOrchestratorTests(unittest.TestCase):
             original_search_related = orchestrator_module.search_related_chapter_content
             original_search_core = orchestrator_module.search_core_setting
             original_add_chapter = orchestrator_module.add_chapter_to_db
+            # Import and patch settings for this test to disable consistency pass
+            from backend.core.config import settings as config_settings
+            original_consistency = config_settings.enable_chapter_consistency_pass
+            original_validator = config_settings.enable_novel_state_validator
             try:
+                # Disable quality workflow enhancements for this test
+                # (focus is on local repair mechanism, not new quality checks)
+                config_settings.enable_chapter_consistency_pass = False
+                config_settings.enable_novel_state_validator = False
                 orchestrator_module.search_related_chapter_content = lambda *args, **kwargs: ""
                 orchestrator_module.search_core_setting = lambda *args, **kwargs: ""
                 orchestrator_module.add_chapter_to_db = lambda *args, **kwargs: None
@@ -292,6 +300,8 @@ class WorkflowOptimizationOrchestratorTests(unittest.TestCase):
                 orchestrator_module.search_related_chapter_content = original_search_related
                 orchestrator_module.search_core_setting = original_search_core
                 orchestrator_module.add_chapter_to_db = original_add_chapter
+                config_settings.enable_chapter_consistency_pass = original_consistency
+                config_settings.enable_novel_state_validator = original_validator
 
             self.assertTrue(passed)
             self.assertEqual(score, 9.0)
