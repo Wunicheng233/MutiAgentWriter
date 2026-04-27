@@ -2,7 +2,7 @@ import React, { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
 import ReactECharts from 'echarts-for-react'
-import { Card, Badge, Button, Progress, Empty, Alert } from '../components/v2'
+import { Card, Badge, Button, Progress, Empty, Alert, StatsCard } from '../components/v2'
 import type { BadgeVariant } from '../components/v2'
 import { useProjectStore, type ProjectStatus } from '../store/useProjectStore'
 import { getProject, getProjectAnalytics } from '../utils/endpoints'
@@ -247,23 +247,11 @@ export const QualityDashboard: React.FC = () => {
                 <Progress value={overallScore * 10} />
               </div>
 
-              <div className="grid grid-cols-2 gap-3 flex-wrap">
-                <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-secondary)] px-4 py-3 text-center">
-                  <p className="text-[var(--text-secondary)] text-xs uppercase tracking-wider">总章节</p>
-                  <p className="mt-1 text-[var(--text-primary)] font-medium">{totalChapters}</p>
-                </div>
-                <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-secondary)] px-4 py-3 text-center">
-                  <p className="text-[var(--text-secondary)] text-xs uppercase tracking-wider">合格</p>
-                  <p className="mt-1 text-[var(--text-primary)] font-medium">{passedChapters}</p>
-                </div>
-                <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-secondary)] px-4 py-3 text-center">
-                  <p className="text-[var(--text-secondary)] text-xs uppercase tracking-wider">通过率</p>
-                  <p className="mt-1 text-[var(--text-primary)] font-medium">{passRate.toFixed(0)}%</p>
-                </div>
-                <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-secondary)] px-4 py-3 text-center">
-                  <p className="text-[var(--text-secondary)] text-xs uppercase tracking-wider">待处理</p>
-                  <p className="mt-1 text-[var(--text-primary)] font-medium">{scoreBuckets.weak}</p>
-                </div>
+              <div className="grid grid-cols-2 gap-3">
+                <StatsCard label="总章节" value={totalChapters} />
+                <StatsCard label="合格" value={passedChapters} variant="success" />
+                <StatsCard label="通过率" value={`${passRate.toFixed(0)}%`} variant="primary" />
+                <StatsCard label="待处理" value={scoreBuckets.weak} variant="warning" />
               </div>
             </div>
           </div>
@@ -274,37 +262,26 @@ export const QualityDashboard: React.FC = () => {
             <h2 className="text-lg font-medium text-[var(--text-primary)] mb-5">维度概览</h2>
 
             <div className="grid gap-3 md:grid-cols-2 mb-5">
-              <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-secondary)] p-4">
-                <p className="text-[var(--text-secondary)] text-sm">最强维度</p>
-                <p className="mt-2 text-xl text-[var(--text-primary)] font-medium">
-                  {strongestDimensionEntry
-                    ? `${dimensionMapping[strongestDimensionEntry[0]] || strongestDimensionEntry[0]} ${strongestDimensionEntry[1].toFixed(1)}`
-                    : '-'}
-                </p>
-              </div>
-              <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-secondary)] p-4">
-                <p className="text-[var(--text-secondary)] text-sm">最弱维度</p>
-                <p className="mt-2 text-xl text-[var(--text-primary)] font-medium">
-                  {weakestDimensionEntry
-                    ? `${dimensionMapping[weakestDimensionEntry[0]] || weakestDimensionEntry[0]} ${weakestDimensionEntry[1].toFixed(1)}`
-                    : '-'}
-                </p>
-              </div>
+              <StatsCard
+                label="最强维度"
+                value={strongestDimensionEntry
+                  ? `${dimensionMapping[strongestDimensionEntry[0]] || strongestDimensionEntry[0]} ${strongestDimensionEntry[1].toFixed(1)}`
+                  : '-'}
+                variant="success"
+              />
+              <StatsCard
+                label="最弱维度"
+                value={weakestDimensionEntry
+                  ? `${dimensionMapping[weakestDimensionEntry[0]] || weakestDimensionEntry[0]} ${weakestDimensionEntry[1].toFixed(1)}`
+                  : '-'}
+                variant="warning"
+              />
             </div>
 
             <div className="grid gap-3 md:grid-cols-3">
-              <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-secondary)] p-4">
-                <p className="text-[var(--text-secondary)] text-sm">≥8分</p>
-                <p className="mt-1 text-xl text-[var(--text-primary)] font-medium">{scoreBuckets.strong}</p>
-              </div>
-              <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-secondary)] p-4">
-                <p className="text-[var(--text-secondary)] text-sm">6-8分</p>
-                <p className="mt-1 text-xl text-[var(--text-primary)] font-medium">{scoreBuckets.watch}</p>
-              </div>
-              <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-secondary)] p-4">
-                <p className="text-[var(--text-secondary)] text-sm">&lt;6分</p>
-                <p className="mt-1 text-xl text-[var(--text-primary)] font-medium">{scoreBuckets.weak}</p>
-              </div>
+              <StatsCard label="≥8分" value={scoreBuckets.strong} variant="success" />
+              <StatsCard label="6-8分" value={scoreBuckets.watch} variant="warning" />
+              <StatsCard label="&lt;6分" value={scoreBuckets.weak} variant="error" />
             </div>
           </Card>
 

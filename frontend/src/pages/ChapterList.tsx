@@ -2,7 +2,7 @@ import React, { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useParams, useNavigate } from 'react-router-dom'
 
-import { Card, Badge, Button, Progress, DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, Empty } from '../components/v2'
+import { Card, Badge, Button, Progress, DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, Empty, StatsCard } from '../components/v2'
 import type { BadgeVariant } from '../components/v2'
 import { useProjectStore, type ProjectStatus } from '../store/useProjectStore'
 import { getProject, getProjectWorkflowRuns, listChapters } from '../utils/endpoints'
@@ -164,22 +164,13 @@ export const ChapterList: React.FC = () => {
 
               {/* 四个统计卡片横向排列 */}
               <div className="flex gap-3 flex-wrap justify-center lg:justify-end">
-                <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-secondary)] px-4 py-3 transition-all hover:border-[var(--border-strong)] min-w-[100px] text-center">
-                  <p className="text-[var(--text-secondary)] text-xs uppercase tracking-wider">目标范围</p>
-                  <p className="mt-1 text-[var(--text-primary)] font-medium">{targetStart} - {targetEnd}</p>
-                </div>
-                <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-secondary)] px-4 py-3 transition-all hover:border-[var(--border-strong)] min-w-[100px] text-center">
-                  <p className="text-[var(--text-secondary)] text-xs uppercase tracking-wider">当前章节</p>
-                  <p className="mt-1 text-[var(--text-primary)] font-medium">{completedChapters}</p>
-                </div>
-                <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-secondary)] px-4 py-3 transition-all hover:border-[var(--border-strong)] min-w-[100px] text-center">
-                  <p className="text-[var(--text-secondary)] text-xs uppercase tracking-wider">平均评分</p>
-                  <p className="mt-1 text-[var(--text-primary)] font-medium">{averageScore > 0 ? averageScore.toFixed(1) : '待生成'}</p>
-                </div>
-                <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-secondary)] px-4 py-3 transition-all hover:border-[var(--border-strong)] min-w-[100px] text-center">
-                  <p className="text-[var(--text-secondary)] text-xs uppercase tracking-wider">历史运行</p>
-                  <p className="mt-1 text-[var(--text-primary)] font-medium">{workflowHistory?.total ?? 0}</p>
-                </div>
+                <StatsCard label="目标范围" value={`${targetStart} - ${targetEnd}`} />
+                <StatsCard label="当前章节" value={completedChapters} variant="primary" />
+                <StatsCard
+                  label="平均评分"
+                  value={averageScore > 0 ? averageScore.toFixed(1) : '待生成'}
+                />
+                <StatsCard label="历史运行" value={workflowHistory?.total ?? 0} />
               </div>
             </div>
           </div>

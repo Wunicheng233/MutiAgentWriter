@@ -2,7 +2,7 @@ import React, { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
 
-import { Card, Badge, Button, Progress, Divider } from '../components/v2'
+import { Card, Badge, Button, Progress, Divider, StatsCard } from '../components/v2'
 import { useLayoutStore } from '../store/useLayoutStore'
 import { useProjectStore, type ProjectStatus } from '../store/useProjectStore'
 import type { BadgeVariant } from '../components/v2'
@@ -438,16 +438,11 @@ export const ProjectOverview: React.FC = () => {
             )}
 
             <div className="grid grid-cols-2 gap-3 pt-3">
-              <div className="text-center">
-                <p className="text-sm text-[var(--text-secondary)]">开始时间</p>
-                <p className="mt-1 font-medium text-[var(--text-primary)]">{formatDateTime(data.current_generation_task?.started_at)}</p>
-              </div>
-              <div className="text-center">
-                <p className="text-sm text-[var(--text-secondary)]">当前章节</p>
-                <p className="mt-1 font-medium text-[var(--text-primary)]">
-                  {workflow?.current_chapter ?? data.current_generation_task?.current_chapter ?? '待生成'}
-                </p>
-              </div>
+              <StatsCard label="开始时间" value={formatDateTime(data.current_generation_task?.started_at)} />
+              <StatsCard
+                label="当前章节"
+                value={workflow?.current_chapter ?? data.current_generation_task?.current_chapter ?? '待生成'}
+              />
             </div>
           </div>
         </Card>
