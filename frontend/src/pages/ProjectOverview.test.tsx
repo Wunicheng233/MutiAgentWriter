@@ -88,11 +88,11 @@ function renderWithProviders(ui: React.ReactElement) {
 }
 
 describe('ProjectOverview - UI 优化', () => {
-  test('应该有导航到大纲设定和导出分享的按钮', async () => {
+  test('应该有导航到大纲和导出的按钮', async () => {
     renderWithProviders(<ProjectOverview />)
     // 等待导航按钮渲染完成
-    const outlineButton = await screen.findByText('大纲设定')
-    const exportButton = await screen.findByText('导出分享')
+    const outlineButton = await screen.findByText('大纲')
+    const exportButton = await screen.findByText('导出')
 
     expect(outlineButton.closest('a')).toHaveAttribute('href', '/projects/1/outline')
     expect(exportButton.closest('a')).toHaveAttribute('href', '/projects/1/export')

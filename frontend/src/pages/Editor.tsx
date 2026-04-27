@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
-import { Button, Card, Badge, Progress } from '../components/v2'
-import AgentCard from '../components/AgentCard'
+import { Button, Card, Badge, Progress, AgentCard } from '../components/v2'
 import { useLayoutStore } from '../store/useLayoutStore'
 import { useProjectStore, type ProjectStatus } from '../store/useProjectStore'
 import {
@@ -38,6 +37,13 @@ import {
 const agentNames = [
   'planner', 'writer', 'critic', 'revise',
 ]
+
+const agentSubtitles: Record<string, string> = {
+  planner: '情节规划师',
+  writer: '主笔作家',
+  critic: '评论家',
+  revise: '修订编辑',
+}
 
 export const Editor: React.FC = () => {
   const { id, chapterIndex } = useParams<{ id: string; chapterIndex: string }>()
@@ -81,7 +87,7 @@ export const Editor: React.FC = () => {
     setProjectStatus(project.status as ProjectStatus, progressPercent)
   }, [id, project, setCurrentProject, setProjectStatus])
 
-  const { data: chapter, isLoading, refetch: refetchChapter } = useQuery({
+  const { data: chapter, isLoading, error, refetch: refetchChapter } = useQuery({
     queryKey: ['chapter', projectId, chapterIdx],
     queryFn: () => getChapter(projectId, chapterIdx),
     // 只有在以下情况才查询章节：
@@ -91,6 +97,9 @@ export const Editor: React.FC = () => {
     // 禁用错误重试，避免连续弹出"章节不存在"错误
     retry: false,
   })
+
+  // 判断章节是否不存在（404）
+  const chapterNotFound = error && (error as any)?.response?.status === 404
 
   // 根据项目状态和章节状态初始化Agent状态
   // 如果项目已经完成生成，所有agent都应该显示为完成
@@ -379,7 +388,8 @@ export const Editor: React.FC = () => {
   const { focusMode } = useLayoutStore()
 
   // Handle missing route parameters - must be after all hooks (React Hooks rule)
-  const isValidParams = id && chapterIndex && projectId > 0 && !Number.isNaN(chapterIdx)
+  // 注意：chapterIndex="0" 是有效的，不能用简单的 truthiness 检查
+  const isValidParams = id && chapterIndex !== undefined && projectId > 0 && !Number.isNaN(chapterIdx) && chapterIdx >= 0
   if (!isValidParams) {
     return (
       <div className="flex items-center justify-center h-screen bg-[var(--bg-primary)]">
@@ -394,6 +404,39 @@ export const Editor: React.FC = () => {
   if (isLoading) {
     return (
       <div className="p-8 text-[var(--text-secondary)]">加载中...</div>
+    )
+  }
+
+  // 章节不存在时显示友好提示
+  if (chapterNotFound) {
+    return (
+      <div className="h-full flex items-center justify-center bg-[var(--bg-primary)] p-6">
+        <Card className="max-w-lg w-full border-[var(--border-default)] p-8 text-center">
+          <svg className="w-16 h-16 mx-auto mb-6 text-[var(--text-muted)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+          </svg>
+          <h1 className="text-2xl font-medium text-[var(--text-primary)] mb-3">
+            该章节尚未生成
+          </h1>
+          <p className="text-[var(--text-secondary)] mb-6">
+            第 {chapterIdx} 章还没有内容，请先到项目概览页面启动生成流程，
+            或从已生成的章节列表中选择一个章节进行编辑。
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Link to={`/projects/${id}/overview`}>
+              <Button variant="primary">
+                前往概览页面
+              </Button>
+            </Link>
+            <Link to={`/projects/${id}/chapters`}>
+              <Button variant="secondary">
+                查看章节列表
+              </Button>
+            </Link>
+          </div>
+        </Card>
+      </div>
     )
   }
 
@@ -473,39 +516,41 @@ export const Editor: React.FC = () => {
             )}
 
             {/* Main Content Area */}
-            <div className={`grid grid-cols-1 gap-6 transition-all duration-200 ${inspectorOpen ? 'lg:grid-cols-[300px_minmax(0,1fr)]' : 'lg:grid-cols-1'}`}>
-              {/* Inspector Panel */}
+            <div className={`grid grid-cols-1 gap-6 transition-all duration-300 ${inspectorOpen ? 'lg:grid-cols-2' : 'lg:grid-cols-1'}`}>
+              {/* Inspector Panel - 查看过程模式下更宽展示，占据主导 */}
               {inspectorOpen && (
-                <aside className="space-y-5">
+                <aside className="order-last lg:order-first flex flex-col gap-5 min-h-[62vh]">
                   <Card className="inspector-card p-5 border-[var(--border-default)]">
-                    <p className="text-xs uppercase tracking-[0.25em] text-[var(--text-secondary)]">Run Context</p>
-                    <h2 className="mt-2 text-xl font-semibold text-[var(--text-primary)]">{runSummary.headline}</h2>
-                    <p className="mt-2 text-sm text-[var(--text-secondary)] leading-relaxed">{runSummary.detail}</p>
+                    <p className="font-medium text-xs uppercase tracking-[0.24em] text-[var(--text-secondary)]">Run Context</p>
+                    <h2 className="mt-2 text-xl font-medium text-[var(--text-primary)]">{runSummary.headline}</h2>
                     <div className="mt-4 space-y-2 text-sm text-[var(--text-secondary)]">
                       <div className="flex items-center gap-2">
                         <span className={`w-2 h-2 rounded-full ${pollingTaskId ? 'bg-[var(--accent-primary)]' : 'bg-[var(--text-muted)]'}`}></span>
-                        任务状态：{currentTaskLabel}
+                        {currentTaskLabel}
                       </div>
                       {project?.current_generation_task?.current_workflow_run?.current_step_key && (
                         <div className="pl-4 text-xs">
-                          当前节点：{project.current_generation_task.current_workflow_run.current_step_key}
+                          {project.current_generation_task.current_workflow_run.current_step_key}
                         </div>
                       )}
                     </div>
                   </Card>
 
-                  <div>
+                  <div className="flex-1">
                     <h3 className="mb-4 text-lg text-[var(--text-primary)]">智能体状态</h3>
-                    {agentNames.map(name => (
-                      <AgentCard
-                        key={name}
-                        name={name}
-                        status={agentStates[name as keyof typeof agentStates]}
-                      />
-                    ))}
+                    <div className="space-y-3">
+                      {agentNames.map(name => (
+                        <AgentCard
+                          key={name}
+                          name={name}
+                          subtitle={agentSubtitles[name] || ''}
+                          status={agentStates[name as keyof typeof agentStates]}
+                        />
+                      ))}
+                    </div>
                   </div>
 
-                  <div>
+                  <div className="mt-auto">
                     <Button
                       variant={showVersionHistory ? 'primary' : 'secondary'}
                       className="w-full"
@@ -551,28 +596,30 @@ export const Editor: React.FC = () => {
               )}
 
               {/* Editor Area */}
-              <div className="flex h-full flex-col">
+              <div className={`flex h-full flex-col ${inspectorOpen ? 'opacity-85' : ''} transition-opacity duration-200`}>
                 <div className="editor-container min-h-[62vh] flex-1 overflow-y-auto rounded-comfortable border border-[var(--border-default)] bg-[var(--bg-secondary)] editor-paper transition-all duration-200 hover:border-[var(--border-strong)]">
                   {editor && (
                     <EditorContent
                       editor={editor}
                       className={`prose-novel mx-auto px-6 pt-8 pb-16 focus:outline-none md:px-12`}
                       style={{
-                        maxWidth: focusMode ? '900px' : (inspectorOpen ? '600px' : '860px'),
+                        maxWidth: focusMode ? '900px' : (inspectorOpen ? '500px' : '860px'),
                       }}
                     />
                   )}
                 </div>
-                <div className="mt-4 flex flex-col gap-3 rounded-comfortable border border-[var(--border-default)] bg-[var(--bg-secondary)] px-5 py-4 md:flex-row md:items-center md:justify-between">
+                <div className={`mt-4 flex flex-col gap-3 rounded-comfortable border border-[var(--border-default)] bg-[var(--bg-secondary)] px-5 py-4 ${
+                    !inspectorOpen && 'md:flex-row md:items-center md:justify-between'
+                  }`}>
                   <div className="text-sm text-[var(--text-secondary)] flex items-center gap-2">
                     <span className={`${saving ? 'saving-indicator' : 'saving-indicator saved'}`}></span>
-                    {wordCount} 字 · 自动保存 {saving ? '进行中' : '已就绪'} · Agent {pollingTaskId ? '运行中' : '空闲'}
+                    {wordCount} 字 · 自动保存 {saving ? '进行中' : '已就绪'}
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    <Button variant="secondary" onClick={handleRegenerate}>
+                  <div className={`flex gap-2 ${inspectorOpen ? 'justify-end' : 'flex-wrap'}`}>
+                    <Button variant="secondary" size="sm" onClick={handleRegenerate}>
                       重新生成
                     </Button>
-                    <Button variant="primary" onClick={handleSave} disabled={saving}>
+                    <Button variant="primary" size="sm" onClick={handleSave} disabled={saving}>
                       {saving ? '保存中...' : '保存'}
                     </Button>
                   </div>
@@ -586,10 +633,10 @@ export const Editor: React.FC = () => {
         <div className="confirm-dialog-enter fixed inset-y-0 right-0 z-50 w-full max-w-[460px] border-l border-[var(--border-default)] bg-[var(--bg-secondary)] p-4 shadow-elevated">
           <div className="h-full overflow-y-auto" onClick={event => event.stopPropagation()}>
             <div className="mb-5 flex items-start justify-between gap-4">
-              <h3 className="text-xl font-semibold text-[var(--text-primary)]">
+              <h3 className="text-xl font-medium text-[var(--text-primary)]">
                 {waitingConfirmChapter === 0
-                  ? '策划方案已生成，请确认'
-                  : `第${waitingConfirmChapter}章已生成，请确认`
+                  ? '确认策划方案'
+                  : `确认第${waitingConfirmChapter}章`
                 }
               </h3>
               <Button
@@ -600,12 +647,6 @@ export const Editor: React.FC = () => {
                 关闭
               </Button>
             </div>
-            <p className="mb-6 text-[var(--text-secondary)] leading-relaxed">
-              {waitingConfirmChapter === 0
-                ? '你可以选择直接通过，开始生成章节，或者输入修改意见让AI重新调整策划方案。'
-                : '你可以选择直接通过，继续生成下一章，或者输入修改意见让AI重新优化当前章节。'
-              }
-            </p>
             {/* 预览内容 */}
             {waitingConfirmChapter === 0 && project && project.file_path && (
               <div className="mb-6">
@@ -638,16 +679,18 @@ export const Editor: React.FC = () => {
               <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end">
                 <Button
                   variant="secondary"
+                  size="sm"
                   onClick={() => handleSubmitConfirmation(true)}
                 >
-                  通过，继续生成
+                  通过
                 </Button>
                 <Button
                   variant="primary"
+                  size="sm"
                   onClick={() => handleSubmitConfirmation(false)}
                   disabled={!feedbackText.trim()}
                 >
-                  不通过，按修改意见重新优化
+                  不通过
                 </Button>
               </div>
             </div>

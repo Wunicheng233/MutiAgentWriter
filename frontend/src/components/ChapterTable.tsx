@@ -1,8 +1,6 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
-import { Card } from './Card'
-import { Badge } from './Badge'
-import { Button } from './Button'
+import { Card, Badge, Button } from './v2'
 import type { Chapter, Project } from '../types/api'
 
 interface ChapterTableProps {

@@ -22,7 +22,7 @@ const NavItem: React.FC<NavItemProps> = React.memo(({ icon, label, active, onCli
           w-11 h-11 flex items-center justify-center rounded-lg transition-all duration-150
           focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)] focus:ring-opacity-50
           ${active
-            ? 'bg-[var(--accent-primary)] bg-opacity-10 text-[var(--accent-primary)]'
+            ? 'bg-[var(--accent-primary)] text-white shadow-[var(--shadow-sm)]'
             : 'text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)]'
           }
         `}
@@ -167,7 +167,7 @@ export const NavRail: React.FC<NavRailProps> = React.memo(({ collapsed, onToggle
 
   return (
     <nav
-      className={`h-full flex flex-col justify-between items-center py-4 bg-[var(--bg-secondary)] transition-all duration-200 ease-out nav-rail ${collapsed ? 'nav-collapsed' : 'nav-expanded'}`}
+      className={`h-full flex flex-col justify-between items-center py-4 bg-[var(--bg-secondary)] border-r border-[var(--border-default)] rounded-tr-[var(--radius-lg)] rounded-br-[var(--radius-lg)] transition-all duration-200 ease-out nav-rail ${collapsed ? 'nav-collapsed' : 'nav-expanded'}`}
       style={{ width: navWidth }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}

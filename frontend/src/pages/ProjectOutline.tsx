@@ -1,14 +1,14 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useMemo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
 
 import { Card, Badge, Button, Input } from '../components/v2'
 import { useLayoutStore } from '../store/useLayoutStore'
 import { useProjectStore, type ProjectStatus } from '../store/useProjectStore'
-import SkillSelector from '../components/SkillSelector'
 import {
   getProject,
   getProjectTokenStats,
+  listSkills,
   updateProject,
 } from '../utils/endpoints'
 import { useToast } from '../components/toastContext'
@@ -45,6 +45,21 @@ export const ProjectOutline: React.FC = () => {
     queryFn: () => getProjectTokenStats(projectId),
     enabled: isValidProjectId && !!data,
   })
+
+  const { data: skillsData } = useQuery({
+    queryKey: ['skills'],
+    queryFn: () => listSkills(),
+    staleTime: 1000 * 60 * 30,
+  })
+
+  const enabledSkillNames = useMemo(() => {
+    const enabled = data?.config?.skills?.enabled ?? []
+    const skills = skillsData?.skills ?? []
+    const enabledIds = new Set(enabled.map((e: any) => e.skill_id))
+    return skills
+      .filter(s => enabledIds.has(s.id))
+      .map(s => s.name)
+  }, [data, skillsData])
 
   const [editingConfig, setEditingConfig] = useState(false)
   const [configForm, setConfigForm] = useState({
@@ -138,19 +153,17 @@ export const ProjectOutline: React.FC = () => {
   return (
     <div className="mx-auto max-w-content space-y-8">
       <div className="flex items-center justify-between">
-        <div>
-          <Link to={`/projects/${projectId}/overview`}>
-            <Button variant="tertiary" size="sm">返回概览</Button>
-          </Link>
-        </div>
+        <Link to={`/projects/${projectId}/overview`}>
+          <Button variant="tertiary" size="sm">返回概览</Button>
+        </Link>
         <Badge variant="secondary">大纲设定</Badge>
       </div>
 
-      <Card className="p-8">
+      <Card className="p-6">
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <p className="text-xs uppercase tracking-[0.25em] text-[var(--text-secondary)]">Project Setup</p>
-            <h2 className="mt-2 text-2xl">创作配置</h2>
+            <p className="font-medium text-xs uppercase tracking-[0.24em] text-[var(--text-secondary)]">Project Setup</p>
+            <h2 className="mt-2 text-2xl font-medium">创作配置</h2>
           </div>
           {data.status === 'draft' && (
             <Button
@@ -158,7 +171,7 @@ export const ProjectOutline: React.FC = () => {
               size="sm"
               onClick={() => setEditingConfig(!editingConfig)}
             >
-              {editingConfig ? '取消编辑' : '编辑配置'}
+              {editingConfig ? '取消' : '编辑'}
             </Button>
           )}
         </div>
@@ -201,8 +214,8 @@ export const ProjectOutline: React.FC = () => {
 
             {config?.core_requirement && (
               <div className="rounded-comfortable border border-[var(--border-default)] bg-[var(--bg-secondary)] p-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-[var(--text-secondary)]">Core Requirement</p>
-                <div className="mt-3 max-h-72 overflow-y-auto whitespace-pre-line pr-2 text-body">
+                <p className="font-medium text-xs uppercase tracking-[0.24em] text-[var(--text-secondary)]">Core Requirement</p>
+                <div className="mt-3 max-h-72 overflow-y-auto whitespace-pre-line pr-2">
                   {config.core_requirement}
                 </div>
               </div>
@@ -230,7 +243,7 @@ export const ProjectOutline: React.FC = () => {
                 label="每章字数"
                 type="number"
                 value={configForm.chapter_word_count}
-                onChange={event => setConfigForm(prev => ({ ...prev, chapter_word_count: parseInt(event.target.value, 10) || 0 }))}
+                onChange={(event: React.ChangeEvent<HTMLInputElement>) => setConfigForm(prev => ({ ...prev, chapter_word_count: parseInt(event.target.value, 10) || 0 }))}
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -238,13 +251,13 @@ export const ProjectOutline: React.FC = () => {
                 label="起始章节"
                 type="number"
                 value={configForm.start_chapter}
-                onChange={event => setConfigForm(prev => ({ ...prev, start_chapter: parseInt(event.target.value, 10) || 1 }))}
+                onChange={(event: React.ChangeEvent<HTMLInputElement>) => setConfigForm(prev => ({ ...prev, start_chapter: parseInt(event.target.value, 10) || 1 }))}
               />
               <Input
                 label="结束章节"
                 type="number"
                 value={configForm.end_chapter}
-                onChange={event => setConfigForm(prev => ({ ...prev, end_chapter: parseInt(event.target.value, 10) || 1 }))}
+                onChange={(event: React.ChangeEvent<HTMLInputElement>) => setConfigForm(prev => ({ ...prev, end_chapter: parseInt(event.target.value, 10) || 1 }))}
               />
             </div>
             <div className="space-y-3 text-sm">
@@ -252,7 +265,7 @@ export const ProjectOutline: React.FC = () => {
                 <input
                   type="checkbox"
                   checked={configForm.skip_plan_confirmation}
-                  onChange={event => setConfigForm(prev => ({ ...prev, skip_plan_confirmation: event.target.checked }))}
+                  onChange={(event: React.ChangeEvent<HTMLInputElement>) => setConfigForm(prev => ({ ...prev, skip_plan_confirmation: event.target.checked }))}
                   className="rounded border-[var(--border-default)] text-sage focus:ring-sage"
                 />
                 <span>跳过策划方案人工确认</span>
@@ -261,7 +274,7 @@ export const ProjectOutline: React.FC = () => {
                 <input
                   type="checkbox"
                   checked={configForm.skip_chapter_confirmation}
-                  onChange={event => setConfigForm(prev => ({ ...prev, skip_chapter_confirmation: event.target.checked }))}
+                  onChange={(event: React.ChangeEvent<HTMLInputElement>) => setConfigForm(prev => ({ ...prev, skip_chapter_confirmation: event.target.checked }))}
                   className="rounded border-[var(--border-default)] text-sage focus:ring-sage"
                 />
                 <span>跳过章节级人工确认</span>
@@ -270,7 +283,7 @@ export const ProjectOutline: React.FC = () => {
                 <input
                   type="checkbox"
                   checked={configForm.allow_plot_adjustment}
-                  onChange={event => setConfigForm(prev => ({ ...prev, allow_plot_adjustment: event.target.checked }))}
+                  onChange={(event: React.ChangeEvent<HTMLInputElement>) => setConfigForm(prev => ({ ...prev, allow_plot_adjustment: event.target.checked }))}
                   className="rounded border-[var(--border-default)] text-sage focus:ring-sage"
                 />
                 <span>允许每章后调整下一章剧情</span>
@@ -288,23 +301,29 @@ export const ProjectOutline: React.FC = () => {
           </div>
         )}
 
-        {/* Skill 配置 */}
         <div className="mt-8 pt-6 border-t border-[var(--border-default)]">
-          <div className="mb-4 flex items-center justify-between">
+          <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs uppercase tracking-wider text-[var(--text-secondary)]">
-                Skill Runtime
-              </p>
-              <h2 className="mt-1 text-2xl">启用创作 Skill</h2>
+              <p className="font-medium text-xs uppercase tracking-[0.24em] text-[var(--text-secondary)]">Skill Runtime</p>
+              <h2 className="mt-2 text-2xl font-medium">创作 Skill</h2>
             </div>
+            <Link to={`/projects/${projectId}/skills`}>
+              <Button variant="tertiary" size="sm">管理 Skill</Button>
+            </Link>
           </div>
-          <p className="text-sm text-[var(--text-secondary)] mb-6">
-            Skill 会按 Planner、Writer、Revise 的职责精确注入，Critic 保持中立质量标尺。
-          </p>
-          <SkillSelector
-            projectId={projectId}
-            enabledSkills={config?.skills?.enabled ?? []}
-          />
+          <div className="mt-5">
+            {enabledSkillNames.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {enabledSkillNames.map((name, i) => (
+                  <Badge key={i} variant="primary">
+                    {name}
+                  </Badge>
+                ))}
+              </div>
+            ) : (
+              <p className="text-[var(--text-secondary)]">尚未启用任何 Skill</p>
+            )}
+          </div>
         </div>
       </Card>
     </div>

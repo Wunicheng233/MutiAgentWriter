@@ -60,6 +60,7 @@ def get_chapter(
         Chapter.project_id == project_id,
         Chapter.chapter_index == chapter_index
     ).first()
+
     if not chapter:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -91,6 +92,7 @@ def update_chapter(
         Chapter.project_id == project_id,
         Chapter.chapter_index == chapter_index
     ).first()
+
     if not chapter:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

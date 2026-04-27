@@ -38,7 +38,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     const variantClasses: Record<ButtonVariant, string> = {
       primary: 'bg-[var(--accent-primary)] text-white hover:opacity-90',
       secondary: 'border border-[var(--border-default)] bg-white text-[var(--text-primary)] hover:border-[var(--accent-primary)]',
-      tertiary: 'bg-transparent text-[var(--accent-primary)] hover:bg-[var(--accent-primary)] hover:bg-opacity-5',
+      tertiary: 'bg-transparent text-[var(--accent-primary)] hover:bg-[rgba(var(--accent-primary-rgb),0.08)]',
       ghost: 'bg-transparent text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)]',
       danger: 'bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-100',
     }

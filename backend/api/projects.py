@@ -475,7 +475,8 @@ def list_chapters(
         )
 
     chapters = db.query(Chapter).filter(
-        Chapter.project_id == project_id
+        Chapter.project_id == project_id,
+        Chapter.chapter_index > 0  # 过滤掉第0章（策划方案不显示在章节列表中）
     ).order_by(Chapter.chapter_index).all()
 
     return chapters
@@ -643,7 +644,8 @@ def get_analytics(
         )
 
     chapters = db.query(Chapter).filter(
-        Chapter.project_id == project_id
+        Chapter.project_id == project_id,
+        Chapter.chapter_index > 0  # 过滤掉第0章
     ).order_by(Chapter.chapter_index).all()
 
     chapter_scores = []

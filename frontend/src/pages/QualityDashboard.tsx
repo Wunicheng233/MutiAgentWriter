@@ -1,25 +1,12 @@
 import React, { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
-import ReactEChartsCore from 'echarts-for-react/lib/core'
-import { LineChart, RadarChart } from 'echarts/charts'
-import { GridComponent, RadarComponent, TooltipComponent } from 'echarts/components'
-import * as echarts from 'echarts/core'
-import { CanvasRenderer } from 'echarts/renderers'
+import ReactECharts from 'echarts-for-react'
 import { Card, Badge, Button, Progress } from '../components/v2'
 import type { BadgeVariant } from '../components/v2'
 import { useProjectStore, type ProjectStatus } from '../store/useProjectStore'
 import { getProject, getProjectAnalytics } from '../utils/endpoints'
 import { getProjectStatusText } from '../utils/workflow'
-
-echarts.use([
-  LineChart,
-  RadarChart,
-  GridComponent,
-  RadarComponent,
-  TooltipComponent,
-  CanvasRenderer,
-])
 
 function getScoreColor(score: number): BadgeVariant {
   if (score >= 8) return 'success'
@@ -96,6 +83,7 @@ export const QualityDashboard: React.FC = () => {
   const totalChapters = analytics.total_chapters || 0
   const passedChapters = analytics.passed_chapters || 0
   const passRate = totalChapters > 0 ? (passedChapters / totalChapters) * 100 : 0
+  const overallScore = analytics.overall_quality_score ?? 0
 
   // 安全的排序和索引访问，避免空数组越界
   const sortedDimensions = Object.entries(dimScores).sort((a, b) => Number(b[1]) - Number(a[1]))
@@ -233,43 +221,45 @@ export const QualityDashboard: React.FC = () => {
 
   return (
     <div className="space-y-6">
-        <Card className="border-[var(--accent-primary)] border-opacity-20 bg-[linear-gradient(135deg,rgba(91,127,110,0.12),rgba(255,255,255,0.9),rgba(192,107,78,0.08))]">
-          <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
-            <div className="max-w-3xl">
-              <div className="mb-4 flex flex-wrap items-center gap-3">
-                <Link to={`/projects/${projectId}/overview`}>
-                  <Button variant="secondary">返回概览</Button>
-                </Link>
-                {project && <Badge variant="secondary">{getProjectStatusText(project.status)}</Badge>}
-                <Badge variant={getScoreColor(analytics.overall_quality_score)}>
-                  总分 {analytics.overall_quality_score.toFixed(1)}
-                </Badge>
-              </div>
-              <h1 className="text-3xl md:text-4xl">质量分析</h1>
-              <p className="mt-3 text-[var(--text-body)]">
-                这里不只是展示图表，而是把章节评审结果收成一套长期可复用的质量闭环视图，帮助我们定位当前作品最强和最弱的部分。
-              </p>
+        <Card className="border-[var(--border-default)] bg-[linear-gradient(135deg,rgba(91,127,110,0.12),rgba(255,255,255,0.9),rgba(192,107,78,0.08))]">
+          <div className="flex flex-col gap-5">
+            <div className="flex flex-wrap items-center gap-3">
+              <Link to={`/projects/${projectId}/overview`}>
+                <Button variant="secondary" size="sm">返回概览</Button>
+              </Link>
+              {project && <Badge variant="secondary">{getProjectStatusText(project.status)}</Badge>}
+              <Badge variant={getScoreColor(overallScore)}>
+                总分 {overallScore.toFixed(1)}
+              </Badge>
             </div>
 
-            <div className="w-full max-w-xl space-y-3">
-              <p className="text-sm text-[var(--text-secondary)]">总体质量 {analytics.overall_quality_score.toFixed(1)}/10</p>
-              <Progress value={analytics.overall_quality_score * 10} />
-              <div className="grid grid-cols-2 gap-3 md:grid-cols-4 text-sm">
-                <div className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-3">
-                  <p className="text-[var(--text-secondary)]">总章节数</p>
-                  <p className="mt-1 text-[var(--text-body)]">{totalChapters}</p>
+            <h1 className="text-2xl md:text-3xl font-medium text-[var(--text-primary)]">质量分析</h1>
+
+            <div className="flex flex-col lg:flex-row lg:items-center gap-5">
+              <div className="flex-1 space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-[var(--text-secondary)]">总体质量</p>
+                  <p className="text-sm font-medium text-[var(--text-primary)]">{overallScore.toFixed(1)}/10</p>
                 </div>
-                <div className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-3">
-                  <p className="text-[var(--text-secondary)]">合格章节</p>
-                  <p className="mt-1 text-[var(--text-body)]">{passedChapters}</p>
+                <Progress value={overallScore * 10} />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 flex-wrap">
+                <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-secondary)] px-4 py-3 text-center">
+                  <p className="text-[var(--text-secondary)] text-xs uppercase tracking-wider">总章节</p>
+                  <p className="mt-1 text-[var(--text-primary)] font-medium">{totalChapters}</p>
                 </div>
-                <div className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-3">
-                  <p className="text-[var(--text-secondary)]">通过率</p>
-                  <p className="mt-1 text-[var(--text-body)]">{passRate.toFixed(0)}%</p>
+                <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-secondary)] px-4 py-3 text-center">
+                  <p className="text-[var(--text-secondary)] text-xs uppercase tracking-wider">合格</p>
+                  <p className="mt-1 text-[var(--text-primary)] font-medium">{passedChapters}</p>
                 </div>
-                <div className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-3">
-                  <p className="text-[var(--text-secondary)]">待重点处理</p>
-                  <p className="mt-1 text-[var(--text-body)]">{scoreBuckets.weak}</p>
+                <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-secondary)] px-4 py-3 text-center">
+                  <p className="text-[var(--text-secondary)] text-xs uppercase tracking-wider">通过率</p>
+                  <p className="mt-1 text-[var(--text-primary)] font-medium">{passRate.toFixed(0)}%</p>
+                </div>
+                <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-secondary)] px-4 py-3 text-center">
+                  <p className="text-[var(--text-secondary)] text-xs uppercase tracking-wider">待处理</p>
+                  <p className="mt-1 text-[var(--text-primary)] font-medium">{scoreBuckets.weak}</p>
                 </div>
               </div>
             </div>
@@ -277,96 +267,89 @@ export const QualityDashboard: React.FC = () => {
         </Card>
 
         <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-          <Card>
-            <p className="text-xs uppercase tracking-[0.22em] text-[var(--text-secondary)]">Dimension Summary</p>
-            <h2 className="mt-2 text-2xl">维度概览</h2>
-            <div className="mt-5 grid gap-4 md:grid-cols-2">
-              <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-4">
-                <p className="text-[var(--text-secondary)]">最强维度</p>
-                <p className="mt-2 text-xl text-[var(--text-primary)]">
+          <Card className="border-[var(--border-default)]">
+            <h2 className="text-lg font-medium text-[var(--text-primary)] mb-5">维度概览</h2>
+
+            <div className="grid gap-3 md:grid-cols-2 mb-5">
+              <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-secondary)] p-4">
+                <p className="text-[var(--text-secondary)] text-sm">最强维度</p>
+                <p className="mt-2 text-xl text-[var(--text-primary)] font-medium">
                   {strongestDimensionEntry
                     ? `${dimensionMapping[strongestDimensionEntry[0]] || strongestDimensionEntry[0]} ${strongestDimensionEntry[1].toFixed(1)}`
-                    : '暂无数据'}
+                    : '-'}
                 </p>
-                <p className="mt-2 text-sm text-[var(--text-secondary)]">这是目前最有可能成为作品差异化优势的部分。</p>
               </div>
-              <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-4">
-                <p className="text-[var(--text-secondary)]">最弱维度</p>
-                <p className="mt-2 text-xl text-[var(--text-primary)]">
+              <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-secondary)] p-4">
+                <p className="text-[var(--text-secondary)] text-sm">最弱维度</p>
+                <p className="mt-2 text-xl text-[var(--text-primary)] font-medium">
                   {weakestDimensionEntry
                     ? `${dimensionMapping[weakestDimensionEntry[0]] || weakestDimensionEntry[0]} ${weakestDimensionEntry[1].toFixed(1)}`
-                    : '暂无数据'}
+                    : '-'}
                 </p>
-                <p className="mt-2 text-sm text-[var(--text-secondary)]">这里最适合作为下一轮 prompt 调优或修订策略的重点。</p>
               </div>
             </div>
 
-            <div className="mt-5 grid gap-3 md:grid-cols-3">
-              <div className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-secondary)] p-4">
-                <p className="text-[var(--text-secondary)]">高质量章节</p>
-                <p className="mt-1 text-2xl text-[var(--text-primary)]">{scoreBuckets.strong}</p>
-                <p className="mt-2 text-sm text-[var(--text-secondary)]">评分 8 分以上，适合作为样例章节。</p>
+            <div className="grid gap-3 md:grid-cols-3">
+              <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-secondary)] p-4">
+                <p className="text-[var(--text-secondary)] text-sm">≥8分</p>
+                <p className="mt-1 text-xl text-[var(--text-primary)] font-medium">{scoreBuckets.strong}</p>
               </div>
-              <div className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-secondary)] p-4">
-                <p className="text-[var(--text-secondary)]">可接受章节</p>
-                <p className="mt-1 text-2xl text-[var(--text-primary)]">{scoreBuckets.watch}</p>
-                <p className="mt-2 text-sm text-[var(--text-secondary)]">评分 6-8 分，需要局部打磨但已具备基础质量。</p>
+              <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-secondary)] p-4">
+                <p className="text-[var(--text-secondary)] text-sm">6-8分</p>
+                <p className="mt-1 text-xl text-[var(--text-primary)] font-medium">{scoreBuckets.watch}</p>
               </div>
-              <div className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-secondary)] p-4">
-                <p className="text-[var(--text-secondary)]">需重点返工</p>
-                <p className="mt-1 text-2xl text-[var(--text-primary)]">{scoreBuckets.weak}</p>
-                <p className="mt-2 text-sm text-[var(--text-secondary)]">评分低于 6 分，建议优先检查剧情、人物和节奏。</p>
+              <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-secondary)] p-4">
+                <p className="text-[var(--text-secondary)] text-sm">&lt;6分</p>
+                <p className="mt-1 text-xl text-[var(--text-primary)] font-medium">{scoreBuckets.weak}</p>
               </div>
             </div>
           </Card>
 
-          <Card>
-            <p className="text-xs uppercase tracking-[0.22em] text-[var(--text-secondary)]">Quality Radar</p>
-            <h2 className="mt-2 text-2xl">多维度评分雷达图</h2>
+          <Card className="border-[var(--border-default)]">
+            <h2 className="text-lg font-medium text-[var(--text-primary)] mb-5">雷达图</h2>
             {hasDimensions ? (
-              <div className="mt-4 h-[320px]">
-                <ReactEChartsCore echarts={echarts} option={radarOption} style={{ height: '100%', width: '100%' }} />
+              <div className="h-[300px]">
+                <ReactECharts option={radarOption} style={{ height: '100%', width: '100%' }} />
               </div>
             ) : (
-              <div className="mt-5 flex h-[320px] items-center justify-center text-[var(--text-secondary)]">
-                <p>多维度评分数据生成后会显示在这里。</p>
+              <div className="h-[300px] flex items-center justify-center text-[var(--text-secondary)]">
+                暂无数据
               </div>
             )}
           </Card>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-2">
-          <Card>
-            <p className="text-xs uppercase tracking-[0.22em] text-[var(--text-secondary)]">Best / Worst</p>
-            <h2 className="mt-2 text-2xl">章节极值</h2>
-            <div className="mt-5 space-y-4">
-              <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-4">
+          <Card className="border-[var(--border-default)]">
+            <h2 className="text-lg font-medium text-[var(--text-primary)] mb-5">章节极值</h2>
+            <div className="space-y-3">
+              <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-secondary)] p-4">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-[var(--text-secondary)]">最佳章节</p>
-                    <p className="mt-1 text-lg text-[var(--text-primary)]">
-                      {highestChapter ? highestChapter.title || `第${highestChapter.chapter_index}章` : '暂无数据'}
+                    <p className="text-[var(--text-secondary)] text-sm">最佳章节</p>
+                    <p className="mt-1 text-[var(--text-primary)] font-medium">
+                      {highestChapter ? highestChapter.title || `第${highestChapter.chapter_index}章` : '-'}
                     </p>
                   </div>
                   {highestChapter && (
                     <Badge variant={getScoreColor(highestChapter.quality_score)}>
-                      {highestChapter.quality_score.toFixed(1)}/10
+                      {highestChapter.quality_score.toFixed(1)}
                     </Badge>
                   )}
                 </div>
               </div>
 
-              <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-4">
+              <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-secondary)] p-4">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-[var(--text-secondary)]">最弱章节</p>
-                    <p className="mt-1 text-lg text-[var(--text-primary)]">
-                      {lowestChapter ? lowestChapter.title || `第${lowestChapter.chapter_index}章` : '暂无数据'}
+                    <p className="text-[var(--text-secondary)] text-sm">最弱章节</p>
+                    <p className="mt-1 text-[var(--text-primary)] font-medium">
+                      {lowestChapter ? lowestChapter.title || `第${lowestChapter.chapter_index}章` : '-'}
                     </p>
                   </div>
                   {lowestChapter && (
                     <Badge variant={getScoreColor(lowestChapter.quality_score)}>
-                      {lowestChapter.quality_score.toFixed(1)}/10
+                      {lowestChapter.quality_score.toFixed(1)}
                     </Badge>
                   )}
                 </div>
@@ -374,50 +357,50 @@ export const QualityDashboard: React.FC = () => {
             </div>
           </Card>
 
-          <Card>
-            <p className="text-xs uppercase tracking-[0.22em] text-[var(--text-secondary)]">Trend</p>
-            <h2 className="mt-2 text-2xl">章节评分趋势</h2>
-            <div className="mt-4 h-[320px]">
-              <ReactEChartsCore echarts={echarts} option={lineOption} style={{ height: '100%', width: '100%' }} />
-            </div>
+          <Card className="border-[var(--border-default)]">
+            <h2 className="text-lg font-medium text-[var(--text-primary)] mb-5">评分趋势</h2>
+            {chapterScores.length > 0 ? (
+              <div className="h-[300px]">
+                <ReactECharts option={lineOption} style={{ height: '100%', width: '100%' }} />
+              </div>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center text-[var(--text-secondary)]">
+                暂无数据
+              </div>
+            )}
           </Card>
         </div>
 
-        <Card>
-          <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-            <div>
-              <p className="text-xs uppercase tracking-[0.22em] text-[var(--text-secondary)]">Chapter Detail</p>
-              <h2 className="mt-2 text-2xl">章节评分明细</h2>
-              <p className="mt-2 text-[var(--text-secondary)]">这部分适合做逐章复盘，也能直接告诉我们下一轮该先修哪几章。</p>
-            </div>
+        <Card className="border-[var(--border-default)]">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-5">
+            <h2 className="text-lg font-medium text-[var(--text-primary)]">章节明细</h2>
             <Link to={`/projects/${projectId}/chapters`}>
-              <Button variant="secondary">回到章节列表</Button>
+              <Button variant="secondary" size="sm">章节列表</Button>
             </Link>
           </div>
 
-          <div className="mt-5 space-y-3">
+          <div className="space-y-3">
             {chapterScores.map(chapter => (
               <div
                 key={chapter.chapter_index}
-                className="rounded-xl border border-[var(--border-default)] p-4 transition-colors hover:border-[var(--accent-primary)]"
+                className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-secondary)] p-4 transition-all hover:border-[var(--border-strong)]"
               >
                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                  <div>
+                  <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-3">
-                      <span className="font-medium">{chapter.title || `第${chapter.chapter_index}章`}</span>
+                      <span className="font-medium text-[var(--text-primary)] truncate">{chapter.title || `第${chapter.chapter_index}章`}</span>
                       <Badge variant="secondary">{chapter.status}</Badge>
                     </div>
                     <div className="mt-3 max-w-md">
-                      <p className="text-sm text-[var(--text-secondary)] mb-2">章节评分 {chapter.quality_score.toFixed(1)}/10</p>
                       <Progress value={chapter.quality_score * 10} />
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
                     <Badge variant={getScoreColor(chapter.quality_score)}>
-                      {chapter.quality_score.toFixed(1)}/10
+                      {chapter.quality_score.toFixed(1)}
                     </Badge>
                     <Link to={`/projects/${projectId}/write/${chapter.chapter_index}`}>
-                      <Button variant="tertiary" size="sm">打开章节</Button>
+                      <Button variant="tertiary" size="sm">编辑</Button>
                     </Link>
                   </div>
                 </div>

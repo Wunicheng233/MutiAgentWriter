@@ -73,18 +73,15 @@ export const Settings: React.FC = () => {
 
   return (
     <CanvasContainer maxWidth={600}>
-      <div className="mb-8">
-        <h1 className="text-3xl text-[var(--text-primary)] mb-2">设置</h1>
-        <p className="text-[var(--text-secondary)]">个性化你的写作体验</p>
-      </div>
+      <h1 className="text-3xl font-medium text-[var(--text-primary)] mb-8">设置</h1>
+
       <div className="grid gap-6">
         <Card>
           <ThemeSelector />
         </Card>
 
         <Card>
-          <h3 className="text-lg font-medium mb-4 text-[var(--text-primary)]">布局偏好</h3>
-
+          <h2 className="text-lg font-medium mb-4 text-[var(--text-primary)]">布局偏好</h2>
           <div className="space-y-4">
             <label className="flex items-center gap-3 cursor-pointer">
               <Checkbox
@@ -97,13 +94,13 @@ export const Settings: React.FC = () => {
         </Card>
 
         <Card>
-          <h2 className="text-xl mb-4 text-[var(--text-primary)]">账户信息</h2>
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
+          <h2 className="text-lg font-medium mb-4 text-[var(--text-primary)]">账户信息</h2>
+          <div className="space-y-3">
+            <div className="flex justify-between items-center py-2">
               <span className="text-[var(--text-secondary)]">用户名</span>
               <span className="text-[var(--text-body)] font-medium">{user?.username}</span>
             </div>
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center py-2">
               <span className="text-[var(--text-secondary)]">邮箱</span>
               <span className="text-[var(--text-body)] font-medium">{user?.email}</span>
             </div>
@@ -111,14 +108,17 @@ export const Settings: React.FC = () => {
         </Card>
 
         <Card>
-          <h2 className="text-xl mb-4 text-[var(--text-primary)]">API Key</h2>
-          <p className="text-[var(--text-secondary)] mb-4">
-            当前 API Key: <code className="px-2 py-1 bg-[var(--bg-tertiary)] rounded text-[var(--text-body)]">{displayApiKey()}</code>
-          </p>
+          <h2 className="text-lg font-medium mb-4 text-[var(--text-primary)]">API Key</h2>
+
+          <div className="flex justify-between items-center py-2 mb-4">
+            <span className="text-[var(--text-secondary)]">当前 Key</span>
+            <code className="px-2 py-1 bg-[var(--bg-tertiary)] rounded text-[var(--text-body)] text-sm">{displayApiKey()}</code>
+          </div>
+
           <div className="space-y-4">
             <Input
-              label="输入你的火山引擎 API Key"
-              placeholder="eg. d8b301d3-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+              label="火山引擎 API Key"
+              placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
               value={newApiKey}
               onChange={(e) => setNewApiKey(e.target.value)}
             />
@@ -127,53 +127,40 @@ export const Settings: React.FC = () => {
               onClick={handleUpdate}
               disabled={loading}
             >
-              {loading ? '保存中...' : '保存 API Key'}
+              {loading ? '保存中...' : '保存'}
             </Button>
           </div>
+
           <div className="mt-6 pt-6 border-t border-[var(--border-default)]">
-            <p className="text-[var(--text-secondary)] mb-4">
-              如果你想使用服务器统一配置的 API Key，可以清除当前自定义 Key。
-            </p>
             <Button
               variant="secondary"
               onClick={handleClear}
               disabled={loading}
             >
-              {loading ? '清除中...' : '清除自定义 API Key'}
+              {loading ? '清除中...' : '使用系统默认 Key'}
             </Button>
           </div>
-          <p className="text-[var(--text-muted)] text-sm mt-3">
-            你的 API Key 会保存在数据库中，用于调用 AI 服务生成小说。<br />
-            <strong>当前支持</strong>：火山引擎 ARK，
-            API Key 格式类似 <code>xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</code>
-          </p>
         </Card>
 
         {monthlyStats && monthlyStats.total_tokens > 0 && (
           <Card>
-            <h2 className="text-xl mb-4 text-[var(--text-primary)]">本月 Token 使用统计 ({monthlyStats.month})</h2>
-            <div className="space-y-4">
-              <div>
-                <div className="flex justify-between text-sm mb-2">
-                  <span className="text-[var(--text-secondary)]">总 Token</span>
-                  <span className="text-[var(--text-body)] font-medium">{monthlyStats.total_tokens.toLocaleString()}</span>
-                </div>
+            <h2 className="text-lg font-medium mb-4 text-[var(--text-primary)]">本月使用统计 ({monthlyStats.month})</h2>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center py-2">
+                <span className="text-[var(--text-secondary)]">总 Token</span>
+                <span className="text-[var(--text-body)] font-medium">{monthlyStats.total_tokens.toLocaleString()}</span>
               </div>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="text-[var(--text-secondary)]">Prompt Tokens</span>
-                  <p className="font-medium text-[var(--text-body)] mt-1">{monthlyStats.total_prompt_tokens.toLocaleString()}</p>
-                </div>
-                <div>
-                  <span className="text-[var(--text-secondary)]">Completion Tokens</span>
-                  <p className="font-medium text-[var(--text-body)] mt-1">{monthlyStats.total_completion_tokens.toLocaleString()}</p>
-                </div>
+              <div className="flex justify-between items-center py-2">
+                <span className="text-[var(--text-secondary)]">Prompt</span>
+                <span className="text-[var(--text-body)] font-medium">{monthlyStats.total_prompt_tokens.toLocaleString()}</span>
               </div>
-              <div>
-                <div className="flex justify-between text-sm mb-2">
-                  <span className="text-[var(--text-secondary)]">估算费用</span>
-                  <span className="text-[var(--text-body)] font-medium">${monthlyStats.estimated_cost_usd.toFixed(4)} USD</span>
-                </div>
+              <div className="flex justify-between items-center py-2">
+                <span className="text-[var(--text-secondary)]">Completion</span>
+                <span className="text-[var(--text-body)] font-medium">{monthlyStats.total_completion_tokens.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between items-center py-2">
+                <span className="text-[var(--text-secondary)]">估算费用</span>
+                <span className="text-[var(--text-body)] font-medium">${monthlyStats.estimated_cost_usd.toFixed(4)}</span>
               </div>
             </div>
           </Card>

@@ -2,7 +2,7 @@ import React, { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
 
-import { Card, Badge, Button, Progress, AgentCard } from '../components/v2'
+import { Card, Badge, Button, Progress } from '../components/v2'
 import { useLayoutStore } from '../store/useLayoutStore'
 import { useProjectStore, type ProjectStatus } from '../store/useProjectStore'
 import type { BadgeVariant } from '../components/v2'
@@ -214,7 +214,7 @@ function getModeLabel(project: Project): string {
 }
 
 function getStepBadgeVariant(status: 'done' | 'active' | 'idle'): BadgeVariant {
-  if (status === 'done') return 'agent'
+  if (status === 'done') return 'success'
   if (status === 'active') return 'status'
   return 'secondary'
 }
@@ -312,142 +312,140 @@ export const ProjectOverview: React.FC = () => {
   const targetEnd = config?.end_chapter ?? 10
   const completedChapters = data.chapters?.length ?? 0
   const completedChapterRatio = targetEnd >= targetStart ? Math.min((completedChapters / (targetEnd - targetStart + 1)) * 100, 100) : 0
-  const workflowProgress = data.current_generation_task ? Math.min(data.current_generation_task.progress * 100, 100) : completedChapterRatio
+  // 项目已完成时强制显示100%，否则用任务进度或章节完成率
+  const workflowProgress = data.status === 'completed' ? 100 : data.current_generation_task ? Math.min(data.current_generation_task.progress * 100, 100) : completedChapterRatio
   const workflowMeta = renderWorkflowMeta(workflow)
   const agentStates = getAgentStates(data)
 
   return (
-    <div className="mx-auto max-w-content space-y-8">
-      <Card variant="elevated" className="overflow-hidden">
-        <div className="flex flex-col gap-10 p-8 lg:flex-row lg:items-center lg:justify-between">
-          <div className="max-w-2xl">
-            <div className="mb-6 flex flex-wrap items-center gap-3">
-              <Link to="/">
-                <Button variant="secondary" size="sm">返回书架</Button>
-              </Link>
-              <Badge variant={getProjectStatusColor(data.status)}>
-                {getProjectStatusText(data.status)}
-              </Badge>
-              <Badge variant={getTaskStatusColor(data.current_generation_task)}>
-                {getTaskStatusText(data.current_generation_task)}
-              </Badge>
-              <Badge variant="secondary">{getModeLabel(data)}</Badge>
-            </div>
-
-            <h1 className="text-[clamp(2rem,4vw,2.75rem)] leading-tight">{data.name}</h1>
-            <p className="mt-4 max-w-xl text-[var(--text-body)]">
-              {data.description}
-            </p>
-
-            <div className="mt-5 flex flex-wrap gap-4 text-sm text-[var(--text-secondary)]">
-              <span>目标章节 {targetStart} - {targetEnd}</span>
-              <span>每章约 {config?.chapter_word_count ?? 2000} 字</span>
-              {config?.genre && <span>{config.genre}</span>}
-              {tokenStats && tokenStats.total_tokens > 0 && (
-                <span>约 ${tokenStats.estimated_cost_usd.toFixed(4)}</span>
-              )}
-            </div>
-
-            {config?.core_hook && (
-              <div className="mt-6 rounded-comfortable border border-terracotta/15 bg-terracotta/5 p-5">
-                <p className="text-xs uppercase tracking-[0.22em] text-terracotta/70">Concept</p>
-                <p className="mt-2 text-lg text-[var(--text-primary)]">{config.core_hook}</p>
-              </div>
+    <div className="mx-auto max-w-content space-y-6">
+      {/* 顶部项目信息栏 */}
+      <Card className="border-[var(--border-default)]">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <Link to="/">
+              <Button variant="secondary" size="sm">返回书架</Button>
+            </Link>
+            <Badge variant={getProjectStatusColor(data.status)}>
+              {getProjectStatusText(data.status)}
+            </Badge>
+            <Badge variant={getTaskStatusColor(data.current_generation_task)}>
+              {getTaskStatusText(data.current_generation_task)}
+            </Badge>
+            <Badge variant="secondary">{getModeLabel(data)}</Badge>
+          </div>
+          <div className="flex flex-wrap gap-4 text-sm text-[var(--text-secondary)]">
+            <span>目标章节 {targetStart} - {targetEnd}</span>
+            <span>每章约 {config?.chapter_word_count ?? 2000} 字</span>
+            {config?.genre && <span>{config.genre}</span>}
+            {tokenStats && tokenStats.total_tokens > 0 && (
+              <span>约 ${tokenStats.estimated_cost_usd.toFixed(4)}</span>
             )}
           </div>
+        </div>
 
-          <div className="w-full max-w-lg rounded-2xl border border-sage/15 bg-sage/5 p-6">
-            <p className="text-xs uppercase tracking-[0.25em] text-sage">Current Focus</p>
-            <h2 className="mt-3 text-xl">{runSummary.headline}</h2>
-            <p className="mt-2 text-[var(--text-secondary)]">{runSummary.detail}</p>
-
-            <div className="mt-6">
-              <Progress value={workflowProgress} />
-            </div>
-
-            <div className="mt-6 flex flex-wrap gap-3">
-              {runSummary.ctaHref ? (
-                <Link to={runSummary.ctaHref}>
-                  <Button variant="primary">{runSummary.ctaLabel}</Button>
-                </Link>
-              ) : (
-                <Button variant="primary" onClick={handleTriggerGenerate}>
-                  {runSummary.ctaLabel}
-                </Button>
+        <div className="mt-4 pt-4 border-t border-[var(--border-default)]">
+          <div className="flex flex-col gap-4 md:flex-row md:justify-between">
+            <div className="flex-1">
+              <h1 className="text-2xl md:text-3xl font-semibold text-[var(--text-primary)]">{data.name}</h1>
+              {config?.core_hook && (
+                <p className="mt-2 text-[var(--text-secondary)]">{config.core_hook}</p>
               )}
-              <Link to={`/projects/${projectId}/chapters`}>
-                <Button variant="secondary">查看章节</Button>
-              </Link>
+            </div>
+            <div className="w-full md:w-96 space-y-4">
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-[var(--text-secondary)]">项目进度</p>
+                <p className="text-sm font-medium text-[var(--text-primary)]">{Math.round(workflowProgress)}%</p>
+              </div>
+              <Progress value={workflowProgress} />
+              <div className="flex flex-wrap gap-2">
+                {runSummary.ctaHref ? (
+                  <Link to={runSummary.ctaHref}>
+                    <Button variant="primary" size="sm">{runSummary.ctaLabel}</Button>
+                  </Link>
+                ) : (
+                  <Button variant="primary" size="sm" onClick={handleTriggerGenerate}>
+                    {runSummary.ctaLabel}
+                  </Button>
+                )}
+                {/* 主按钮不是"查看章节"时才显示章节按钮 */}
+                {runSummary.ctaLabel !== '查看章节' && (
+                  <Link to={`/projects/${projectId}/chapters`}>
+                    <Button variant="secondary" size="sm">章节</Button>
+                  </Link>
+                )}
+                <Link to={`/projects/${projectId}/outline`}>
+                  <Button variant="secondary" size="sm">大纲</Button>
+                </Link>
+                <Link to={`/projects/${projectId}/export`}>
+                  <Button variant="secondary" size="sm">导出</Button>
+                </Link>
+              </div>
             </div>
           </div>
         </div>
       </Card>
 
-      <div className="grid gap-6 xl:grid-cols-[1.3fr_0.9fr]">
-        <Card className="p-8">
-          <div className="mb-8 flex items-center justify-between">
-            <div>
-              <p className="text-xs uppercase tracking-[0.25em] text-[var(--text-secondary)]">Flow Story</p>
-              <h2 className="mt-2 text-2xl">创作主路径</h2>
-            </div>
-            <Badge variant="secondary">Workflow First</Badge>
+      <div className="grid gap-6 xl:grid-cols-2">
+        <Card className="border-[var(--border-default)] p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-semibold text-[var(--text-primary)]">创作主路径</h2>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-5">
-            {flowSteps.map((step, index) => {
+          <div className="grid gap-3 md:grid-cols-5">
+            {flowSteps.map((step, _index) => {
               const status = getFlowStepStatus(data, step.key)
+              const isDone = status === 'done'
+              const isActive = status === 'active'
 
               return (
                 <div
                   key={step.key}
-                  className={`rounded-comfortable border p-4 ${
-                    status === 'active'
-                      ? 'border-sage/35 bg-sage/10'
-                      : status === 'done'
-                        ? 'border-sage/20 bg-[var(--bg-secondary)]'
+                  className={`rounded-standard border p-4 text-center flex flex-col items-center ${
+                    isActive
+                      ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)]/10'
+                      : isDone
+                        ? 'border-[var(--border-default)] bg-[var(--bg-secondary)]'
                         : 'border-[var(--border-default)] bg-[var(--bg-tertiary)]'
                   }`}
                 >
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-sm text-[var(--text-secondary)]">0{index + 1}</span>
-                    <Badge variant={getStepBadgeVariant(status)}>
-                      {status === 'done' ? 'done' : status === 'active' ? 'now' : 'next'}
-                    </Badge>
+                  <div className={`text-lg font-medium mb-2 ${
+                    isActive ? 'text-[var(--accent-primary)]' : 'text-[var(--text-primary)]'
+                  }`}>
+                    {step.title}
                   </div>
-                  <h3 className="mt-4 text-lg">{step.title}</h3>
-                  <p className="mt-2 text-sm text-[var(--text-secondary)]">{step.description}</p>
+                  <Badge variant={getStepBadgeVariant(status)}>
+                    {status === 'done' ? '已完成' : status === 'active' ? '进行中' : '待开始'}
+                  </Badge>
                 </div>
               )
             })}
           </div>
         </Card>
 
-        <Card className="p-8">
-          <p className="text-xs uppercase tracking-[0.25em] text-[var(--text-secondary)]">Run Detail</p>
-          <h2 className="mt-2 text-2xl">当前运行</h2>
+        <Card className="border-[var(--border-default)] p-6">
+          <h2 className="text-xl font-semibold text-[var(--text-primary)] mb-6">当前运行</h2>
 
-          <div className="mt-6 space-y-3">
+          <div className="space-y-3">
             {workflowMeta.length > 0 ? (
               workflowMeta.map(item => (
-                <div key={item.label} className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-3">
-                  <p className="text-xs uppercase tracking-[0.18em] text-[var(--text-secondary)]">{item.label}</p>
-                  <p className="mt-1 text-body">{item.value}</p>
+                <div key={item.label} className="flex justify-between items-center py-2 border-b border-[var(--border-default)] last:border-0">
+                  <span className="text-[var(--text-secondary)]">{item.label}</span>
+                  <span className="font-medium text-[var(--text-primary)]">{item.value}</span>
                 </div>
               ))
             ) : (
-              <div className="rounded-standard border border-dashed border-[var(--border-default)] p-4 text-[var(--text-secondary)]">
-                当前还没有活动中的 workflow run。启动生成后，这里会展示真实运行状态。
-              </div>
+              <p className="text-[var(--text-secondary)] text-center py-4">暂无运行记录</p>
             )}
 
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-3">
-                <p className="text-[var(--text-secondary)]">开始时间</p>
-                <p className="mt-1 text-body">{formatDateTime(data.current_generation_task?.started_at)}</p>
+            <div className="grid grid-cols-2 gap-3 pt-3">
+              <div className="text-center">
+                <p className="text-sm text-[var(--text-secondary)]">开始时间</p>
+                <p className="mt-1 font-medium text-[var(--text-primary)]">{formatDateTime(data.current_generation_task?.started_at)}</p>
               </div>
-              <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-3">
-                <p className="text-[var(--text-secondary)]">当前章节</p>
-                <p className="mt-1 text-body">
+              <div className="text-center">
+                <p className="text-sm text-[var(--text-secondary)]">当前章节</p>
+                <p className="mt-1 font-medium text-[var(--text-primary)]">
                   {workflow?.current_chapter ?? data.current_generation_task?.current_chapter ?? '待生成'}
                 </p>
               </div>
@@ -456,33 +454,22 @@ export const ProjectOverview: React.FC = () => {
         </Card>
       </div>
 
-      <Card className="p-8">
-        <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="text-xs uppercase tracking-[0.25em] text-[var(--text-secondary)]">Agent Strip</p>
-            <h2 className="mt-2 text-2xl">智能体状态</h2>
-          </div>
-        </div>
+      <Card className="border-[var(--border-default)] p-6">
+        <h2 className="text-xl font-semibold text-[var(--text-primary)] mb-6">智能体状态</h2>
         <div className="grid gap-4 md:grid-cols-4">
           {agentCards.map(agent => (
-            <AgentCard
+            <div
               key={agent.key}
-              name={agent.title}
-              subtitle={agent.subtitle}
-              status={agentStates[agent.key]}
-            />
+              className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-secondary)] p-4 text-center"
+            >
+              <h3 className="text-lg font-medium text-[var(--text-primary)]">{agent.title}</h3>
+              <Badge variant={agentStates[agent.key] === 'done' ? 'success' : agentStates[agent.key] === 'running' ? 'status' : 'secondary'} className="mt-3">
+                {agentStates[agent.key] === 'done' ? '已完成' : agentStates[agent.key] === 'running' ? '运行中' : '等待'}
+              </Badge>
+            </div>
           ))}
         </div>
       </Card>
-
-      <div className="flex flex-wrap gap-4 justify-center">
-        <Link to={`/projects/${projectId}/outline`}>
-          <Button variant="secondary">大纲设定</Button>
-        </Link>
-        <Link to={`/projects/${projectId}/export`}>
-          <Button variant="secondary">导出分享</Button>
-        </Link>
-      </div>
     </div>
   )
 }

@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import Card from './Card';
-import Badge from './Badge';
-import { Input } from './Input';
+import { Card, Badge, Input } from './v2';
 import {
   listPerspectives,
   updateProjectPerspective,
@@ -19,14 +17,6 @@ export interface PerspectiveSelectorProps {
   initialUseForCritic?: boolean;
   compact?: boolean; // 紧凑模式（用于侧边栏）
 }
-
-const genreIcons: Record<string, string> = {
-  '科幻': '🚀',
-  '武侠': '⚔️',
-  '奇幻': '✨',
-  '文学': '📖',
-  '网文': '💻',
-};
 
 export const PerspectiveSelector: React.FC<PerspectiveSelectorProps> = ({
   projectId,
@@ -136,7 +126,7 @@ export const PerspectiveSelector: React.FC<PerspectiveSelectorProps> = ({
         {Object.entries(groupedPerspectives).map(([genre, items]) => (
           <div key={genre}>
             <p className="text-sm font-medium text-[var(--text-secondary)] mb-3 flex items-center gap-2">
-              <span>{genreIcons[genre] || '📝'}</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-primary)]/50" />
               <span>{genre}</span>
               <span className="text-xs">({items.length})</span>
             </p>
@@ -147,7 +137,7 @@ export const PerspectiveSelector: React.FC<PerspectiveSelectorProps> = ({
                   className={`
                     block p-4 rounded-lg border cursor-pointer transition-all
                     ${value === p.id
-                      ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)] bg-opacity-10 shadow-[var(--shadow-subtle)]'
+                      ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)]/10 shadow-[var(--shadow-subtle)]'
                       : 'border-[var(--border-default)] hover:border-[var(--accent-primary)] border-opacity-40 hover:bg-[var(--bg-secondary)] bg-opacity-50'
                     }
                   `}
@@ -162,8 +152,8 @@ export const PerspectiveSelector: React.FC<PerspectiveSelectorProps> = ({
                       className="mt-1"
                     />
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium">{p.name}</p>
-                      <p className="text-sm text-[var(--text-secondary)] mt-1">{p.description}</p>
+                      <p className={`font-medium ${value === p.id ? 'text-[var(--accent-primary)]' : ''}`}>{p.name}</p>
+                      <p className={`text-sm mt-1 ${value === p.id ? 'text-[var(--accent-primary)]/70' : 'text-[var(--text-secondary)]'}`}>{p.description}</p>
                       <div className="mt-2 flex flex-wrap gap-2">
                         {p.strengths.slice(0, 3).map((s) => (
                           <Badge key={s} variant="secondary">

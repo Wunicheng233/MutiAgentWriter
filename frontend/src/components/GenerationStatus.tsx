@@ -1,6 +1,5 @@
 import React from 'react'
-import { ProgressBar } from './ProgressBar'
-import { Button } from './Button'
+import { Progress, Button } from './v2'
 import type { GenerationTask } from '../types/api'
 
 interface GenerationStatusProps {
@@ -69,13 +68,13 @@ export const GenerationStatus: React.FC<GenerationStatusProps> = ({
       </div>
 
       <div className="mt-4">
-        <ProgressBar
-          progress={completedRatio}
-          message={
-            currentTask?.current_step ||
-            `已完成 ${completedChapters}/${targetChapters || completedChapters || 1} 章`
-          }
-        />
+        <div className="space-y-2">
+          <Progress value={completedRatio} />
+          <p className="text-sm text-[var(--text-secondary)]">
+            {currentTask?.current_step ||
+              `已完成 ${completedChapters}/${targetChapters || completedChapters || 1} 章`}
+          </p>
+        </div>
       </div>
 
       {currentTask?.current_chapter && (

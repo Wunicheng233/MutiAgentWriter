@@ -18,9 +18,12 @@ const WorkflowRunDetail = lazy(() => import('./pages/WorkflowRunDetail'))
 const ArtifactDetail = lazy(() => import('./pages/ArtifactDetail'))
 const Editor = lazy(() => import('./pages/Editor'))
 const QualityDashboard = lazy(() => import('./pages/QualityDashboard'))
+const ProjectOutline = lazy(() => import('./pages/ProjectOutline'))
+const ProjectExport = lazy(() => import('./pages/ProjectExport'))
 const ShareView = lazy(() => import('./pages/ShareView'))
 const Reader = lazy(() => import('./components/Reader/index'))
 const ComponentShowcase = lazy(() => import('./pages/ComponentShowcase'))
+const SkillManagement = lazy(() => import('./pages/SkillManagement'))
 
 import './App.css'
 
@@ -81,6 +84,9 @@ export function AppRoutes() {
             <Route path="write/:chapterIndex" element={<Navigate to="../editor/:chapterIndex" replace />} />
             <Route path="read/:chapterIndex" element={<Reader />} />
             <Route path="analytics" element={<QualityDashboard />} />
+            <Route path="outline" element={<ProjectOutline />} />
+            <Route path="export" element={<ProjectExport />} />
+            <Route path="skills" element={<SkillManagement />} />
           </Route>
 
           <Route path="/settings" element={<Settings />} />

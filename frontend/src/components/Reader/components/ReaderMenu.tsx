@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useReaderStore } from '../stores/readerStore';
-import Card from '../../../components/Card';
+import { Card } from '../../../components/v2';
 
 interface ReaderMenuProps {
   projectId: number;

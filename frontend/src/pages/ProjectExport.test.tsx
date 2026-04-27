@@ -108,9 +108,9 @@ describe('ProjectExport - 导出分享页面', () => {
     renderWithProviders(<ProjectExport />)
 
     await waitFor(() => {
-      expect(screen.getByText(/导出 EPUB/i)).toBeInTheDocument()
-      expect(screen.getByText(/导出 DOCX/i)).toBeInTheDocument()
-      expect(screen.getByText(/导出 HTML/i)).toBeInTheDocument()
+      expect(screen.getByText('EPUB')).toBeInTheDocument()
+      expect(screen.getByText('DOCX')).toBeInTheDocument()
+      expect(screen.getByText('HTML')).toBeInTheDocument()
     })
   })
 
@@ -118,7 +118,7 @@ describe('ProjectExport - 导出分享页面', () => {
     renderWithProviders(<ProjectExport />)
 
     await waitFor(() => {
-      expect(screen.getByText(/创建分享链接/i)).toBeInTheDocument()
+      expect(screen.getByText(/分享链接/i)).toBeInTheDocument()
     })
   })
 
@@ -145,7 +145,7 @@ describe('ProjectExport - 导出分享页面', () => {
     renderWithProviders(<ProjectExport />)
 
     await waitFor(() => {
-      expect(screen.getByText(/当前关键产物/i)).toBeInTheDocument()
+      expect(screen.getByText(/关键产物/i)).toBeInTheDocument()
     })
   })
 

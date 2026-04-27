@@ -269,9 +269,9 @@ export const ProjectExport: React.FC = () => {
         <Progress value={exportProgress} />
       )}
 
-      <Card className="p-8">
-        <p className="text-xs uppercase tracking-[0.25em] text-[var(--text-secondary)]">Quality</p>
-        <h2 className="mt-2 text-2xl">质量与交付</h2>
+      <Card className="p-6">
+        <p className="font-medium text-xs uppercase tracking-[0.24em] text-[var(--text-secondary)]">Quality</p>
+        <h2 className="mt-2 text-2xl font-medium">质量与交付</h2>
 
         <div className="mt-6 space-y-4">
           {data.overall_quality_score > 0 ? (
@@ -280,53 +280,53 @@ export const ProjectExport: React.FC = () => {
               <Progress value={data.overall_quality_score * 10} />
             </div>
           ) : (
-            <div className="rounded-standard border border-dashed border-[var(--border-default)] p-4 text-[var(--text-secondary)]">
-              尚无评分数据。完成至少一章评审后，这里会显示质量闭环结果。
+            <div className="rounded-standard border border-dashed border-[var(--border-default)] p-4 text-center text-[var(--text-secondary)]">
+              尚无评分数据
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3 text-sm">
+          <div className="grid grid-cols-2 gap-3">
             <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-3">
-              <p className="text-[var(--text-secondary)]">已完成章节</p>
-              <p className="mt-1 text-body">{completedChapters}</p>
+              <p className="text-sm text-[var(--text-secondary)]">已完成章节</p>
+              <p className="mt-1 font-medium">{completedChapters}</p>
             </div>
             <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-3">
-              <p className="text-[var(--text-secondary)]">分享状态</p>
-              <p className="mt-1 text-body">{shareUrl ? '已生成链接' : '待创建'}</p>
+              <p className="text-sm text-[var(--text-secondary)]">分享状态</p>
+              <p className="mt-1 font-medium">{shareUrl ? '已生成链接' : '待创建'}</p>
             </div>
           </div>
 
           <div className="flex flex-wrap gap-3">
             <Link to={`/projects/${projectId}/analytics`}>
-              <Button variant="secondary">查看详细质量分析</Button>
+              <Button variant="secondary" size="sm">质量分析</Button>
             </Link>
             {data.status !== 'draft' && (
-              <Button variant="secondary" onClick={() => setShowCleanConfirm(true)} disabled={cleaningStuck}>
-                清理任务队列
+              <Button variant="secondary" size="sm" onClick={() => setShowCleanConfirm(true)} disabled={cleaningStuck}>
+                清理队列
               </Button>
             )}
           </div>
         </div>
       </Card>
 
-      <Card className="p-8">
-        <p className="text-xs uppercase tracking-[0.22em] text-[var(--text-secondary)]">Delivery</p>
-        <h2 className="mt-2 text-2xl">导出分享</h2>
+      <Card className="p-6">
+        <p className="font-medium text-xs uppercase tracking-[0.24em] text-[var(--text-secondary)]">Delivery</p>
+        <h2 className="mt-2 text-2xl font-medium">导出分享</h2>
 
         {data.status === 'completed' ? (
           <div className="mt-5 space-y-4">
             <div className="flex flex-wrap gap-3">
-              <Button variant="secondary" onClick={() => handleTriggerExport('epub')} disabled={!!exportPollingId}>
-                导出 EPUB
+              <Button variant="secondary" size="sm" onClick={() => handleTriggerExport('epub')} disabled={!!exportPollingId}>
+                EPUB
               </Button>
-              <Button variant="secondary" onClick={() => handleTriggerExport('docx')} disabled={!!exportPollingId}>
-                导出 DOCX
+              <Button variant="secondary" size="sm" onClick={() => handleTriggerExport('docx')} disabled={!!exportPollingId}>
+                DOCX
               </Button>
-              <Button variant="secondary" onClick={() => handleTriggerExport('html')} disabled={!!exportPollingId}>
-                导出 HTML
+              <Button variant="secondary" size="sm" onClick={() => handleTriggerExport('html')} disabled={!!exportPollingId}>
+                HTML
               </Button>
-              <Button variant="secondary" onClick={handleCreateShare} disabled={creatingShare}>
-                {creatingShare ? '创建中...' : shareUrl ? '分享链接已复制' : '创建分享链接'}
+              <Button variant="secondary" size="sm" onClick={handleCreateShare} disabled={creatingShare}>
+                {creatingShare ? '创建中...' : shareUrl ? '已复制' : '分享链接'}
               </Button>
             </div>
             {shareUrl && (
@@ -336,40 +336,37 @@ export const ProjectExport: React.FC = () => {
             )}
           </div>
         ) : (
-          <div className="mt-5 rounded-standard border border-dashed border-[var(--border-default)] p-4 text-[var(--text-secondary)]">
-            项目完成后即可在这里一键导出成品，并生成无需登录的只读分享页。
+          <div className="mt-5 rounded-standard border border-dashed border-[var(--border-default)] p-4 text-center text-[var(--text-secondary)]">
+            项目完成后可用
           </div>
         )}
       </Card>
 
-      <Card className="p-8">
-        <p className="text-xs uppercase tracking-[0.22em] text-[var(--text-secondary)]">Current Artifacts</p>
-        <h2 className="mt-2 text-2xl">当前关键产物</h2>
-        <p className="mt-2 text-[var(--text-secondary)]">
-          这些是项目当前版本的核心 artifacts。长期来看，它们会成为创作状态、评审结果和工作流回放的统一事实层。
-        </p>
+      <Card className="p-6">
+        <p className="font-medium text-xs uppercase tracking-[0.24em] text-[var(--text-secondary)]">Current Artifacts</p>
+        <h2 className="mt-2 text-2xl font-medium">关键产物</h2>
 
         <div className="mt-5 space-y-3">
           {recentArtifacts?.items.map(artifact => (
-            <div key={artifact.id} className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-3 text-sm">
+            <div key={artifact.id} className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-3">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-medium text-[var(--text-primary)]">{getArtifactDisplayName(artifact.artifact_type)}</span>
+                    <span className="font-medium">{getArtifactDisplayName(artifact.artifact_type)}</span>
                     <Badge variant="secondary">{artifact.scope}</Badge>
-                    {artifact.is_current && <Badge variant="agent">current</Badge>}
+                    {artifact.is_current && <Badge variant="success">current</Badge>}
                   </div>
-                  <div className="mt-2 text-[var(--text-secondary)]">
+                  <div className="mt-2 text-sm text-[var(--text-secondary)]">
                     v{artifact.version_number} · {getArtifactScopeLabel(artifact)} · {artifact.source}
                   </div>
                 </div>
                 <div className="flex flex-wrap justify-end gap-2">
                   <Link to={`/projects/${projectId}/artifacts/${artifact.id}`}>
-                    <Button variant="tertiary" size="sm">查看详情</Button>
+                    <Button variant="tertiary" size="sm">详情</Button>
                   </Link>
                   {artifact.workflow_run_id && (
                     <Link to={`/projects/${projectId}/workflows/${artifact.workflow_run_id}`}>
-                      <Button variant="tertiary" size="sm">查看 Run</Button>
+                      <Button variant="tertiary" size="sm">Run</Button>
                     </Link>
                   )}
                 </div>
@@ -378,17 +375,17 @@ export const ProjectExport: React.FC = () => {
           ))}
 
           {!recentArtifacts?.items.length && (
-            <div className="rounded-standard border border-dashed border-[var(--border-default)] p-4 text-[var(--text-secondary)]">
-              还没有沉淀可展示的当前 artifacts。
+            <div className="rounded-standard border border-dashed border-[var(--border-default)] p-4 text-center text-[var(--text-secondary)]">
+              暂无
             </div>
           )}
         </div>
       </Card>
 
       {isOwner && (
-        <Card className="p-8">
-          <p className="text-xs uppercase tracking-[0.22em] text-[var(--text-secondary)]">Team</p>
-          <h2 className="mt-2 text-2xl">协作者</h2>
+        <Card className="p-6">
+          <p className="font-medium text-xs uppercase tracking-[0.24em] text-[var(--text-secondary)]">Team</p>
+          <h2 className="mt-2 text-2xl font-medium">协作者</h2>
 
           <div className="mt-5 space-y-4">
             <div className="flex flex-col gap-3 md:flex-row">
@@ -401,8 +398,8 @@ export const ProjectExport: React.FC = () => {
                 />
               </div>
               <div className="pt-[26px]">
-                <Button variant="primary" onClick={handleAddCollaborator} disabled={addingCollaborator}>
-                  {addingCollaborator ? '添加中...' : '添加协作者'}
+                <Button variant="primary" size="sm" onClick={handleAddCollaborator} disabled={addingCollaborator}>
+                  {addingCollaborator ? '添加中...' : '添加'}
                 </Button>
               </div>
             </div>
@@ -413,9 +410,9 @@ export const ProjectExport: React.FC = () => {
                   <div key={collab.id} className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <div className="font-medium text-[var(--text-primary)]">{collab.username}</div>
+                        <div className="font-medium">{collab.username}</div>
                         <div className="mt-1 text-sm text-[var(--text-secondary)]">{collab.email}</div>
-                        <div className="mt-1 text-xs uppercase tracking-[0.18em] text-[var(--text-secondary)]">{collab.role}</div>
+                        <div className="mt-1 font-medium text-xs uppercase tracking-[0.2em] text-[var(--text-secondary)]">{collab.role}</div>
                       </div>
                       <Button variant="tertiary" size="sm" onClick={() => handleRemoveCollaborator(collab.id)}>
                         移除
@@ -425,7 +422,7 @@ export const ProjectExport: React.FC = () => {
                 ))}
               </div>
             ) : (
-              <p className="text-[var(--text-secondary)]">暂无协作者。比赛演示时可以用这一块证明作品支持多人参与和协作浏览。</p>
+              <p className="text-center text-[var(--text-secondary)]">暂无协作者</p>
             )}
           </div>
         </Card>

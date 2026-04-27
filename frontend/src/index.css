@@ -65,6 +65,7 @@
   --text-secondary: #7a6f62;
   --text-muted: #a69a8d;
   --accent-primary: #5b7f6e;
+  --accent-primary-rgb: 91, 127, 110;
   --accent-warm: #c06b4e;
   --accent-soft: #a8685c;
   --accent-gold: #a38b5a;
@@ -86,6 +87,7 @@
   --text-secondary: #6b7280;
   --text-muted: #9ca3af;
   --accent-primary: #4f76f3;
+  --accent-primary-rgb: 79, 118, 243;
   --accent-warm: #e11d48;
   --accent-soft: #f43f5e;
   --accent-gold: #f59e0b;
@@ -107,6 +109,7 @@
   --text-secondary: #768390;
   --text-muted: #545d68;
   --accent-primary: #6494ed;
+  --accent-primary-rgb: 100, 148, 237;
   --accent-warm: #f85149;
   --accent-soft: #ff7b72;
   --accent-gold: #d29922;
@@ -188,15 +191,22 @@
   -webkit-font-smoothing: antialiased;
 }
 
+/* 默认无缩进 - 空编辑器时 placeholder 正常显示 */
 .prose-novel p {
   margin-bottom: 1.4em;
-  text-indent: 2em;    /* 中文首行缩进，真正的"书籍感" */
+  text-indent: 0;
   transition: background-color 150ms ease-out;
+}
+
+/* 有真实内容的段落才添加首行缩进 */
+.prose-novel p:not(.ProseMirror-empty):not(:has(br:only-child)) {
+  text-indent: 2em;    /* 中文首行缩进，真正的"书籍感" */
 }
 
 .prose-novel p:has(br:only-child):empty,
 .prose-novel p:empty {
   margin-bottom: 1.4em;
+  text-indent: 0 !important;
 }
 
 .prose-novel h1,
@@ -257,28 +267,21 @@
   color: var(--text-primary);
 }
 
-/* Placeholder 样式 */
-.prose-novel .is-empty::before {
+/* Placeholder 样式 - 修正位置 */
+.prose-novel .ProseMirror p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
   color: var(--text-muted);
   pointer-events: none;
-  position: absolute;
   font-style: italic;
-  opacity: 0.7;
+  opacity: 0.6;
+  text-indent: 0 !important;
+  float: left;
+  height: 0;
 }
 
-/* 纸张纹理背景 */
+/* 编辑器背景 */
 .editor-paper {
-  background: linear-gradient(to bottom, var(--bg-secondary) 0%, var(--bg-secondary) 100%);
-  background-image:
-    radial-gradient(circle at 1px 1px, rgba(0, 0, 0, 0.02) 1px, transparent 0);
-  background-size: 20px 20px;
-}
-
-/* 暗色主题下的纸张纹理 */
-[data-theme="deep-dark"] .editor-paper {
-  background-image:
-    radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.015) 1px, transparent 0);
+  background-color: var(--bg-secondary);
 }
 
 /* 编辑器聚焦时的边框高亮 */

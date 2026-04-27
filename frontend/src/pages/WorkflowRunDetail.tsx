@@ -73,13 +73,13 @@ function getRunKindText(runKind: string): string {
 function getStepStatusColor(status: string): BadgeVariant {
   switch (status) {
     case 'completed':
-      return 'agent'
+      return 'success'
     case 'running':
     case 'waiting_confirm':
       return 'status'
     case 'failed':
     case 'cancelled':
-      return 'genre'
+      return 'error'
     default:
       return 'secondary'
   }
@@ -98,20 +98,6 @@ function renderJsonValue(value: JsonValue): string {
   return JSON.stringify(value)
 }
 
-function getRunHeadline(run: WorkflowRun): string {
-  if (run.status === 'waiting_confirm') {
-    return run.current_chapter === 0
-      ? '策划方案已经生成，等待人工确认'
-      : `第 ${run.current_chapter ?? '-'} 章已经生成，等待人工确认`
-  }
-  if (run.status === 'failed') {
-    return '本次运行失败，适合用来回看步骤和反馈'
-  }
-  if (run.status === 'completed') {
-    return '本次运行已经完成'
-  }
-  return '本次运行仍在推进中'
-}
 
 type WorkflowEvent = {
   at?: string
@@ -150,9 +136,9 @@ function getWorkflowEvents(run: WorkflowRun): WorkflowEvent[] {
 
 function getEventBadgeVariant(event: WorkflowEvent): BadgeVariant {
   const message = event.message || ''
-  if (message.includes('Local Revise') || message.includes('Stitching')) return 'agent'
+  if (message.includes('Local Revise') || message.includes('Stitching')) return 'success'
   if (message.includes('Critic')) return 'status'
-  if (message.includes('Failure Router')) return 'genre'
+  if (message.includes('Failure Router')) return 'error'
   return 'secondary'
 }
 
@@ -246,7 +232,6 @@ export const WorkflowRunDetail: React.FC = () => {
   const metadataEntries = Object.entries(run.run_metadata || {}).filter(([key]) => key !== 'event_log')
   const stepCount = run.steps?.length ?? 0
   const feedbackCount = run?.feedback_items?.length ?? 0
-  const artifactCount = runArtifacts?.items.length ?? 0
   const workflowV2Artifacts = (runArtifacts?.items || []).filter(artifact => workflowV2ArtifactTypes.has(artifact.artifact_type))
   const hasRelatedChapter = typeof run?.current_chapter === 'number' && run.current_chapter > 0
   const isActiveRun = run?.status === 'running' || run?.status === 'waiting_confirm'
@@ -268,12 +253,12 @@ export const WorkflowRunDetail: React.FC = () => {
   return (
     
       <div className="mx-auto max-w-content space-y-6">
-        <Card className="border-sage/20 bg-[linear-gradient(135deg,rgba(91,127,110,0.12),rgba(255,255,255,0.92),rgba(163,139,90,0.08))]">
-          <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
-            <div className="max-w-3xl">
+        <Card className="border-sage/20 bg-[linear-gradient(135deg,rgba(91,127,110,0.12),rgba(255,255,255,0.92),rgba(163,139,90,0.08))] p-6">
+          <div className="flex flex-col gap-6 xl:flex-row xl:items-center xl:justify-between">
+            <div>
               <div className="mb-4 flex flex-wrap items-center gap-3">
                 <Link to={`/projects/${projectId}/chapters`}>
-                  <Button variant="secondary">返回章节与运行记录</Button>
+                  <Button variant="secondary" size="sm">返回章节</Button>
                 </Link>
                 {project && <Badge variant="secondary">{getProjectStatusText(project.status)}</Badge>}
                 <Badge variant={getRunStatusColor(run.status)}>
@@ -282,104 +267,96 @@ export const WorkflowRunDetail: React.FC = () => {
                 <Badge variant="secondary">{getRunKindText(run.run_kind)}</Badge>
               </div>
 
-              <h1 className="text-3xl md:text-4xl">运行详情 #{run.id}</h1>
-              <p className="mt-3 text-body">{getRunHeadline(run)}</p>
-              {project && <p className="mt-3 text-[var(--text-secondary)]">{project.name}</p>}
+              <h1 className="text-3xl md:text-4xl font-medium">运行详情 #{run.id}</h1>
+              {project && <p className="mt-2 text-[var(--text-secondary)]">{project.name}</p>}
             </div>
 
-            <div className="grid w-full max-w-xl grid-cols-2 gap-3 text-sm md:grid-cols-4">
+            <div className="grid w-full max-w-xl grid-cols-2 gap-3 md:grid-cols-4">
               <div className="rounded-standard border border-border bg-parchment/70 p-3">
-                <p className="text-[var(--text-secondary)]">开始时间</p>
-                <p className="mt-1 text-body">{formatDateTime(run.started_at)}</p>
+                <p className="text-sm text-[var(--text-secondary)]">开始时间</p>
+                <p className="mt-1 font-medium">{formatDateTime(run.started_at)}</p>
               </div>
               <div className="rounded-standard border border-border bg-parchment/70 p-3">
-                <p className="text-[var(--text-secondary)]">结束时间</p>
-                <p className="mt-1 text-body">{formatDateTime(run.completed_at)}</p>
+                <p className="text-sm text-[var(--text-secondary)]">结束时间</p>
+                <p className="mt-1 font-medium">{formatDateTime(run.completed_at)}</p>
               </div>
               <div className="rounded-standard border border-border bg-parchment/70 p-3">
-                <p className="text-[var(--text-secondary)]">步骤数</p>
-                <p className="mt-1 text-body">{stepCount}</p>
+                <p className="text-sm text-[var(--text-secondary)]">步骤数</p>
+                <p className="mt-1 font-medium">{stepCount}</p>
               </div>
               <div className="rounded-standard border border-border bg-parchment/70 p-3">
-                <p className="text-[var(--text-secondary)]">反馈项</p>
-                <p className="mt-1 text-body">{feedbackCount}</p>
-              </div>
-              <div className="rounded-standard border border-border bg-parchment/70 p-3">
-                <p className="text-[var(--text-secondary)]">Artifacts</p>
-                <p className="mt-1 text-body">{artifactCount}</p>
+                <p className="text-sm text-[var(--text-secondary)]">反馈项</p>
+                <p className="mt-1 font-medium">{feedbackCount}</p>
               </div>
             </div>
           </div>
         </Card>
 
-        <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-          <Card>
-            <p className="text-xs uppercase tracking-[0.22em] text-[var(--text-secondary)]">Run Summary</p>
-            <h2 className="mt-2 text-2xl">运行摘要</h2>
+        <div className="grid gap-6 xl:grid-cols-2">
+          <Card className="p-6">
+            <p className="font-medium text-xs uppercase tracking-[0.24em] text-[var(--text-secondary)]">Run Summary</p>
+            <h2 className="mt-2 text-2xl font-medium">运行摘要</h2>
 
             <div className="mt-5 grid gap-3 md:grid-cols-2">
               <div className="rounded-standard border border-border bg-parchment/60 p-4">
-                <p className="text-[var(--text-secondary)]">Run 类型</p>
-                <p className="mt-1 text-body">{getRunKindText(run.run_kind)}</p>
+                <p className="text-sm text-[var(--text-secondary)]">Run 类型</p>
+                <p className="mt-1 font-medium">{getRunKindText(run.run_kind)}</p>
               </div>
               <div className="rounded-standard border border-border bg-parchment/60 p-4">
-                <p className="text-[var(--text-secondary)]">触发来源</p>
-                <p className="mt-1 text-body">{run.trigger_source}</p>
+                <p className="text-sm text-[var(--text-secondary)]">触发来源</p>
+                <p className="mt-1 font-medium">{run.trigger_source}</p>
               </div>
               <div className="rounded-standard border border-border bg-parchment/60 p-4">
-                <p className="text-[var(--text-secondary)]">当前节点</p>
-                <p className="mt-1 text-body">{run.current_step_key || '暂无'}</p>
+                <p className="text-sm text-[var(--text-secondary)]">当前节点</p>
+                <p className="mt-1 font-medium">{run.current_step_key || '-'}</p>
               </div>
               <div className="rounded-standard border border-border bg-parchment/60 p-4">
-                <p className="text-[var(--text-secondary)]">当前章节</p>
-                <p className="mt-1 text-body">{run.current_chapter ?? '项目级'}</p>
+                <p className="text-sm text-[var(--text-secondary)]">当前章节</p>
+                <p className="mt-1 font-medium">{run.current_chapter ?? '项目级'}</p>
               </div>
               <div className="rounded-standard border border-border bg-parchment/60 p-4">
-                <p className="text-[var(--text-secondary)]">Generation Task</p>
-                <p className="mt-1 text-body">{run.generation_task_id ?? '暂无'}</p>
+                <p className="text-sm text-[var(--text-secondary)]">Generation Task</p>
+                <p className="mt-1 font-medium">{run.generation_task_id ?? '-'}</p>
               </div>
               <div className="rounded-standard border border-border bg-parchment/60 p-4">
-                <p className="text-[var(--text-secondary)]">父级 Run</p>
-                <p className="mt-1 text-body">{run.parent_run_id ?? '无'}</p>
+                <p className="text-sm text-[var(--text-secondary)]">父级 Run</p>
+                <p className="mt-1 font-medium">{run.parent_run_id ?? '-'}</p>
               </div>
             </div>
 
             {run.current_chapter ? (
               <div className="mt-5">
                 <Link to={`/projects/${projectId}/write/${run.current_chapter}`}>
-                  <Button variant="secondary">打开相关章节</Button>
+                  <Button variant="secondary" size="sm">打开相关章节</Button>
                 </Link>
               </div>
             ) : null}
           </Card>
 
-          <Card>
-            <p className="text-xs uppercase tracking-[0.22em] text-[var(--text-secondary)]">Run Metadata</p>
-            <h2 className="mt-2 text-2xl">上下文元数据</h2>
+          <Card className="p-6">
+            <p className="font-medium text-xs uppercase tracking-[0.24em] text-[var(--text-secondary)]">Run Metadata</p>
+            <h2 className="mt-2 text-2xl font-medium">上下文元数据</h2>
 
             {metadataEntries.length > 0 ? (
               <div className="mt-5 space-y-3">
                 {metadataEntries.map(([key, value]) => (
                   <div key={key} className="rounded-standard border border-border bg-parchment/60 p-4">
-                    <p className="text-xs uppercase tracking-[0.18em] text-[var(--text-secondary)]">{key}</p>
-                    <p className="mt-2 break-words text-body">{renderJsonValue(value)}</p>
+                    <p className="font-medium text-xs uppercase tracking-[0.2em] text-[var(--text-secondary)]">{key}</p>
+                    <p className="mt-2 break-words font-medium">{renderJsonValue(value)}</p>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="mt-5 rounded-standard border border-dashed border-border p-4 text-[var(--text-secondary)]">
-                当前没有额外的 run metadata。
+              <div className="mt-5 rounded-standard border border-dashed border-border p-4 text-center text-[var(--text-secondary)]">
+                无
               </div>
             )}
           </Card>
         </div>
 
-        <Card>
-          <p className="text-xs uppercase tracking-[0.22em] text-[var(--text-secondary)]">Live Process</p>
-          <h2 className="mt-2 text-2xl">生成过程事件流</h2>
-          <p className="mt-2 text-[var(--text-secondary)]">
-            这里展示系统真实记录的可审计过程：上下文装配、Critic v2 诊断、Failure Router、局部修复、Stitching 和 NovelState 更新。
-          </p>
+        <Card className="p-6">
+          <p className="font-medium text-xs uppercase tracking-[0.24em] text-[var(--text-secondary)]">Live Process</p>
+          <h2 className="mt-2 text-2xl font-medium">生成过程事件流</h2>
 
           <div className="mt-5 space-y-3">
             {eventLog.slice().reverse().map((event, index) => (
@@ -393,7 +370,7 @@ export const WorkflowRunDetail: React.FC = () => {
                         <span className="text-sm text-[var(--text-secondary)]">{Math.round(event.percent * 100)}%</span>
                       ) : null}
                     </div>
-                    <p className="mt-3 text-body">{event.message}</p>
+                    <p className="mt-3">{event.message}</p>
                   </div>
                   <p className="text-sm text-[var(--text-secondary)] md:text-right">{formatDateTime(event.at)}</p>
                 </div>
@@ -401,19 +378,16 @@ export const WorkflowRunDetail: React.FC = () => {
             ))}
 
             {!eventLog.length && (
-              <div className="rounded-standard border border-dashed border-border p-4 text-[var(--text-secondary)]">
-                这次 run 还没有记录细粒度事件。新的生成任务会在这里实时追加 workflow-v2 过程。
+              <div className="rounded-standard border border-dashed border-border p-4 text-center text-[var(--text-secondary)]">
+                无
               </div>
             )}
           </div>
         </Card>
 
-        <Card>
-          <p className="text-xs uppercase tracking-[0.22em] text-[var(--text-secondary)]">Workflow v2 Evidence</p>
-          <h2 className="mt-2 text-2xl">局部诊断与修复证据</h2>
-          <p className="mt-2 text-[var(--text-secondary)]">
-            这些 artifacts 是判断系统是否真的进入 scene/span 定位、局部修复和 stitching 的直接证据。
-          </p>
+        <Card className="p-6">
+          <p className="font-medium text-xs uppercase tracking-[0.24em] text-[var(--text-secondary)]">Workflow v2 Evidence</p>
+          <h2 className="mt-2 text-2xl font-medium">局部诊断与修复证据</h2>
 
           <div className="mt-5 grid gap-4 lg:grid-cols-2">
             {workflowV2Artifacts.map(artifact => {
@@ -422,21 +396,21 @@ export const WorkflowRunDetail: React.FC = () => {
               return (
                 <div key={artifact.id} className="rounded-comfortable border border-border bg-parchment/50 p-4">
                   <div className="flex flex-wrap items-center gap-3">
-                    <h3 className="text-lg text-inkwell">{getArtifactDisplayName(artifact.artifact_type)}</h3>
+                    <h3 className="text-lg font-medium">{getArtifactDisplayName(artifact.artifact_type)}</h3>
                     <Badge variant="secondary">{getArtifactScopeLabel(artifact)}</Badge>
-                    {artifact.is_current && <Badge variant="agent">current</Badge>}
+                    {artifact.is_current && <Badge variant="success">current</Badge>}
                   </div>
                   <p className="mt-2 text-sm text-[var(--text-secondary)]">
-                    Artifact #{artifact.id} · v{artifact.version_number} · {formatDateTime(artifact.created_at)}
+                    #{artifact.id} · v{artifact.version_number} · {formatDateTime(artifact.created_at)}
                   </p>
                   {preview && (
-                    <pre className="mt-3 max-h-48 overflow-auto whitespace-pre-wrap rounded-standard border border-border bg-white/70 p-3 text-xs text-body">
+                    <pre className="mt-3 max-h-48 overflow-auto whitespace-pre-wrap rounded-standard border border-border bg-white/70 p-3 text-xs">
                       {preview}
                     </pre>
                   )}
                   <div className="mt-3">
                     <Link to={`/projects/${projectId}/artifacts/${artifact.id}`}>
-                      <Button variant="tertiary" size="sm">查看完整内容</Button>
+                      <Button variant="tertiary" size="sm">查看详情</Button>
                     </Link>
                   </div>
                 </div>
@@ -444,78 +418,27 @@ export const WorkflowRunDetail: React.FC = () => {
             })}
 
             {!workflowV2Artifacts.length && (
-              <div className="rounded-standard border border-dashed border-border p-4 text-[var(--text-secondary)] lg:col-span-2">
-                这次 run 还没有 workflow-v2 artifacts。若章节一次通过，通常会有 scene anchors、critique v2 和 NovelState；只有未通过才会出现 repair trace / stitching report。
+              <div className="rounded-standard border border-dashed border-border p-4 text-center text-[var(--text-secondary)] lg:col-span-2">
+                无
               </div>
             )}
           </div>
         </Card>
 
-        <Card>
-          <p className="text-xs uppercase tracking-[0.22em] text-[var(--text-secondary)]">Recovery Actions</p>
-          <h2 className="mt-2 text-2xl">恢复与下一步</h2>
-          <p className="mt-2 text-[var(--text-secondary)]">
-            这里把当前 run 的推荐动作收在一起。长期目标是让失败恢复、人工确认和重新生成都沿 workflow 语义自然发生，而不是依赖手工找按钮。
-          </p>
-
-          <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <div className="rounded-comfortable border border-border bg-parchment/60 p-4">
-              <p className="text-[var(--text-secondary)]">推荐动作</p>
-              <p className="mt-2 text-body">
-                {run.status === 'waiting_confirm'
-                  ? '回到编辑器处理人工确认'
-                  : isFailedRun && hasOtherActiveRun
-                    ? '项目已经有更新的活跃 run，优先查看当前活跃 run'
-                    : isFailedRun
-                    ? '优先判断是重试当前章节还是重跑整个项目'
-                    : isActiveRun
-                      ? '继续观察当前运行并在必要时清理卡住任务'
-                      : '回看产出结果并决定是否进入下一轮优化'}
-              </p>
-            </div>
-
-            <div className="rounded-comfortable border border-border bg-parchment/60 p-4">
-              <p className="text-[var(--text-secondary)]">当前风险</p>
-              <p className="mt-2 text-body">
-                {isFailedRun && hasOtherActiveRun
-                  ? '旧的失败 run 已不是当前主线，直接重试可能和当前任务冲突。'
-                  : isFailedRun
-                  ? '这次运行已经进入终态，若不处理，项目状态可能与用户预期脱节。'
-                  : run.status === 'waiting_confirm'
-                    ? '工作流暂停中，系统不会自动继续。'
-                    : isActiveRun
-                      ? '如果任务长时间不动，可能需要清理卡住队列。'
-                      : '暂无明显恢复风险。'}
-              </p>
-            </div>
-
-            <div className="rounded-comfortable border border-border bg-parchment/60 p-4">
-              <p className="text-[var(--text-secondary)]">相关章节</p>
-              <p className="mt-2 text-body">{hasRelatedChapter ? `第 ${run.current_chapter} 章` : '项目级运行'}</p>
-            </div>
-
-            <div className="rounded-comfortable border border-border bg-parchment/60 p-4">
-              <p className="text-[var(--text-secondary)]">当前入口</p>
-              <p className="mt-2 text-body">
-                {run.status === 'waiting_confirm'
-                  ? '编辑器确认面板'
-                  : isFailedRun
-                    ? '恢复操作面板'
-                    : '运行详情回看'}
-              </p>
-            </div>
-          </div>
+        <Card className="p-6">
+          <p className="font-medium text-xs uppercase tracking-[0.24em] text-[var(--text-secondary)]">Recovery Actions</p>
+          <h2 className="mt-2 text-2xl font-medium">恢复与下一步</h2>
 
           <div className="mt-5 flex flex-wrap gap-3">
             {run.status === 'waiting_confirm' && hasRelatedChapter && (
               <Link to={`/projects/${projectId}/write/${run.current_chapter}`}>
-                <Button variant="primary">处理当前确认</Button>
+                <Button variant="primary">处理确认</Button>
               </Link>
             )}
 
             {run.status === 'waiting_confirm' && run.current_chapter === 0 && (
               <Link to={`/projects/${projectId}/overview`}>
-                <Button variant="primary">回到项目总控台</Button>
+                <Button variant="primary">返回概览</Button>
               </Link>
             )}
 
@@ -525,7 +448,7 @@ export const WorkflowRunDetail: React.FC = () => {
                 onClick={() => regenerateChapterMutation.mutate(run.current_chapter!)}
                 disabled={regenerateChapterMutation.isPending || hasOtherActiveRun}
               >
-                {regenerateChapterMutation.isPending ? '提交中...' : '重生成当前章节'}
+                {regenerateChapterMutation.isPending ? '提交中...' : '重生成章节'}
               </Button>
             )}
 
@@ -535,7 +458,7 @@ export const WorkflowRunDetail: React.FC = () => {
                 onClick={() => restartProjectMutation.mutate(true)}
                 disabled={restartProjectMutation.isPending || hasOtherActiveRun}
               >
-                {restartProjectMutation.isPending ? '提交中...' : '重新生成整个项目'}
+                {restartProjectMutation.isPending ? '提交中...' : '重新生成项目'}
               </Button>
             )}
 
@@ -551,24 +474,21 @@ export const WorkflowRunDetail: React.FC = () => {
 
             {hasOtherActiveRun && currentActiveRunId && (
               <Link to={`/projects/${projectId}/workflows/${currentActiveRunId}`}>
-                <Button variant="secondary">查看当前活跃 Run</Button>
+                <Button variant="secondary">查看活跃 Run</Button>
               </Link>
             )}
 
             {!isActiveRun && !isFailedRun && (
               <Link to={`/projects/${projectId}/chapters`}>
-                <Button variant="secondary">回到章节与运行记录</Button>
+                <Button variant="secondary">返回章节</Button>
               </Link>
             )}
           </div>
         </Card>
 
-        <Card>
-          <p className="text-xs uppercase tracking-[0.22em] text-[var(--text-secondary)]">Artifacts</p>
-          <h2 className="mt-2 text-2xl">运行产物</h2>
-          <p className="mt-2 text-[var(--text-secondary)]">
-            这里展示本次 run 真正沉淀下来的 artifacts。长期来看，这些内容会成为回放、对比和复用的核心资产。
-          </p>
+        <Card className="p-6">
+          <p className="font-medium text-xs uppercase tracking-[0.24em] text-[var(--text-secondary)]">Artifacts</p>
+          <h2 className="mt-2 text-2xl font-medium">运行产物</h2>
 
           <div className="mt-5 space-y-4">
             {runArtifacts?.items.map(artifact => {
@@ -579,20 +499,19 @@ export const WorkflowRunDetail: React.FC = () => {
                   <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                     <div>
                       <div className="flex flex-wrap items-center gap-3">
-                        <h3 className="text-lg text-inkwell">{getArtifactDisplayName(artifact.artifact_type)}</h3>
+                        <h3 className="text-lg font-medium">{getArtifactDisplayName(artifact.artifact_type)}</h3>
                         <Badge variant="secondary">{artifact.scope}</Badge>
-                        {artifact.is_current && <Badge variant="agent">current</Badge>}
+                        {artifact.is_current && <Badge variant="success">current</Badge>}
                       </div>
                       <div className="mt-3 flex flex-wrap gap-3 text-sm text-[var(--text-secondary)]">
-                        <span>版本 v{artifact.version_number}</span>
-                        <span>来源 {artifact.source}</span>
+                        <span>v{artifact.version_number}</span>
+                        <span>{artifact.source}</span>
                         <span>{getArtifactScopeLabel(artifact)}</span>
                         <span>{formatDateTime(artifact.created_at)}</span>
                       </div>
                     </div>
                     <div className="text-sm text-[var(--text-secondary)] md:text-right">
-                      <div>Artifact #{artifact.id}</div>
-                      <div>Run #{artifact.workflow_run_id ?? '-'}</div>
+                      <div>#{artifact.id}</div>
                       <div className="mt-3">
                         <Link to={`/projects/${projectId}/artifacts/${artifact.id}`}>
                           <Button variant="tertiary" size="sm">查看详情</Button>
@@ -603,8 +522,8 @@ export const WorkflowRunDetail: React.FC = () => {
 
                   {preview && (
                     <div className="mt-4 rounded-standard border border-border bg-white/70 p-3">
-                      <p className="text-xs uppercase tracking-[0.18em] text-[var(--text-secondary)]">Preview</p>
-                      <pre className="mt-2 overflow-x-auto whitespace-pre-wrap text-xs text-body">{preview}</pre>
+                      <p className="font-medium text-xs uppercase tracking-[0.2em] text-[var(--text-secondary)]">Preview</p>
+                      <pre className="mt-2 overflow-x-auto whitespace-pre-wrap text-xs">{preview}</pre>
                     </div>
                   )}
                 </div>
@@ -612,19 +531,16 @@ export const WorkflowRunDetail: React.FC = () => {
             })}
 
             {!runArtifacts?.items.length && (
-              <div className="rounded-standard border border-dashed border-border p-4 text-[var(--text-secondary)]">
-                当前运行还没有可展示的 artifacts。
+              <div className="rounded-standard border border-dashed border-border p-4 text-center text-[var(--text-secondary)]">
+                无
               </div>
             )}
           </div>
         </Card>
 
-        <Card>
-          <p className="text-xs uppercase tracking-[0.22em] text-[var(--text-secondary)]">Step Timeline</p>
-          <h2 className="mt-2 text-2xl">步骤时间线</h2>
-          <p className="mt-2 text-[var(--text-secondary)]">
-            这部分是后续做回放、失败归因、步骤级指标和 artifact 追踪的基础。
-          </p>
+        <Card className="p-6">
+          <p className="font-medium text-xs uppercase tracking-[0.24em] text-[var(--text-secondary)]">Step Timeline</p>
+          <h2 className="mt-2 text-2xl font-medium">步骤时间线</h2>
 
           <div className="mt-5 space-y-4">
             {run.steps?.map((step, index) => {
@@ -637,7 +553,7 @@ export const WorkflowRunDetail: React.FC = () => {
                     <div>
                       <div className="flex flex-wrap items-center gap-3">
                         <span className="text-sm text-[var(--text-secondary)]">0{index + 1}</span>
-                        <h3 className="text-lg text-inkwell">{step.step_key}</h3>
+                        <h3 className="text-lg font-medium">{step.step_key}</h3>
                         <Badge variant={getStepStatusColor(step.status)}>
                           {getRunStatusText(step.status)}
                         </Badge>
@@ -645,10 +561,10 @@ export const WorkflowRunDetail: React.FC = () => {
                       </div>
 
                       <div className="mt-3 flex flex-wrap gap-3 text-sm text-[var(--text-secondary)]">
-                        <span>尝试次数 {step.attempt}</span>
+                        <span>尝试 {step.attempt}</span>
                         <span>章节 {chapterNumber ?? '项目级'}</span>
-                        <span>开始于 {formatDateTime(step.started_at)}</span>
-                        <span>结束于 {formatDateTime(step.completed_at)}</span>
+                        <span>{formatDateTime(step.started_at)}</span>
+                        <span>{formatDateTime(step.completed_at)}</span>
                       </div>
                     </div>
 
@@ -665,30 +581,30 @@ export const WorkflowRunDetail: React.FC = () => {
                         <p className="text-[var(--text-secondary)]">输入 Artifact</p>
                         {step.input_artifact ? (
                           <div className="mt-1">
-                            <p className="text-body">
+                            <p className="font-medium">
                               {getArtifactDisplayName(step.input_artifact.artifact_type)} v{step.input_artifact.version_number}
                             </p>
                             <Link to={`/projects/${projectId}/artifacts/${step.input_artifact.id}`}>
-                              <Button variant="tertiary" size="sm">查看输入产物</Button>
+                              <Button variant="tertiary" size="sm">查看</Button>
                             </Link>
                           </div>
                         ) : (
-                          <p className="mt-1 text-body">暂无</p>
+                          <p className="mt-1 font-medium">-</p>
                         )}
                       </div>
                       <div className="rounded-standard border border-border bg-white/70 p-3 text-sm">
                         <p className="text-[var(--text-secondary)]">输出 Artifact</p>
                         {step.output_artifact ? (
                           <div className="mt-1">
-                            <p className="text-body">
+                            <p className="font-medium">
                               {getArtifactDisplayName(step.output_artifact.artifact_type)} v{step.output_artifact.version_number}
                             </p>
                             <Link to={`/projects/${projectId}/artifacts/${step.output_artifact.id}`}>
-                              <Button variant="tertiary" size="sm">查看输出产物</Button>
+                              <Button variant="tertiary" size="sm">查看</Button>
                             </Link>
                           </div>
                         ) : (
-                          <p className="mt-1 text-body">暂无</p>
+                          <p className="mt-1 font-medium">-</p>
                         )}
                       </div>
                     </div>
@@ -696,12 +612,12 @@ export const WorkflowRunDetail: React.FC = () => {
 
                   {contractSummary && typeof contractSummary === 'object' && !Array.isArray(contractSummary) && (
                     <div className="mt-4 rounded-standard border border-sage/15 bg-sage/5 p-3">
-                      <p className="text-xs uppercase tracking-[0.18em] text-[var(--text-secondary)]">Agent Contract</p>
+                      <p className="font-medium text-xs uppercase tracking-[0.2em] text-[var(--text-secondary)]">Agent Contract</p>
                       <div className="mt-2 grid gap-2 text-sm md:grid-cols-2">
                         {Object.entries(contractSummary).map(([key, value]) => (
                           <div key={key}>
                             <span className="text-[var(--text-secondary)]">{key}：</span>
-                            <span className="text-body">{typeof value === 'string' ? value : renderJsonValue(value as JsonValue)}</span>
+                            <span className="font-medium">{typeof value === 'string' ? value : renderJsonValue(value as JsonValue)}</span>
                           </div>
                         ))}
                       </div>
@@ -712,16 +628,16 @@ export const WorkflowRunDetail: React.FC = () => {
             })}
 
             {!run.steps?.length && (
-              <div className="rounded-standard border border-dashed border-border p-4 text-[var(--text-secondary)]">
-                当前运行还没有沉淀步骤记录。
+              <div className="rounded-standard border border-dashed border-border p-4 text-center text-[var(--text-secondary)]">
+                无
               </div>
             )}
           </div>
         </Card>
 
-        <Card>
-          <p className="text-xs uppercase tracking-[0.22em] text-[var(--text-secondary)]">Feedback Trace</p>
-          <h2 className="mt-2 text-2xl">反馈记录</h2>
+        <Card className="p-6">
+          <p className="font-medium text-xs uppercase tracking-[0.24em] text-[var(--text-secondary)]">Feedback Trace</p>
+          <h2 className="mt-2 text-2xl font-medium">反馈记录</h2>
 
           <div className="mt-5 space-y-4">
             {run.feedback_items?.map(item => (
@@ -735,7 +651,7 @@ export const WorkflowRunDetail: React.FC = () => {
                         {item.status}
                       </Badge>
                     </div>
-                    <p className="mt-3 whitespace-pre-line text-body">{item.content}</p>
+                    <p className="mt-3 whitespace-pre-line">{item.content}</p>
                   </div>
                   <div className="text-sm text-[var(--text-secondary)]">
                     <div>动作 {item.action_type}</div>
@@ -747,8 +663,8 @@ export const WorkflowRunDetail: React.FC = () => {
             ))}
 
             {!run.feedback_items?.length && (
-              <div className="rounded-standard border border-dashed border-border p-4 text-[var(--text-secondary)]">
-                当前运行没有结构化反馈记录。
+              <div className="rounded-standard border border-dashed border-border p-4 text-center text-[var(--text-secondary)]">
+                无
               </div>
             )}
           </div>

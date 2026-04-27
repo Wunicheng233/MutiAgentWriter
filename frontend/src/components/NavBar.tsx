@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/useAuthStore'
-import { Button } from './Button'
+import { Button } from './v2'
 import { logout } from '../utils/endpoints'
 
 export const NavBar: React.FC = () => {
@@ -20,7 +20,7 @@ export const NavBar: React.FC = () => {
     <nav className="sticky top-0 z-50 bg-[var(--bg-primary)] bg-opacity-90 backdrop-blur-lg border-b border-[var(--border-default)]">
       <div className="max-w-6xl mx-auto px-6 h-[64px] flex items-center justify-between">
         <Link to="/dashboard" className="flex items-center gap-2">
-          <span className="font-serif text-2xl text-[var(--text-primary)] font-normal">
+          <span className="font-medium text-sm uppercase tracking-[0.24em] text-[var(--text-secondary)]">
             MultiAgentWriter
           </span>
         </Link>

@@ -109,96 +109,90 @@ export const ArtifactDetail: React.FC = () => {
   return (
     
       <div className="mx-auto max-w-content space-y-6">
-        <Card className="border-sage/20 bg-[linear-gradient(135deg,rgba(91,127,110,0.12),rgba(255,255,255,0.94),rgba(163,139,90,0.08))]">
-          <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
-            <div className="max-w-3xl">
+        <Card className="border-sage/20 bg-[linear-gradient(135deg,rgba(91,127,110,0.12),rgba(255,255,255,0.94),rgba(163,139,90,0.08))] p-6">
+          <div className="flex flex-col gap-6 xl:flex-row xl:items-center xl:justify-between">
+            <div>
               <div className="mb-4 flex flex-wrap items-center gap-3">
                 <Link to={`/projects/${projectId}/overview`}>
-                  <Button variant="secondary">返回项目总控台</Button>
+                  <Button variant="secondary" size="sm">返回概览</Button>
                 </Link>
                 {artifact.workflow_run_id && (
                   <Link to={`/projects/${projectId}/workflows/${artifact.workflow_run_id}`}>
-                    <Button variant="secondary">查看所属 Run</Button>
+                    <Button variant="secondary" size="sm">查看 Run</Button>
                   </Link>
                 )}
-                {artifact.chapter_index && (
+                {artifact.chapter_index !== undefined && artifact.chapter_index >= 0 && (
                   <Link to={`/projects/${projectId}/write/${artifact.chapter_index}`}>
-                    <Button variant="secondary">打开相关章节</Button>
+                    <Button variant="secondary" size="sm">相关章节</Button>
                   </Link>
                 )}
                 <Badge variant="secondary">{artifact.scope}</Badge>
-                {artifact.is_current && <Badge variant="agent">current</Badge>}
+                {artifact.is_current && <Badge variant="success">current</Badge>}
               </div>
 
-              <h1 className="text-3xl md:text-4xl">{getArtifactDisplayName(artifact.artifact_type)}</h1>
-              <p className="mt-3 text-body">
-                这是 artifact #{artifact.id} 的完整详情页，承接单个产物的内容、版本链和对比入口。
-              </p>
-              {project && <p className="mt-3 text-[var(--text-secondary)]">{project.name}</p>}
+              <h1 className="text-3xl md:text-4xl font-medium">{getArtifactDisplayName(artifact.artifact_type)}</h1>
+              {project && <p className="mt-2 text-[var(--text-secondary)]">{project.name}</p>}
             </div>
 
-            <div className="grid w-full max-w-2xl grid-cols-2 gap-3 text-sm md:grid-cols-4">
+            <div className="grid w-full max-w-2xl grid-cols-2 gap-3 md:grid-cols-4">
               <div className="rounded-standard border border-border bg-parchment/70 p-3">
-                <p className="text-[var(--text-secondary)]">版本</p>
-                <p className="mt-1 text-body">v{artifact.version_number}</p>
+                <p className="text-sm text-[var(--text-secondary)]">版本</p>
+                <p className="mt-1 font-medium">v{artifact.version_number}</p>
               </div>
               <div className="rounded-standard border border-border bg-parchment/70 p-3">
-                <p className="text-[var(--text-secondary)]">范围</p>
-                <p className="mt-1 text-body">{getArtifactScopeLabel(artifact)}</p>
+                <p className="text-sm text-[var(--text-secondary)]">范围</p>
+                <p className="mt-1 font-medium">{getArtifactScopeLabel(artifact)}</p>
               </div>
               <div className="rounded-standard border border-border bg-parchment/70 p-3">
-                <p className="text-[var(--text-secondary)]">版本链长度</p>
-                <p className="mt-1 text-body">{versions.length}</p>
+                <p className="text-sm text-[var(--text-secondary)]">版本链</p>
+                <p className="mt-1 font-medium">{versions.length}</p>
               </div>
               <div className="rounded-standard border border-border bg-parchment/70 p-3">
-                <p className="text-[var(--text-secondary)]">创建时间</p>
-                <p className="mt-1 text-body">{formatDateTime(artifact.created_at)}</p>
+                <p className="text-sm text-[var(--text-secondary)]">创建时间</p>
+                <p className="mt-1 font-medium">{formatDateTime(artifact.created_at)}</p>
               </div>
             </div>
           </div>
         </Card>
 
-        <div className="grid gap-6 xl:grid-cols-[0.88fr_1.12fr]">
-          <Card>
-            <p className="text-xs uppercase tracking-[0.22em] text-[var(--text-secondary)]">Artifact Summary</p>
-            <h2 className="mt-2 text-2xl">产物摘要</h2>
+        <div className="grid gap-6 xl:grid-cols-2">
+          <Card className="p-6">
+            <p className="font-medium text-xs uppercase tracking-[0.24em] text-[var(--text-secondary)]">Artifact Summary</p>
+            <h2 className="mt-2 text-2xl font-medium">产物摘要</h2>
 
             <div className="mt-5 grid gap-3 md:grid-cols-2">
               <div className="rounded-standard border border-border bg-parchment/60 p-4">
-                <p className="text-[var(--text-secondary)]">类型</p>
-                <p className="mt-1 text-body">{artifact.artifact_type}</p>
+                <p className="text-sm text-[var(--text-secondary)]">类型</p>
+                <p className="mt-1 font-medium">{artifact.artifact_type}</p>
               </div>
               <div className="rounded-standard border border-border bg-parchment/60 p-4">
-                <p className="text-[var(--text-secondary)]">版本链键</p>
-                <p className="mt-1 break-words text-body">{getArtifactVersionKey(artifact)}</p>
+                <p className="text-sm text-[var(--text-secondary)]">版本链键</p>
+                <p className="mt-1 break-words font-medium">{getArtifactVersionKey(artifact)}</p>
               </div>
               <div className="rounded-standard border border-border bg-parchment/60 p-4">
-                <p className="text-[var(--text-secondary)]">来源</p>
-                <p className="mt-1 text-body">{artifact.source}</p>
+                <p className="text-sm text-[var(--text-secondary)]">来源</p>
+                <p className="mt-1 font-medium">{artifact.source}</p>
               </div>
               <div className="rounded-standard border border-border bg-parchment/60 p-4">
-                <p className="text-[var(--text-secondary)]">所属 Run</p>
-                <p className="mt-1 text-body">{artifact.workflow_run_id ?? '暂无'}</p>
+                <p className="text-sm text-[var(--text-secondary)]">所属 Run</p>
+                <p className="mt-1 font-medium">{artifact.workflow_run_id ?? '-'}</p>
               </div>
               <div className="rounded-standard border border-border bg-parchment/60 p-4">
-                <p className="text-[var(--text-secondary)]">字符数</p>
-                <p className="mt-1 text-body">{artifactStats.characters}</p>
+                <p className="text-sm text-[var(--text-secondary)]">字符数</p>
+                <p className="mt-1 font-medium">{artifactStats.characters}</p>
               </div>
               <div className="rounded-standard border border-border bg-parchment/60 p-4">
-                <p className="text-[var(--text-secondary)]">行数 / 段落</p>
-                <p className="mt-1 text-body">
+                <p className="text-sm text-[var(--text-secondary)]">行数 / 段落</p>
+                <p className="mt-1 font-medium">
                   {artifactStats.lines} / {artifactStats.paragraphs}
                 </p>
               </div>
             </div>
           </Card>
 
-          <Card>
-            <p className="text-xs uppercase tracking-[0.22em] text-[var(--text-secondary)]">Version Chain</p>
-            <h2 className="mt-2 text-2xl">版本链</h2>
-            <p className="mt-2 text-[var(--text-secondary)]">
-              这里按同类 artifact 的版本链展示历史。它是后面做回放、审计和自动评测对照的基础。
-            </p>
+          <Card className="p-6">
+            <p className="font-medium text-xs uppercase tracking-[0.24em] text-[var(--text-secondary)]">Version Chain</p>
+            <h2 className="mt-2 text-2xl font-medium">版本链</h2>
 
             <div className="mt-5 space-y-3">
               {versions.map(version => {
@@ -216,23 +210,23 @@ export const ArtifactDetail: React.FC = () => {
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="font-medium text-inkwell">v{version.version_number}</span>
-                          {version.is_current && <Badge variant="agent">current</Badge>}
+                          {version.is_current && <Badge variant="success">current</Badge>}
                           {isActive && <Badge variant="status">当前查看</Badge>}
                           {compareTarget && <Badge variant="secondary">对照版本</Badge>}
                         </div>
                         <div className="mt-2 text-sm text-[var(--text-secondary)]">
-                          Artifact #{version.id} · {formatDateTime(version.created_at)}
+                          #{version.id} · {formatDateTime(version.created_at)}
                         </div>
                       </div>
                       <div className="flex flex-wrap gap-2">
                         {!isActive && (
                           <Link to={`/projects/${projectId}/artifacts/${version.id}`}>
-                            <Button variant="secondary" size="sm">查看该版本</Button>
+                            <Button variant="secondary" size="sm">查看</Button>
                           </Link>
                         )}
                         {!isActive && (
                           <Link to={`/projects/${projectId}/artifacts/${artifact.id}?compare=${version.id}`}>
-                            <Button variant="tertiary" size="sm">设为对照</Button>
+                            <Button variant="tertiary" size="sm">对照</Button>
                           </Link>
                         )}
                       </div>
@@ -242,39 +236,36 @@ export const ArtifactDetail: React.FC = () => {
               })}
 
               {!versions.length && (
-                <div className="rounded-standard border border-dashed border-border p-4 text-[var(--text-secondary)]">
-                  当前还没有可展示的版本链记录。
+                <div className="rounded-standard border border-dashed border-border p-4 text-center text-[var(--text-secondary)]">
+                  暂无
                 </div>
               )}
             </div>
           </Card>
         </div>
 
-        <Card>
-          <p className="text-xs uppercase tracking-[0.22em] text-[var(--text-secondary)]">Compare View</p>
-          <h2 className="mt-2 text-2xl">版本对照</h2>
-          <p className="mt-2 text-[var(--text-secondary)]">
-            默认会选择上一版作为对照，这样用户可以快速看出当前产物和历史版本之间的变化规模。
-          </p>
+        <Card className="p-6">
+          <p className="font-medium text-xs uppercase tracking-[0.24em] text-[var(--text-secondary)]">Compare View</p>
+          <h2 className="mt-2 text-2xl font-medium">版本对照</h2>
 
           {compareArtifact ? (
             <>
               <div className="mt-5 grid gap-3 md:grid-cols-4">
                 <div className="rounded-standard border border-border bg-parchment/60 p-4">
-                  <p className="text-[var(--text-secondary)]">当前版本</p>
-                  <p className="mt-1 text-body">v{artifact.version_number}</p>
+                  <p className="text-sm text-[var(--text-secondary)]">当前版本</p>
+                  <p className="mt-1 font-medium">v{artifact.version_number}</p>
                 </div>
                 <div className="rounded-standard border border-border bg-parchment/60 p-4">
-                  <p className="text-[var(--text-secondary)]">对照版本</p>
-                  <p className="mt-1 text-body">v{compareArtifact.version_number}</p>
+                  <p className="text-sm text-[var(--text-secondary)]">对照版本</p>
+                  <p className="mt-1 font-medium">v{compareArtifact.version_number}</p>
                 </div>
                 <div className="rounded-standard border border-border bg-parchment/60 p-4">
-                  <p className="text-[var(--text-secondary)]">改动行</p>
-                  <p className="mt-1 text-body">{compareSummary?.changedLines ?? 0}</p>
+                  <p className="text-sm text-[var(--text-secondary)]">改动行</p>
+                  <p className="mt-1 font-medium">{compareSummary?.changedLines ?? 0}</p>
                 </div>
                 <div className="rounded-standard border border-border bg-parchment/60 p-4">
-                  <p className="text-[var(--text-secondary)]">新增 / 删除</p>
-                  <p className="mt-1 text-body">
+                  <p className="text-sm text-[var(--text-secondary)]">新增 / 删除</p>
+                  <p className="mt-1 font-medium">
                     {compareSummary?.addedLines ?? 0} / {compareSummary?.removedLines ?? 0}
                   </p>
                 </div>
@@ -284,47 +275,47 @@ export const ArtifactDetail: React.FC = () => {
                 <div className="rounded-comfortable border border-border bg-parchment/50 p-4">
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <p className="text-xs uppercase tracking-[0.18em] text-[var(--text-secondary)]">Current</p>
-                      <h3 className="mt-2 text-lg">v{artifact.version_number}</h3>
+                      <p className="font-medium text-xs uppercase tracking-[0.2em] text-[var(--text-secondary)]">Current</p>
+                      <h3 className="mt-2 text-lg font-medium">v{artifact.version_number}</h3>
                     </div>
                     <p className="text-sm text-[var(--text-secondary)]">
                       {artifactStats.characters} chars / {artifactStats.lines} lines
                     </p>
                   </div>
-                  <pre className="mt-4 max-h-[36rem] overflow-auto whitespace-pre-wrap rounded-standard border border-border bg-white/70 p-4 text-sm text-body">
-                    {artifactContent || '当前产物没有可展示内容。'}
+                  <pre className="mt-4 max-h-[36rem] overflow-auto whitespace-pre-wrap rounded-standard border border-border bg-white/70 p-4 text-sm">
+                    {artifactContent || '无内容'}
                   </pre>
                 </div>
 
                 <div className="rounded-comfortable border border-border bg-parchment/50 p-4">
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <p className="text-xs uppercase tracking-[0.18em] text-[var(--text-secondary)]">Compared</p>
-                      <h3 className="mt-2 text-lg">v{compareArtifact.version_number}</h3>
+                      <p className="font-medium text-xs uppercase tracking-[0.2em] text-[var(--text-secondary)]">Compared</p>
+                      <h3 className="mt-2 text-lg font-medium">v{compareArtifact.version_number}</h3>
                     </div>
                     <p className="text-sm text-[var(--text-secondary)]">
                       {compareStats?.characters ?? 0} chars / {compareStats?.lines ?? 0} lines
                     </p>
                   </div>
-                  <pre className="mt-4 max-h-[36rem] overflow-auto whitespace-pre-wrap rounded-standard border border-border bg-white/70 p-4 text-sm text-body">
-                    {compareContent || '对照版本没有可展示内容。'}
+                  <pre className="mt-4 max-h-[36rem] overflow-auto whitespace-pre-wrap rounded-standard border border-border bg-white/70 p-4 text-sm">
+                    {compareContent || '无内容'}
                   </pre>
                 </div>
               </div>
             </>
           ) : (
-            <div className="mt-5 rounded-standard border border-dashed border-border p-4 text-[var(--text-secondary)]">
-              当前没有更早版本可用于对照，下面保留当前产物的完整内容。
+            <div className="mt-5 rounded-standard border border-dashed border-border p-4 text-center text-[var(--text-secondary)]">
+              无对照版本
             </div>
           )}
         </Card>
 
-        <Card>
-          <p className="text-xs uppercase tracking-[0.22em] text-[var(--text-secondary)]">Artifact Content</p>
-          <h2 className="mt-2 text-2xl">完整内容</h2>
+        <Card className="p-6">
+          <p className="font-medium text-xs uppercase tracking-[0.24em] text-[var(--text-secondary)]">Artifact Content</p>
+          <h2 className="mt-2 text-2xl font-medium">完整内容</h2>
 
-          <pre className="mt-5 max-h-[44rem] overflow-auto whitespace-pre-wrap rounded-comfortable border border-border bg-parchment/50 p-4 text-sm text-body">
-            {artifactContent || '当前产物没有保存可展示内容。'}
+          <pre className="mt-5 max-h-[44rem] overflow-auto whitespace-pre-wrap rounded-comfortable border border-border bg-parchment/50 p-4 text-sm">
+            {artifactContent || '无内容'}
           </pre>
         </Card>
       </div>

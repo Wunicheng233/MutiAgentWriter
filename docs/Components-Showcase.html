@@ -794,6 +794,238 @@
       border-top-color: var(--text-primary);
     }
 
+    /* ===== Slider 滑块 ===== */
+    .v2-slider {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .v2-slider-track {
+      flex: 1;
+      height: 6px;
+      background: var(--border-default);
+      border-radius: 3px;
+      position: relative;
+      cursor: pointer;
+    }
+    .v2-slider-fill {
+      height: 100%;
+      background: var(--accent-primary);
+      border-radius: 3px;
+    }
+    .v2-slider-thumb {
+      position: absolute;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: 16px;
+      height: 16px;
+      background: var(--accent-primary);
+      border-radius: 50%;
+      box-shadow: var(--shadow-sm);
+      cursor: grab;
+    }
+    .v2-slider-value {
+      min-width: 40px;
+      text-align: right;
+      font-size: 14px;
+      color: var(--text-primary);
+      font-weight: 500;
+    }
+
+    /* ===== Toast 消息提示 ===== */
+    .v2-toast-container {
+      position: fixed;
+      top: 24px;
+      right: 24px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .v2-toast {
+      padding: 14px 20px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-lg);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 280px;
+      animation: toastSlideIn 0.3s ease-out;
+    }
+    @keyframes toastSlideIn {
+      from { opacity: 0; transform: translateX(100px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+    .v2-toast-icon {
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .v2-toast-success .v2-toast-icon { color: var(--accent-primary); }
+    .v2-toast-warning .v2-toast-icon { color: var(--accent-gold); }
+    .v2-toast-error .v2-toast-icon { color: var(--accent-warm); }
+    .v2-toast-message {
+      flex: 1;
+      font-size: 14px;
+      color: var(--text-primary);
+    }
+    .v2-toast-close {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      padding: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ===== Table 表格 ===== */
+    .v2-table-wrapper {
+      width: 100%;
+      overflow-x: auto;
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-lg);
+    }
+    .v2-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .v2-table th,
+    .v2-table td {
+      padding: 12px 16px;
+      text-align: left;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .v2-table th {
+      background: var(--bg-tertiary);
+      font-weight: 500;
+      color: var(--text-secondary);
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .v2-table td {
+      font-size: 14px;
+      color: var(--text-body);
+    }
+    .v2-table tbody tr:hover {
+      background: var(--bg-tertiary);
+    }
+    .v2-table tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    /* ===== Pagination 分页 ===== */
+    .v2-pagination {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .v2-pagination-btn {
+      min-width: 36px;
+      height: 36px;
+      padding: 0 10px;
+      border: 1px solid var(--border-default);
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all var(--duration-fast) var(--ease-out);
+    }
+    .v2-pagination-btn:hover {
+      border-color: var(--accent-primary);
+    }
+    .v2-pagination-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    .v2-pagination-btn.v2-pagination-active {
+      background: var(--accent-primary);
+      border-color: var(--accent-primary);
+      color: white;
+    }
+    .v2-pagination-ellipsis {
+      padding: 0 8px;
+      color: var(--text-secondary);
+    }
+
+    /* ===== Empty 空状态 ===== */
+    .v2-empty {
+      text-align: center;
+      padding: 60px 24px;
+    }
+    .v2-empty-icon {
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 16px;
+      color: var(--text-muted);
+      opacity: 0.5;
+    }
+    .v2-empty-title {
+      font-size: 16px;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+    }
+    .v2-empty-desc {
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+
+    /* ===== AgentCard 智能体卡片 ===== */
+    .v2-agent-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-xl);
+      padding: 20px;
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      transition: all var(--duration-normal) var(--ease-out);
+    }
+    .v2-agent-card:hover {
+      box-shadow: var(--shadow-md);
+      border-color: var(--border-strong);
+    }
+    .v2-agent-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: var(--radius-lg);
+      background: linear-gradient(135deg, var(--accent-primary), var(--accent-warm));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+    .v2-agent-info { flex: 1; min-width: 0; }
+    .v2-agent-name {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 4px;
+    }
+    .v2-agent-role {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+    }
+    .v2-agent-desc {
+      font-size: 14px;
+      color: var(--text-body);
+      line-height: 1.6;
+    }
+
     /* ===== Popover 弹出框 ===== */
     .v2-popover-wrapper {
       position: relative;
@@ -892,7 +1124,7 @@
   <div class="container">
     <header>
       <h1>🧩 v2 组件库完整展示</h1>
-      <p class="subtitle">StoryForge AI 所有 18 个组件 — 点击交互均可交互体验</p>
+      <p class="subtitle">StoryForge AI 所有 24 个组件 — 点击交互均可交互体验</p>
 
       <div class="theme-switcher">
         <button class="theme-btn active" onclick="setTheme('warm-parchment')">🌿 温暖羊皮纸</button>
@@ -1380,8 +1612,132 @@
       </div>
     </div>
 
+    <!-- ========== 19. Slider 滑块 ========== -->
+    <section class="component-section">
+      <h2>19. Slider 滑块</h2>
+      <p class="component-desc">拖拽调整数值，支持各种范围设置</p>
+      <div class="component-showcase" style="flex-direction: column;">
+        <div class="demo-col" style="max-width: 400px;">
+          <div class="demo-label">风格融入强度</div>
+          <div class="v2-slider">
+            <div class="v2-slider-track" onclick="moveSlider(this, event)">
+              <div class="v2-slider-fill" style="width: 65%;"></div>
+              <div class="v2-slider-thumb" style="left: 65%;"></div>
+            </div>
+            <span class="v2-slider-value">65%</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 20. Toast 消息提示 ========== -->
+    <section class="component-section">
+      <h2>20. Toast 消息提示</h2>
+      <p class="component-desc">右上角弹出消息，自动消失</p>
+      <div class="component-showcase">
+        <button class="v2-btn v2-btn-primary" onclick="showToast('success', '操作成功！项目已保存')">成功消息</button>
+        <button class="v2-btn v2-btn-primary" onclick="showToast('warning', '请注意：此操作不可撤销')">警告消息</button>
+        <button class="v2-btn v2-btn-danger" onclick="showToast('error', '操作失败，请稍后重试')">错误消息</button>
+      </div>
+    </section>
+
+    <!-- ========== 21. Table 表格 ========== -->
+    <section class="component-section">
+      <h2>21. Table 表格</h2>
+      <p class="component-desc">简洁的数据展示容器</p>
+      <div class="v2-table-wrapper">
+        <table class="v2-table">
+          <thead>
+            <tr>
+              <th>项目名称</th>
+              <th>状态</th>
+              <th>进度</th>
+              <th>更新时间</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>《三体：宇宙穿越》</strong></td>
+              <td><span class="v2-badge v2-badge-primary">创作中</span></td>
+              <td>75%</td>
+              <td>2024-01-15</td>
+            </tr>
+            <tr>
+              <td><strong>《深夜书店》</strong></td>
+              <td><span class="v2-badge v2-badge-success">已完成</span></td>
+              <td>100%</td>
+              <td>2024-01-10</td>
+            </tr>
+            <tr>
+              <td><strong>《东方快车谋杀案》</strong></td>
+              <td><span class="v2-badge v2-badge-warning">审核中</span></td>
+              <td>45%</td>
+              <td>2024-01-12</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ========== 22. Pagination 分页 ========== -->
+    <section class="component-section">
+      <h2>22. Pagination 分页</h2>
+      <p class="component-desc">数据分页浏览</p>
+      <div class="component-showcase">
+        <div class="v2-pagination">
+          <button class="v2-pagination-btn" disabled>‹</button>
+          <button class="v2-pagination-btn v2-pagination-active">1</button>
+          <button class="v2-pagination-btn">2</button>
+          <button class="v2-pagination-btn">3</button>
+          <span class="v2-pagination-ellipsis">⋯</span>
+          <button class="v2-pagination-btn">8</button>
+          <button class="v2-pagination-btn">›</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 23. Empty 空状态 ========== -->
+    <section class="component-section">
+      <h2>23. Empty 空状态</h2>
+      <p class="component-desc">无数据时的友好提示</p>
+      <div class="component-showcase">
+        <div class="v2-empty" style="flex: 1;">
+          <svg class="v2-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M9 12h6M12 9v6M19 11v3a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2Z"/>
+            <path d="M3 7h18M5 7V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v2"/>
+          </svg>
+          <div class="v2-empty-title">暂无项目</div>
+          <div class="v2-empty-desc">创建你的第一个写作项目，开始创作之旅</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 24. AgentCard 智能体卡片 ========== -->
+    <section class="component-section">
+      <h2>24. AgentCard 智能体卡片</h2>
+      <p class="component-desc">展示智能体角色信息</p>
+      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px;">
+        <div class="v2-agent-card">
+          <div class="v2-agent-avatar">📝</div>
+          <div class="v2-agent-info">
+            <div class="v2-agent-name">策划大师</div>
+            <div class="v2-agent-role">全局策划 · 世界观构建</div>
+            <div class="v2-agent-desc">负责整体大纲规划、人设设计、世界观构建，确保故事逻辑严谨。</div>
+          </div>
+        </div>
+        <div class="v2-agent-card">
+          <div class="v2-agent-avatar">✍️</div>
+          <div class="v2-agent-info">
+            <div class="v2-agent-name">文豪作家</div>
+            <div class="v2-agent-role">章节创作 · 文笔润色</div>
+            <div class="v2-agent-desc">负责具体章节内容创作，提供优美的文笔和生动的描写，让故事栩栩如生。</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <footer style="text-align: center; padding: 48px 24px 24px; color: var(--text-muted); font-size: 14px; border-top: 1px solid var(--border-subtle); margin-top: 64px;">
-      <p>StoryForge AI v2 Component Library — 共 18 个组件</p>
+      <p>StoryForge AI v2 Component Library — 共 24 个组件</p>
       <p style="margin-top: 8px; font-size: 12px;">极简而高级，每一个像素都有理由</p>
     </footer>
   </div>
@@ -1458,6 +1814,53 @@
         select.querySelector('.v2-select-content').style.display = 'none';
       });
     });
+
+    // Slider 滑块
+    function moveSlider(track, event) {
+      const rect = track.getBoundingClientRect();
+      const percent = Math.max(0, Math.min(100, ((event.clientX - rect.left) / rect.width) * 100));
+      const fill = track.querySelector('.v2-slider-fill');
+      const thumb = track.querySelector('.v2-slider-thumb');
+      const value = track.parentElement.querySelector('.v2-slider-value');
+      fill.style.width = percent + '%';
+      thumb.style.left = percent + '%';
+      value.textContent = Math.round(percent) + '%';
+    }
+
+    // Toast 消息提示
+    let toastContainer = null;
+    function showToast(type, message) {
+      if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.className = 'v2-toast-container';
+        document.body.appendChild(toastContainer);
+      }
+
+      const toast = document.createElement('div');
+      toast.className = 'v2-toast v2-toast-' + type;
+
+      const icons = {
+        success: '✓',
+        warning: '⚠',
+        error: '✕'
+      };
+
+      toast.innerHTML = `
+        <span class="v2-toast-icon">${icons[type]}</span>
+        <span class="v2-toast-message">${message}</span>
+        <button class="v2-toast-close" onclick="this.parentElement.remove()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      `;
+
+      toastContainer.appendChild(toast);
+
+      setTimeout(() => {
+        if (toast.parentElement) toast.remove();
+      }, 4000);
+    }
   </script>
 </body>
 </html>

@@ -1,6 +1,5 @@
 import React from 'react'
-import { ProgressBar } from './ProgressBar'
-import { Badge } from './Badge'
+import { Progress, Badge } from './v2'
 
 interface QualityDimension {
   name: string
@@ -66,10 +65,12 @@ export const QualityWidget: React.FC<QualityWidgetProps> = ({
 
       {hasData ? (
         <>
-          <ProgressBar
-            progress={overallScore * 10}
-            message={`总体质量 ${overallScore.toFixed(1)}/10`}
-          />
+          <div className="space-y-2">
+            <Progress value={overallScore * 10} />
+            <p className="text-sm text-[var(--text-secondary)]">
+              总体质量 {overallScore.toFixed(1)}/10
+            </p>
+          </div>
 
           {showDetails && dimensions.length > 0 && (
             <div className="mt-5 space-y-3">

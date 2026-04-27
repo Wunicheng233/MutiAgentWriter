@@ -61,10 +61,15 @@ export const DropdownMenuTrigger: React.FC<DropdownMenuTriggerProps> = ({ childr
 
   const { open, setOpen, triggerRef } = context
 
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    setOpen(!open)
+  }
+
   return (
     <div
       ref={triggerRef}
-      onClick={() => setOpen(!open)}
+      onClick={handleClick}
       className="inline-block"
       aria-expanded={open}
       aria-haspopup="menu"
@@ -123,6 +128,7 @@ export const DropdownMenuContent: React.FC<DropdownMenuContentProps> = ({
       ref={contentRef}
       role="menu"
       onKeyDown={handleKeyDown}
+      onClick={e => e.stopPropagation()}
       className={`absolute z-50 min-w-[160px] py-1 bg-[var(--bg-secondary)] border border-[var(--border-default)] rounded-lg shadow-lg top-full mt-1 transition-all duration-150 ease-out ${alignClasses[align]} ${
         open ? 'translate-y-0 opacity-100' : '-translate-y-2 opacity-0 pointer-events-none'
       } ${className}`.trim()}
@@ -155,7 +161,8 @@ export const DropdownMenuItem: React.FC<DropdownMenuItemProps> = ({
 
   const { setOpen } = context
 
-  const handleClick = () => {
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
     if (!disabled) {
       onSelect?.()
       if (closeOnSelect) {

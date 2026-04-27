@@ -3,7 +3,9 @@
 多智能体协作小说创作系统
 
 <p align="center">
-  <a href="https://htmlpreview.github.io/?https://github.com/yourusername/storyforge/blob/main/docs/homepage.html"><strong>→ 查看交互式展示页</strong></a>
+  <a href="https://htmlpreview.github.io/?https://github.com/yourusername/storyforge/blob/main/docs/StoryForge-Showcase.html"><strong>→ 查看交互式展示页</strong></a>
+  &nbsp;|&nbsp;
+  <a href="https://htmlpreview.github.io/?https://github.com/yourusername/storyforge/blob/main/docs/Components-Showcase.html"><strong>🧩 v2 组件库展示</strong></a>
 </p>
 
 ---

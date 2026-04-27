@@ -131,11 +131,12 @@ describe('ProjectOutline - 大纲设定页面', () => {
     })
   })
 
-  test('应该显示 Skill 配置部分', async () => {
+  test('应该显示 Skill 配置部分和管理按钮', async () => {
     renderWithProviders(<ProjectOutline />)
 
     await waitFor(() => {
-      expect(screen.getByTestId('skill-selector')).toBeInTheDocument()
+      expect(screen.getByText(/创作 Skill/i)).toBeInTheDocument()
+      expect(screen.getByText(/管理 Skill/i)).toBeInTheDocument()
     })
   })
 

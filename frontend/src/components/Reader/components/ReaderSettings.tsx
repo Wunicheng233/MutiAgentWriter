@@ -2,8 +2,7 @@ import React from 'react';
 import { useReaderStore } from '../stores/readerStore';
 import { useReaderSettings, fontSizeMap, lineHeightMap, marginMap } from '../hooks/useReaderSettings';
 import type { ReaderTheme, ReaderFont, ReaderDisplayMode } from '../types';
-import { Button } from '../../../components/Button';
-import Card from '../../../components/Card';
+import { Button, Card } from '../../../components/v2';
 
 const themeOptions: { value: ReaderTheme; label: string; bg: string; text: string }[] = [
   { value: 'parchment', label: '羊皮纸', bg: '#faf7f2', text: '#3a2c1f' },

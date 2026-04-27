@@ -6,11 +6,7 @@ import React from 'react'
 import { ToastContext } from '../components/toastContext'
 
 // Mock echarts
-vi.mock('echarts/core', () => ({ use: vi.fn() }))
-vi.mock('echarts/charts', () => ({ LineChart: {}, RadarChart: {} }))
-vi.mock('echarts/components', () => ({ GridComponent: {}, RadarComponent: {}, TooltipComponent: {} }))
-vi.mock('echarts/renderers', () => ({ CanvasRenderer: {} }))
-vi.mock('echarts-for-react/lib/core', () => ({
+vi.mock('echarts-for-react', () => ({
   default: () => <div data-testid="echarts" />,
 }))
 

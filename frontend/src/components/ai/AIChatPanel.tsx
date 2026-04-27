@@ -87,7 +87,7 @@ export const AIChatPanel: React.FC = () => {
   return (
     <div className="h-full flex flex-col" data-testid="ai-chat-panel">
       {/* Header */}
-      <div className="px-4 py-3 border-b border-[var(--border-default)]">
+      <div className="px-4 pr-12 py-3 border-b border-[var(--border-default)]">
         <h3 className="font-medium text-[var(--text-primary)]">AI Assistant</h3>
       </div>
 

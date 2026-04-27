@@ -1,7 +1,6 @@
 import React from 'react';
 import { useReaderStore } from '../stores/readerStore';
-import { Button } from '../../../components/Button';
-import Card from '../../../components/Card';
+import { Button, Card } from '../../../components/v2';
 
 interface BookmarkPanelProps {
   projectId: number;

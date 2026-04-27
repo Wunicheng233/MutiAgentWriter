@@ -1,17 +1,46 @@
-import React from 'react'
-import { useQuery } from '@tanstack/react-query'
+import React, { useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { Card, Badge, Button, Progress } from '../components/v2'
+import { Card, Badge, Button, Progress, Modal, ModalHeader, ModalContent, ModalFooter } from '../components/v2'
 import type { BadgeVariant } from '../components/v2'
 import { CanvasContainer } from '../components/layout/CanvasContainer'
-import { listProjects } from '../utils/endpoints'
+import { listProjects, deleteProject } from '../utils/endpoints'
 import type { Project } from '../types/api'
 
 export const Dashboard: React.FC = () => {
+  const queryClient = useQueryClient()
   const { data, isLoading } = useQuery({
     queryKey: ['projects'],
     queryFn: () => listProjects(),
   })
+
+  // 删除确认弹窗
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [projectToDelete, setProjectToDelete] = useState<Project | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  const handleDeleteClick = (project: Project, e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setProjectToDelete(project)
+    setDeleteModalOpen(true)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!projectToDelete) return
+
+    setIsDeleting(true)
+    try {
+      await deleteProject(projectToDelete.id)
+      queryClient.invalidateQueries({ queryKey: ['projects'] })
+      setDeleteModalOpen(false)
+      setProjectToDelete(null)
+    } catch (error) {
+      console.error('删除项目失败:', error)
+    } finally {
+      setIsDeleting(false)
+    }
+  }
 
   const getStatusColor = (status: string): BadgeVariant => {
     switch (status) {
@@ -55,41 +84,121 @@ export const Dashboard: React.FC = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {data?.items.map((project: Project) => (
-          <Link key={project.id} to={`/projects/${project.id}/overview`}>
-            <Card hoverable className="h-full flex flex-col relative overflow-hidden">
-              {/* 书脊 - 左侧深色条，模拟书本效果 */}
-              <div className="absolute left-0 top-0 bottom-0 w-[8px] bg-[var(--text-primary)] bg-opacity-15"></div>
-
-              <div className="flex justify-between items-start mb-4 pl-3">
-                <h3 className="text-card text-xl font-serif text-[var(--text-primary)]">{project.name}</h3>
-                <Badge variant={getStatusColor(project.status)}>
-                  {getStatusText(project.status)}
-                </Badge>
-              </div>
-              {project.description && (
-                <p className="text-[var(--text-secondary)] text-sm mb-4 line-clamp-2 pl-3">
-                  {project.description}
-                </p>
-              )}
-              {project.overall_quality_score > 0 && (
-                <div className="mb-4 pl-3">
-                  <div className="flex justify-between text-sm mb-1">
-                    <span className="text-[var(--text-secondary)]">总体质量</span>
-                    <span className="text-[var(--text-body)] font-medium">{project.overall_quality_score.toFixed(1)}/10</span>
-                  </div>
-                  <Progress
-                    value={project.overall_quality_score * 10}
-                    size="sm"
+          <div key={project.id} className="relative group">
+            <Link to={`/projects/${project.id}/overview`}>
+              <div
+                className="relative h-full rounded-[var(--radius-lg)] overflow-hidden transition-all duration-300 group-hover:-translate-y-1"
+                style={{
+                  boxShadow: '4px 4px 12px rgba(0,0,0,0.08), 1px 1px 4px rgba(0,0,0,0.04)',
+                }}
+              >
+                {/* 主卡片 - 模拟书籍封面 */}
+                <div className="relative h-full rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-gradient-to-br from-[var(--bg-secondary)] via-[var(--bg-secondary)] to-[var(--bg-primary)] overflow-hidden">
+                  {/* 纸张纹理 - 细微噪点 */}
+                  <div
+                    className="absolute inset-0 opacity-[0.02] pointer-events-none mix-blend-multiply"
+                    style={{
+                      backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
+                    }}
                   />
+
+                  {/* 左侧书脊 - 使用主题色系渐变 */}
+                  <div
+                    className="absolute left-0 top-0 bottom-0 w-4"
+                    style={{
+                      background: `linear-gradient(to right, color-mix(in srgb, var(--accent-primary) 18%, transparent), color-mix(in srgb, var(--accent-primary) 8%, transparent), transparent)`,
+                    }}
+                  />
+
+                  {/* 书脊高光 - 纸张边缘反光 */}
+                  <div className="absolute left-[4px] top-0 bottom-0 w-px bg-gradient-to-b from-white/30 via-white/15 to-white/5" />
+
+                  {/* 封面顶部光照 - 更宽更柔和 */}
+                  <div className="absolute top-0 left-4 right-0 h-32 bg-gradient-to-b from-white/8 to-transparent" />
+
+                  <div className="relative mb-3 px-5 pt-5">
+                    <h3 className="text-xl font-serif text-[var(--text-primary)] leading-tight truncate whitespace-nowrap overflow-hidden">
+                      {project.name}
+                    </h3>
+                    <div className="mt-2">
+                      <Badge variant={getStatusColor(project.status)} className="whitespace-nowrap">
+                        {getStatusText(project.status)}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  {project.description && (
+                    <p className="relative text-[var(--text-secondary)] text-sm mb-4 line-clamp-2 px-5">
+                      {project.description}
+                    </p>
+                  )}
+
+                  {project.overall_quality_score > 0 && (
+                    <div className="relative mb-4 px-5">
+                      <div className="flex justify-between text-sm mb-1">
+                        <span className="text-[var(--text-secondary)]">总体质量</span>
+                        <span className="text-[var(--text-primary)] font-medium">{project.overall_quality_score.toFixed(1)}/10</span>
+                      </div>
+                      <Progress
+                        value={project.overall_quality_score * 10}
+                        size="sm"
+                      />
+                    </div>
+                  )}
+
+                  <div className="relative text-xs text-[var(--text-muted)] mt-auto pt-4 px-5 pb-5 border-t border-[var(--border-default)] border-opacity-30">
+                    更新于 {new Date(project.updated_at).toLocaleDateString()}
+                  </div>
                 </div>
-              )}
-              <div className="text-xs text-[var(--text-secondary)] mt-auto pt-4 pl-3">
-                更新于 {new Date(project.updated_at).toLocaleString()}
               </div>
-            </Card>
-          </Link>
+            </Link>
+
+            {/* 删除按钮 - hover 时显示 */}
+            <button
+              className="absolute top-3 right-3 p-2 rounded-lg text-[var(--text-secondary)] hover:text-[var(--accent-warm)] hover:bg-[var(--bg-tertiary)] opacity-0 group-hover:opacity-100 transition-all duration-150 z-10"
+              onClick={(e) => handleDeleteClick(project, e)}
+              title="删除项目"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 6h18" />
+                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+              </svg>
+            </button>
+          </div>
         ))}
       </div>
+
+      {/* 删除确认弹窗 */}
+      <Modal
+        isOpen={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        size="sm"
+        showCloseButton={false}
+      >
+        <ModalHeader>确认删除</ModalHeader>
+        <ModalContent>
+          <p className="text-[var(--text-body)]">
+            确定要删除项目「<span className="font-medium text-[var(--text-primary)]">{projectToDelete?.name}</span>」吗？此操作不可恢复。
+          </p>
+        </ModalContent>
+        <ModalFooter>
+          <Button
+            variant="secondary"
+            onClick={() => setDeleteModalOpen(false)}
+            disabled={isDeleting}
+          >
+            取消
+          </Button>
+          <Button
+            variant="danger"
+            onClick={handleConfirmDelete}
+            loading={isDeleting}
+          >
+            删除
+          </Button>
+        </ModalFooter>
+      </Modal>
     </CanvasContainer>
   )
 }

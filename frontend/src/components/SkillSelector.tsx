@@ -1,7 +1,6 @@
 import React from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Badge } from './Badge'
-import { Input } from './Input'
+import { Badge, Input } from './v2'
 import {
   listSkills,
   updateProjectSkills,
@@ -34,6 +33,76 @@ function normalizeEnabled(enabledSkills: EnabledSkillConfig[] = []): EnabledSkil
     applies_to_override: item.applies_to_override ?? DEFAULT_APPLIES_TO,
     config: item.config ?? {},
   }))
+}
+
+interface AuthorNameParts {
+  chinese: string
+  english: string
+}
+
+function extractAuthorNameParts(name: string): AuthorNameParts {
+  // 处理中英文分隔："村上春树思维操作系统 | Haruki Murakami Perspective"
+  const parts = name.split(/\s*[|｜]\s*/)
+  const chinesePart = parts[0].trim()
+  const englishPart = parts[1] || ''
+
+  // 作家 slug 映射 (slug -> [中文名, 英文名])
+  const authorMap: Record<string, [string, string]> = {
+    'fenghuo': ['烽火戏诸侯', 'Fenghuo Xizhuhou'],
+    'fenghuoxizhuhou': ['烽火戏诸侯', 'Fenghuo Xizhuhou'],
+    'huwei': ['狐尾的笔', 'Huwei De Bi'],
+    'huweidebi': ['狐尾的笔', 'Huwei De Bi'],
+    'yuyuzhu': ['郁雨竹', 'Yu Yuzhu'],
+    'jinyong': ['金庸', 'Jin Yong'],
+    'liudanpashui': ['榴弹怕水', 'Liudan Pashui'],
+    'maopu': ['猫腻', 'Mao Ni'],
+    'wangzengqi': ['汪曾祺', 'Wang Zengqi'],
+    'zhangdada': ['张大大', 'Zhang Dada'],
+    'chenzhongshi': ['陈忠实', 'Chen Zhongshi'],
+    'luxun': ['鲁迅', 'Lu Xun'],
+    'murakami': ['村上春树', 'Haruki Murakami'],
+    'rowling': ['J.K.罗琳', 'J.K. Rowling'],
+    'jkrowling': ['J.K.罗琳', 'J.K. Rowling'],
+    'cixin': ['刘慈欣', 'Liu Cixin'],
+    'liucixin': ['刘慈欣', 'Liu Cixin'],
+    'tangjiashao': ['唐家三少', 'Tang Jia San Shao'],
+  }
+
+  // 处理 slug 格式：liudanpashui-perspective / jin-yong-perspective
+  if (name.includes('-perspective') || name.includes('_perspective')) {
+    const slug = name.toLowerCase().replace(/[-_](perspective|style)$/, '').replace(/[-_]/g, '')
+    if (authorMap[slug]) {
+      return { chinese: authorMap[slug][0], english: authorMap[slug][1] }
+    }
+    // 模糊匹配
+    for (const [key, [chinese, english]] of Object.entries(authorMap)) {
+      if (slug.includes(key)) return { chinese, english }
+    }
+  }
+
+  // 从中文部分提取作家名（移除后缀）
+  const chinese = chinesePart
+    .replace(/的?视角$/, '')
+    .replace(/的?思维操作系统$/, '')
+    .replace(/的?风格系统$/, '')
+    .replace(/的?创作思维$/, '')
+    .replace(/的?写作系统$/, '')
+    .replace(/的?文风系统$/, '')
+    .trim()
+
+  // 用中文名称在映射表中查找
+  for (const [, [mapChinese, mapEnglish]] of Object.entries(authorMap)) {
+    if (chinese === mapChinese || chinese.includes(mapChinese) || mapChinese.includes(chinese)) {
+      return { chinese: mapChinese, english: mapEnglish }
+    }
+  }
+
+  // 从英文部分提取作家名（移除 Perspective/Style 后缀）
+  const english = englishPart
+    .replace(/\s*(Perspective|Style|System)$/i, '')
+    .trim() || chinese
+
+  return { chinese, english }
 }
 
 export const SkillSelector: React.FC<SkillSelectorProps> = ({
@@ -98,17 +167,20 @@ export const SkillSelector: React.FC<SkillSelectorProps> = ({
       <div className="space-y-3">
         {filteredSkills.map(skill => {
           const checked = enabledIds.has(skill.id)
+          const { chinese, english } = extractAuthorNameParts(skill.name)
 
           return (
             <label
               key={skill.id}
-              className={`block cursor-pointer rounded-lg border p-4 transition-all ${
-                checked ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)] bg-opacity-10' : 'border-[var(--border-default)] hover:border-sage/40 hover:bg-[var(--bg-secondary)] bg-opacity-50'
+              className={`block cursor-pointer rounded-[var(--radius-lg)] border p-4 transition-all ${
+                checked
+                  ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)] bg-opacity-8'
+                  : 'border-[var(--border-subtle)] hover:border-[var(--accent-primary)] hover:bg-[var(--bg-secondary)] bg-opacity-50'
               }`}
             >
               <div className="flex items-start gap-3">
                 <input
-                  aria-label={`启用 ${skill.name}`}
+                  aria-label={`启用 ${chinese} 风格`}
                   type="checkbox"
                   checked={checked}
                   onChange={() => toggleSkill(skill)}
@@ -116,13 +188,13 @@ export const SkillSelector: React.FC<SkillSelectorProps> = ({
                 />
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-medium">{skill.name}</p>
-                    <Badge variant="secondary">priority {skill.priority}</Badge>
+                    <p className="font-medium text-[var(--text-primary)]">{chinese}｜{english}</p>
+                    <Badge variant={checked ? 'primary' : 'secondary'}>priority {skill.priority}</Badge>
                   </div>
                   <p className="mt-1 text-sm text-[var(--text-secondary)]">{skill.description}</p>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {skill.tags.slice(0, 4).map(tag => (
-                      <Badge key={tag} variant={tag === 'author-style' ? 'agent' : 'secondary'}>
+                      <Badge key={tag} variant={checked ? 'primary' : 'secondary'}>
                         {tag}
                       </Badge>
                     ))}

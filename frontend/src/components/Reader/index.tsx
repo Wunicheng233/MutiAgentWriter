@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Layout } from '../../components/Layout';
 import { Link } from 'react-router-dom';
-import { Button } from '../../components/Button';
+import { Button } from '../../components/v2';
 import { getProject, getChapter, listChapters } from '../../utils/endpoints';
 import { useReaderStore } from './stores/readerStore';
 import { ReaderCore } from './ReaderCore';

@@ -150,8 +150,8 @@ export const ShareView: React.FC = () => {
       {chapter && <SearchPanel content={chapter.content} onJump={() => {}} />}
 
       <footer className="border-t border-[var(--reader-border)] py-6 mt-12">
-        <p className="text-center text-[var(--reader-secondary)] text-sm">
-          使用 AI 多智能体创作系统生成 · StoryForge AI
+        <p className="text-center text-[var(--reader-secondary)] text-xs uppercase tracking-[0.24em]">
+          StoryForge AI
         </p>
       </footer>
     </div>

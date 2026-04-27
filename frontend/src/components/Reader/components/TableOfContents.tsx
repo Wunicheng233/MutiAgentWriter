@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useReaderStore } from '../stores/readerStore';
-import { Button } from '../../../components/Button';
+import { Button } from '../../../components/v2';
 import type { Chapter } from '../../../types/api';
 
 interface TableOfContentsProps {

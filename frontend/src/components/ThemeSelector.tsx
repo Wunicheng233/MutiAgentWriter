@@ -22,12 +22,12 @@ export const ThemeSelector: React.FC = () => {
             onClick={() => setTheme(option.key)}
             className={`w-full text-left p-4 rounded-lg border transition-all duration-150 hover:shadow-sm ${
               theme === option.key
-                ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)] bg-opacity-10'
+                ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)]/10'
                 : 'border-[var(--border-default)] hover:border-[var(--border-strong)]'
             }`}
           >
-            <div className="font-medium text-[var(--text-primary)]">{option.label}</div>
-            <div className="text-sm text-[var(--text-secondary)] mt-1">{option.description}</div>
+            <div className={`font-medium ${theme === option.key ? 'text-[var(--accent-primary)]' : 'text-[var(--text-primary)]'}`}>{option.label}</div>
+            <div className={`text-sm mt-1 ${theme === option.key ? 'text-[var(--accent-primary)]/70' : 'text-[var(--text-secondary)]'}`}>{option.description}</div>
           </button>
         ))}
       </div>

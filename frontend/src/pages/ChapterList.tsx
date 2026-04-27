@@ -1,20 +1,19 @@
 import React, { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useNavigate } from 'react-router-dom'
 
-import { Card, Badge, Button, Progress } from '../components/v2'
+import { Card, Badge, Button, Progress, DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '../components/v2'
 import type { BadgeVariant } from '../components/v2'
 import { useProjectStore, type ProjectStatus } from '../store/useProjectStore'
 import { getProject, getProjectWorkflowRuns, listChapters } from '../utils/endpoints'
 import { getProjectStatusText, getTaskStatusText } from '../utils/workflow'
-import type { WorkflowRun } from '../types/api'
 
 function getChapterStatusColor(status: string): BadgeVariant {
   switch (status) {
     case 'generated':
       return 'success'
     case 'edited':
-      return 'warning'
+      return 'agent'
     case 'draft':
       return 'secondary'
     default:
@@ -27,6 +26,7 @@ function getRunStatusColor(status: string): BadgeVariant {
     case 'completed':
       return 'success'
     case 'running':
+      return 'status'
     case 'waiting_confirm':
       return 'warning'
     case 'failed':
@@ -76,30 +76,9 @@ function formatDateTime(value?: string): string {
   return new Date(value).toLocaleString()
 }
 
-function getRunSummary(run: WorkflowRun): string {
-  if (run.status === 'waiting_confirm') {
-    return run.current_chapter === 0
-      ? '策划方案已生成，等待人工确认。'
-      : `第 ${run.current_chapter ?? '-'} 章已生成，等待人工确认。`
-  }
-
-  if (run.status === 'failed') {
-    return '本次运行失败，适合回看步骤和反馈记录，定位稳定性问题。'
-  }
-
-  if (run.status === 'completed') {
-    return run.current_chapter
-      ? `本次运行最终推进到第 ${run.current_chapter} 章。`
-      : '本次运行已经完成。'
-  }
-
-  return run.current_step_key
-    ? `当前停留在 ${run.current_step_key} 节点。`
-    : '运行记录已创建，等待系统继续推进。'
-}
-
 export const ChapterList: React.FC = () => {
   const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
   const projectId = id ? parseInt(id, 10) : 0
   const isValidProjectId = !Number.isNaN(projectId) && projectId > 0
 
@@ -152,204 +131,230 @@ export const ChapterList: React.FC = () => {
   return (
     
       <div className="mx-auto max-w-content space-y-6">
-        <Card className="border-sage/20 bg-[linear-gradient(135deg,rgba(91,127,110,0.12),rgba(255,255,255,0.92),rgba(163,139,90,0.08))]">
-          <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
-            <div className="max-w-3xl">
-              <div className="mb-4 flex flex-wrap items-center gap-3">
-                <Link to={`/projects/${id}/overview`}>
-                  <Button variant="secondary">返回概览</Button>
-                </Link>
+        <Card className="border-[var(--border-default)] bg-[linear-gradient(135deg,rgba(91,127,110,0.08),rgba(255,255,255,0.95),rgba(163,139,90,0.05))]">
+          <div className="flex flex-col gap-5">
+            {/* 顶部标题栏 - 标题+状态在左，返回按钮在右 */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex flex-wrap items-center gap-3">
+                <h1 className="text-2xl md:text-3xl font-semibold text-[var(--text-primary)]">
+                  章节与运行记录
+                  {project && <span className="ml-3 text-lg font-normal text-[var(--text-secondary)]">· {project.name}</span>}
+                </h1>
                 {project && <Badge variant="secondary">{getProjectStatusText(project.status)}</Badge>}
                 {project?.current_generation_task && (
-                  <Badge variant={project.current_generation_task.status === 'waiting_confirm' ? 'genre' : 'status'}>
+                  <Badge variant={project.current_generation_task.status === 'waiting_confirm' ? 'warning' : 'status'} className={project.current_generation_task.status === 'running' ? 'badge-pulse' : ''}>
                     {getTaskStatusText(project.current_generation_task)}
                   </Badge>
                 )}
               </div>
-              <h1 className="text-3xl md:text-4xl">章节与运行记录</h1>
-              <p className="mt-3 text-body">
-                这一页同时承载作品章节列表和 workflow 历史。长期来看，它应该回答两个问题：现在产出了什么，以及系统是怎么把这些结果生成出来的。
-              </p>
-              {project && <p className="mt-3 text-[var(--text-secondary)]">{project.name}</p>}
+              <Link to={`/projects/${id}/overview`}>
+                <Button variant="secondary">返回概览</Button>
+              </Link>
             </div>
 
-            <div className="w-full max-w-xl space-y-3">
-              <p className="text-sm text-[var(--text-secondary)]">章节完成度 {completedChapters}/{targetChapters || '-'} 章</p>
-              <Progress value={completionRate} />
-              <div className="grid grid-cols-2 gap-3 md:grid-cols-4 text-sm">
-                <div className="rounded-standard border border-border bg-parchment/70 p-3">
-                  <p className="text-[var(--text-secondary)]">目标范围</p>
-                  <p className="mt-1 text-body">{targetStart} - {targetEnd}</p>
+            {/* 进度条 + 统计卡片 */}
+            <div className="flex flex-col lg:flex-row lg:items-center gap-5">
+              <div className="flex-1 space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-[var(--text-secondary)]">章节完成度</p>
+                  <p className="text-sm font-medium text-[var(--text-primary)]">{completedChapters}/{targetChapters || '-'} 章</p>
                 </div>
-                <div className="rounded-standard border border-border bg-parchment/70 p-3">
-                  <p className="text-[var(--text-secondary)]">当前章节数</p>
-                  <p className="mt-1 text-body">{completedChapters}</p>
+                <Progress value={completionRate} className="h-2" />
+              </div>
+
+              {/* 四个统计卡片横向排列 */}
+              <div className="flex gap-3 flex-wrap justify-center lg:justify-end">
+                <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-secondary)] px-4 py-3 transition-all hover:border-[var(--border-strong)] min-w-[100px] text-center">
+                  <p className="text-[var(--text-secondary)] text-xs uppercase tracking-wider">目标范围</p>
+                  <p className="mt-1 text-[var(--text-primary)] font-medium">{targetStart} - {targetEnd}</p>
                 </div>
-                <div className="rounded-standard border border-border bg-parchment/70 p-3">
-                  <p className="text-[var(--text-secondary)]">平均评分</p>
-                  <p className="mt-1 text-body">{averageScore > 0 ? averageScore.toFixed(1) : '待生成'}</p>
+                <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-secondary)] px-4 py-3 transition-all hover:border-[var(--border-strong)] min-w-[100px] text-center">
+                  <p className="text-[var(--text-secondary)] text-xs uppercase tracking-wider">当前章节</p>
+                  <p className="mt-1 text-[var(--text-primary)] font-medium">{completedChapters}</p>
                 </div>
-                <div className="rounded-standard border border-border bg-parchment/70 p-3">
-                  <p className="text-[var(--text-secondary)]">历史运行</p>
-                  <p className="mt-1 text-body">{workflowHistory?.total ?? 0}</p>
+                <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-secondary)] px-4 py-3 transition-all hover:border-[var(--border-strong)] min-w-[100px] text-center">
+                  <p className="text-[var(--text-secondary)] text-xs uppercase tracking-wider">平均评分</p>
+                  <p className="mt-1 text-[var(--text-primary)] font-medium">{averageScore > 0 ? averageScore.toFixed(1) : '待生成'}</p>
+                </div>
+                <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-secondary)] px-4 py-3 transition-all hover:border-[var(--border-strong)] min-w-[100px] text-center">
+                  <p className="text-[var(--text-secondary)] text-xs uppercase tracking-wider">历史运行</p>
+                  <p className="mt-1 text-[var(--text-primary)] font-medium">{workflowHistory?.total ?? 0}</p>
                 </div>
               </div>
             </div>
           </div>
         </Card>
 
-        <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-          <Card>
-            <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div className="grid gap-6 xl:grid-cols-2">
+          <Card className="border-[var(--border-default)]">
+            <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between mb-6">
               <div>
-                <p className="text-xs uppercase tracking-[0.22em] text-[var(--text-secondary)]">Chapters</p>
-                <h2 className="mt-2 text-2xl">章节列表</h2>
+                <p className="text-xs uppercase tracking-[0.25em] text-[var(--text-secondary)]">Chapters</p>
+                <h2 className="mt-2 text-2xl font-semibold text-[var(--text-primary)]">章节列表</h2>
               </div>
               <div className="flex flex-wrap gap-3">
                 <Link to={`/projects/${id}/analytics`}>
                   <Button variant="secondary">质量分析</Button>
-                </Link>
-                <Link to={`/projects/${id}/overview`}>
-                  <Button variant="secondary">项目总控台</Button>
                 </Link>
               </div>
             </div>
 
             {isLoading && <p className="mt-5 text-[var(--text-secondary)]">加载中...</p>}
 
-            <div className="mt-5 space-y-4">
+            <div className="space-y-3">
               {chapters?.map(chapter => (
-                <Card key={chapter.id} hoverable className="border border-border/70 bg-white/70">
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                    <div>
-                      <h3 className="font-serif text-xl text-inkwell">
+                <div key={chapter.id} className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-secondary)] p-5 transition-all duration-200 hover:border-[var(--border-strong)] group cursor-pointer" onClick={() => navigate(`/projects/${id}/editor/${chapter.chapter_index}`)}>
+                  <div className="flex items-start justify-between gap-4">
+                    {/* 左侧：章节信息 */}
+                    <div className="min-w-0 flex-1">
+                      {/* 标题 - 保证在同一行 */}
+                      <h3 className="font-serif text-lg text-[var(--text-primary)] group-hover:text-[var(--accent-primary)] transition-colors truncate">
                         {chapter.title || `第${chapter.chapter_index}章`}
                       </h3>
-                      <div className="mt-3 flex flex-wrap gap-3 text-sm text-[var(--text-secondary)]">
+                      {/* 状态徽章 - 在标题下方 */}
+                      <div className="mt-2">
+                        <Badge variant={getChapterStatusColor(chapter.status)}>
+                          {chapter.status === 'generated' ? '已生成' : chapter.status === 'edited' ? '已编辑' : '草稿'}
+                        </Badge>
+                      </div>
+                      {/* 元信息 */}
+                      <div className="mt-3 flex flex-wrap gap-4 text-sm text-[var(--text-secondary)]">
                         <span>字数 {chapter.word_count}</span>
                         <span>评分 {chapter.quality_score?.toFixed(1) || '-'}</span>
-                        <span>创建于 {formatDateTime(chapter.created_at)}</span>
+                        <span>{formatDateTime(chapter.created_at)}</span>
                       </div>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-3">
-                      <Badge variant={getChapterStatusColor(chapter.status)}>
-                        {chapter.status}
-                      </Badge>
-                      <Link to={`/projects/${id}/read/${chapter.chapter_index}`}>
-                        <Button variant="secondary" size="sm">阅读</Button>
-                      </Link>
-                      <Link to={`/projects/${id}/write/${chapter.chapter_index}`}>
-                        <Button variant="primary" size="sm">编辑</Button>
-                      </Link>
-                    </div>
+                    {/* 右侧：更多操作下拉菜单 */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger>
+                        <button
+                          className="p-2 rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--border-default)] hover:scale-105 active:bg-[var(--border-strong)] active:scale-95 transition-all duration-150"
+                        >
+                          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                            <circle cx="12" cy="5" r="2" />
+                            <circle cx="12" cy="12" r="2" />
+                            <circle cx="12" cy="19" r="2" />
+                          </svg>
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onSelect={() => navigate(`/projects/${id}/read/${chapter.chapter_index}`)}>
+                          <span className="flex items-center gap-2">
+                            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                              <circle cx="12" cy="12" r="3" />
+                            </svg>
+                            阅读
+                          </span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => navigate(`/projects/${id}/editor/${chapter.chapter_index}`)}>
+                          <span className="flex items-center gap-2">
+                            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                            </svg>
+                            编辑
+                          </span>
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
-                </Card>
+                </div>
               ))}
 
               {!chapters?.length && (
-                <Card>
-                  <p className="py-6 text-center text-[var(--text-secondary)]">
-                    还没有章节，开始生成后会在这里出现。
-                  </p>
-                </Card>
+                <div className="rounded-standard border-2 border-dashed border-[var(--border-default)] bg-[var(--bg-tertiary)] p-12 text-center">
+                  <svg className="w-12 h-12 mx-auto mb-4 text-[var(--text-muted)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                  </svg>
+                  <p className="text-[var(--text-primary)] font-medium mb-2">还没有章节</p>
+                  <p className="text-[var(--text-secondary)] text-sm">开始生成后，章节会在这里出现。你可以随时编辑和润色。</p>
+                </div>
               )}
             </div>
           </Card>
 
-          <Card>
-            <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+          <Card className="border-[var(--border-default)]">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
               <div>
-                <p className="text-xs uppercase tracking-[0.22em] text-[var(--text-secondary)]">Workflow History</p>
-                <h2 className="mt-2 text-2xl">运行历史</h2>
-                <p className="mt-2 text-[var(--text-secondary)]">
-                  这些记录会成为后续回放、失败归因、质量对比和多轮修订的基础。
-                </p>
+                <p className="text-xs uppercase tracking-[0.25em] text-[var(--text-secondary)]">Workflow History</p>
+                <h2 className="mt-2 text-2xl font-semibold text-[var(--text-primary)]">运行历史</h2>
               </div>
               {activeRun && (
-                <Badge variant={getRunStatusColor(activeRun.status)}>
+                <Badge variant={getRunStatusColor(activeRun.status)} className="badge-pulse mt-3 md:mt-0">
                   当前活跃 Run #{activeRun.id}
                 </Badge>
               )}
             </div>
 
-            <div className="mt-5 space-y-4">
+            <div className="space-y-4">
               {workflowHistory?.items.map(run => {
                 const stepCount = run.steps?.length ?? 0
                 const feedbackCount = run.feedback_items?.length ?? 0
+                const isActive = run.status === 'running' || run.status === 'waiting_confirm'
 
                 return (
-                  <div key={run.id} className="rounded-comfortable border border-border bg-parchment/50 p-4">
-                    <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                      <div>
-                        <div className="flex flex-wrap items-center gap-3">
-                          <h3 className="text-lg text-inkwell">Run #{run.id}</h3>
-                          <Badge variant={getRunStatusColor(run.status)}>
-                            {getRunStatusText(run.status)}
-                          </Badge>
-                          <Badge variant="secondary">{getRunKindText(run.run_kind)}</Badge>
-                        </div>
-                        <p className="mt-3 text-sm text-[var(--text-secondary)]">{getRunSummary(run)}</p>
-                      </div>
-                      <div className="text-sm text-[var(--text-secondary)]">
-                        <div>开始于 {formatDateTime(run.started_at)}</div>
-                        <div>结束于 {formatDateTime(run.completed_at)}</div>
-                      </div>
-                    </div>
-
-                    <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-                      <div className="rounded-standard border border-border bg-white/70 p-3">
-                        <p className="text-[var(--text-secondary)]">当前节点</p>
-                        <p className="mt-1 text-body">{run.current_step_key || '暂无'}</p>
-                      </div>
-                      <div className="rounded-standard border border-border bg-white/70 p-3">
-                        <p className="text-[var(--text-secondary)]">当前章节</p>
-                        <p className="mt-1 text-body">{run.current_chapter ?? '项目级'}</p>
-                      </div>
-                      <div className="rounded-standard border border-border bg-white/70 p-3">
-                        <p className="text-[var(--text-secondary)]">步骤数</p>
-                        <p className="mt-1 text-body">{stepCount}</p>
-                      </div>
-                      <div className="rounded-standard border border-border bg-white/70 p-3">
-                        <p className="text-[var(--text-secondary)]">反馈项</p>
-                        <p className="mt-1 text-body">{feedbackCount}</p>
-                      </div>
-                    </div>
-
-                    <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-                      {run.steps && run.steps.length > 0 && (
-                        <div>
-                          <p className="text-xs uppercase tracking-[0.18em] text-[var(--text-secondary)]">Steps</p>
-                          <div className="mt-3 flex flex-wrap gap-2">
-                            {run.steps.map(step => (
-                              <span
-                                key={step.id}
-                                className="rounded-pill border border-border bg-white px-3 py-1 text-xs text-[var(--text-secondary)]"
-                              >
-                                {step.step_key}
-                              </span>
-                            ))}
+                  <Link key={run.id} to={`/projects/${id}/workflows/${run.id}`}>
+                    <div className={`rounded-comfortable border p-5 transition-all duration-200 hover:shadow-[var(--shadow-default)] hover:-translate-y-0.5 cursor-pointer ${
+                      isActive
+                        ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)]/5'
+                        : 'border-[var(--border-default)] bg-[var(--bg-secondary)] hover:border-[var(--border-strong)]'
+                    }`}>
+                      <div className="flex flex-col md:flex-row md:justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-lg font-medium text-[var(--text-primary)]">Run #{run.id}</h3>
+                          <div className="mt-2 flex flex-wrap items-center gap-2">
+                            <Badge variant={getRunStatusColor(run.status)} className={isActive ? 'badge-pulse' : ''}>
+                              {getRunStatusText(run.status)}
+                            </Badge>
+                            <Badge variant="secondary">{getRunKindText(run.run_kind)}</Badge>
                           </div>
                         </div>
-                      )}
-                      <Link to={`/projects/${id}/workflows/${run.id}`}>
-                        <Button variant="tertiary" size="sm">查看详情</Button>
-                      </Link>
-                    </div>
-
-                    {run.feedback_items && run.feedback_items.length > 0 && (
-                      <div className="mt-4 rounded-standard border border-terracotta/15 bg-terracotta/5 p-3">
-                        <p className="text-xs uppercase tracking-[0.18em] text-[var(--text-secondary)]">Latest Feedback</p>
-                        <p className="mt-2 text-sm text-body">{run.feedback_items[0].content}</p>
+                        <div className="text-sm text-[var(--text-secondary)] shrink-0 md:text-right md:mt-1">
+                          <div>{formatDateTime(run.started_at)}</div>
+                        </div>
                       </div>
-                    )}
-                  </div>
+
+                      <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                        <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-3">
+                          <p className="text-[var(--text-secondary)] text-xs uppercase tracking-wider">当前节点</p>
+                          <p className="mt-1 text-[var(--text-primary)] font-mono">{run.current_step_key || '暂无'}</p>
+                        </div>
+                        <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-3">
+                          <p className="text-[var(--text-secondary)] text-xs uppercase tracking-wider">当前章节</p>
+                          <p className="mt-1 text-[var(--text-primary)]">{run.current_chapter ?? '项目级'}</p>
+                        </div>
+                        <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-3">
+                          <p className="text-[var(--text-secondary)] text-xs uppercase tracking-wider">步骤数</p>
+                          <p className="mt-1 text-[var(--text-primary)]">{stepCount}</p>
+                        </div>
+                        <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-3">
+                          <p className="text-[var(--text-secondary)] text-xs uppercase tracking-wider">反馈项</p>
+                          <p className="mt-1 text-[var(--text-primary)]">{feedbackCount}</p>
+                        </div>
+                      </div>
+
+                      {run.feedback_items && run.feedback_items.length > 0 && (
+                        <div className="mt-4 rounded-standard border border-[var(--accent-warm)]/15 bg-[var(--accent-warm)]/5 p-4">
+                          <p className="text-xs uppercase tracking-[0.18em] text-[var(--text-secondary)] mb-2">最新反馈</p>
+                          <p className="text-sm text-[var(--text-body)]">{run.feedback_items[0].content}</p>
+                        </div>
+                      )}
+                    </div>
+                  </Link>
                 )
               })}
 
               {!workflowHistory?.items.length && (
-                <div className="rounded-standard border border-dashed border-border p-4 text-[var(--text-secondary)]">
-                  还没有 workflow 历史。触发生成后，这里会开始沉淀项目运行记录。
+                <div className="rounded-standard border-2 border-dashed border-[var(--border-default)] bg-[var(--bg-tertiary)] p-12 text-center">
+                  <svg className="w-12 h-12 mx-auto mb-4 text-[var(--text-muted)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <circle cx="12" cy="12" r="3" />
+                    <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+                  </svg>
+                  <p className="text-[var(--text-primary)] font-medium mb-2">还没有运行记录</p>
+                  <p className="text-[var(--text-secondary)] text-sm">触发生成后，这里会开始沉淀项目运行记录，方便后续回放和问题定位。</p>
                 </div>
               )}
             </div>

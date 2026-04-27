@@ -59,10 +59,10 @@ describe('SkillSelector', () => {
   test('lists installed skills and saves selected skill config', async () => {
     renderWithProviders(<SkillSelector projectId={1} enabledSkills={[]} />)
 
-    expect(await screen.findByText('liu-cixin-perspective')).toBeInTheDocument()
-    expect(screen.getByText('连续性助手')).toBeInTheDocument()
+    expect(await screen.findByText('刘慈欣｜Liu Cixin')).toBeInTheDocument()
+    expect(screen.getByText('连续性助手｜连续性助手')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByLabelText('启用 liu-cixin-perspective'))
+    fireEvent.click(screen.getByLabelText('启用 刘慈欣 风格'))
 
     await waitFor(() => {
       expect(mocks.updateProjectSkills).toHaveBeenCalledWith(1, {
