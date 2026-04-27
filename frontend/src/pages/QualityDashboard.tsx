@@ -7,6 +7,7 @@ import type { BadgeVariant } from '../components/v2'
 import { useProjectStore, type ProjectStatus } from '../store/useProjectStore'
 import { getProject, getProjectAnalytics } from '../utils/endpoints'
 import { getProjectStatusText } from '../utils/workflow'
+import type { ChapterScore } from '../types/api'
 
 function getScoreColor(score: number): BadgeVariant {
   if (score >= 8) return 'success'
@@ -372,7 +373,7 @@ export const QualityDashboard: React.FC = () => {
               {
                 key: 'title',
                 title: '章节',
-                render: (_: unknown, record: any) => (
+                render: (_: unknown, record: ChapterScore) => (
                   <div className="flex items-center gap-2">
                     <span className="font-medium truncate">
                       {record.title || `第${record.chapter_index}章`}
@@ -384,7 +385,7 @@ export const QualityDashboard: React.FC = () => {
               {
                 key: 'quality_score',
                 title: '评分',
-                render: (value: unknown, record: any) => (
+                render: (value: unknown, record: ChapterScore) => (
                   <div className="w-32">
                     <Progress value={(value as number) * 10} />
                     <div className="mt-1 text-sm text-right">
@@ -405,7 +406,7 @@ export const QualityDashboard: React.FC = () => {
                 key: 'actions',
                 title: '操作',
                 align: 'right',
-                render: (_: unknown, record: any) => (
+                render: (_: unknown, record: ChapterScore) => (
                   <Link to={`/projects/${projectId}/write/${record.chapter_index}`}>
                     <Button variant="tertiary" size="sm">编辑</Button>
                   </Link>

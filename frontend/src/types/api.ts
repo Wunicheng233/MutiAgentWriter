@@ -180,15 +180,18 @@ export interface TaskStatus {
   error?: string
 }
 
+export interface ChapterScore {
+  chapter_index: number
+  title?: string
+  quality_score: number
+  status: string
+  word_count: number
+}
+
 export interface QualityAnalytics {
   overall_quality_score: number
   dimension_average_scores: Record<string, number>
-  chapter_scores: Array<{
-    chapter_index: number
-    title?: string
-    quality_score: number
-    status: string
-  }>
+  chapter_scores: ChapterScore[]
   total_chapters: number
   passed_chapters: number
 }

@@ -11,6 +11,7 @@ import {
   listSkills,
   updateProject,
 } from '../utils/endpoints'
+import type { EnabledSkillConfig } from '../types/api'
 import { useToast } from '../components/toastContext'
 
 export const ProjectOutline: React.FC = () => {
@@ -55,7 +56,7 @@ export const ProjectOutline: React.FC = () => {
   const enabledSkillNames = useMemo(() => {
     const enabled = data?.config?.skills?.enabled ?? []
     const skills = skillsData?.skills ?? []
-    const enabledIds = new Set(enabled.map((e: any) => e.skill_id))
+    const enabledIds = new Set(enabled.map((e: EnabledSkillConfig) => e.skill_id))
     return skills
       .filter(s => enabledIds.has(s.id))
       .map(s => s.name)
