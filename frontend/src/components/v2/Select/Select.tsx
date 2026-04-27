@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useRef, useCallback, useMemo, useEffect } from 'react'
 import { useClickOutside } from '../hooks/useClickOutside'
 import { useId } from '../hooks/useId'
+import { useKeyboardNavigation } from './useKeyboardNavigation'
 
 interface SelectContextValue {
   value: string
@@ -179,33 +180,12 @@ export const SelectContent: React.FC<SelectContentProps> = ({ children, classNam
     }
   }, [open, searchable])
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    const items = Array.from(
-      contentRef.current?.querySelectorAll('[role="option"]:not([data-disabled="true"])') || []
-    )
-    const currentIndex = items.findIndex(item => document.activeElement === item)
-
-    if (e.key === 'ArrowDown') {
-      e.preventDefault()
-      const nextIndex = (currentIndex + 1) % items.length
-      ;(items[nextIndex] as HTMLElement)?.focus()
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault()
-      const prevIndex = (currentIndex - 1 + items.length) % items.length
-      ;(items[prevIndex] as HTMLElement)?.focus()
-    } else if (e.key === 'Enter') {
-      e.preventDefault()
-      if (currentIndex >= 0) {
-        const value = items[currentIndex].getAttribute('data-value')
-        if (value) {
-          setValue(value)
-          setOpen(false)
-        }
-      }
-    } else if (e.key === 'Escape') {
-      setOpen(false)
-    }
-  }, [contentRef, setValue, setOpen])
+  const { handleKeyDown } = useKeyboardNavigation({
+    isOpen: open,
+    setIsOpen: setOpen,
+    contentRef,
+    onSelect: setValue,
+  })
 
   if (!open) return null
 
