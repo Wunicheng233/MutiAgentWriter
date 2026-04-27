@@ -505,12 +505,12 @@ class NovelOrchestrator:
                     import sys
                     if sys.stdin.isatty():
                         # CLI交互式确认
-                        print("\n" + "="*80)
-                        print("📝 Planner输出预览（设定圣经+大纲）：")
-                        print("="*80)
+                        logger.info("\n" + "="*80)
+                        logger.info("📝 Planner输出预览（设定圣经+大纲）：")
+                        logger.info("="*80)
                         preview = self.plan[:1000] + ("..." if len(self.plan) > 1000 else "")
-                        print(preview)
-                        print("="*80)
+                        logger.info(preview)
+                        logger.info("="*80)
                         confirm = input("\n请确认方案是否通过？（y/n）：\n").lower()
                         while confirm != "y":
                             self._check_cancellation()
@@ -521,12 +521,12 @@ class NovelOrchestrator:
                                 perspective_strength=self.perspective_strength,
                             )
                             self.setting_bible = self.plan
-                            print("\n" + "="*80)
-                            print("📝 修改后的方案预览：")
-                            print("="*80)
+                            logger.info("\n" + "="*80)
+                            logger.info("📝 修改后的方案预览：")
+                            logger.info("="*80)
                             preview = self.plan[:1000] + ("..." if len(self.plan) > 1000 else "")
-                            print(preview)
-                            print("="*80)
+                            logger.info(preview)
+                            logger.info("="*80)
                             confirm = input("\n请确认方案是否通过？（y/n）：\n").lower()
                     else:
                         # 非交互式环境（Web/Celery），需要等待用户确认
@@ -1067,12 +1067,12 @@ class NovelOrchestrator:
             import sys
             if sys.stdin.isatty():
                 # CLI交互式确认
-                print("\n" + "="*80)
-                print(f"📖 第{chapter_index}章生成完成，请审阅：")
-                print("="*80)
+                logger.info("\n" + "="*80)
+                logger.info(f"📖 第{chapter_index}章生成完成，请审阅：")
+                logger.info("="*80)
                 preview = current_content[:1000] + ("..." if len(current_content) > 1000 else "")
-                print(preview)
-                print("="*80)
+                logger.info(preview)
+                logger.info("="*80)
                 confirm = input("\n请确认是否通过？（y/n）：\n").lower()
                 while confirm != "y":
                     self._check_cancellation()
@@ -1102,12 +1102,12 @@ class NovelOrchestrator:
                     for dim, score_val in dimensions.items():
                         if dim in self.dimension_scores:
                             self.dimension_scores[dim].append(score_val)
-                    print("\n" + "="*80)
-                    print(f"📖 修改后的第{chapter_index}章预览：")
-                    print("="*80)
+                    logger.info("\n" + "="*80)
+                    logger.info(f"📖 修改后的第{chapter_index}章预览：")
+                    logger.info("="*80)
                     preview = current_content[:1000] + ("..." if len(current_content) > 1000 else "")
-                    print(preview)
-                    print("="*80)
+                    logger.info(preview)
+                    logger.info("="*80)
                     confirm = input("\n请确认是否通过？（y/n）：\n").lower()
             else:
                 # 非交互式环境（Celery/Web），需要人工确认
@@ -1326,10 +1326,10 @@ class NovelOrchestrator:
                         import sys
                         if sys.stdin.isatty():
                             # 只有在 CLI 交互式环境才询问
-                            print("\n" + "="*80)
-                            print(f"🔧 当前：第{chapter_num}章已完成，是否需要调整下一章（第{chapter_num + 1}章）的剧情？")
-                            print("输入y可以输入新的剧情要求，输入n保持原策划不变")
-                            print("="*80)
+                            logger.info("\n" + "="*80)
+                            logger.info(f"🔧 当前：第{chapter_num}章已完成，是否需要调整下一章（第{chapter_num + 1}章）的剧情？")
+                            logger.info("输入y可以输入新的剧情要求，输入n保持原策划不变")
+                            logger.info("="*80)
                             adjust = input("\n是否调整下一章剧情？（y/n）：\n").lower()
                             if adjust == "y":
                                 new_plot = input(f"请输入第{chapter_num + 1}章新的剧情要求：\n")
@@ -1420,13 +1420,13 @@ def main() -> None:
     project_dir = sys.argv[1] if len(sys.argv) > 1 else None
     orchestrator = NovelOrchestrator(project_dir)
     result = orchestrator.run_full_novel()
-    print("\n" + "="*80)
-    print(f"生成完成: {result['novel_name']}")
-    print(f"生成章节: {result['generated_chapters']}")
-    print(f"总字数: {result['total_words']:,}")
-    print(f"总体质量评分: {result['overall_quality_score']:.2f}/10")
-    print(f"输出目录: {result['output_dir']}")
-    print("="*80)
+    logger.info("\n" + "="*80)
+    logger.info(f"生成完成: {result['novel_name']}")
+    logger.info(f"生成章节: {result['generated_chapters']}")
+    logger.info(f"总字数: {result['total_words']:,}")
+    logger.info(f"总体质量评分: {result['overall_quality_score']:.2f}/10")
+    logger.info(f"输出目录: {result['output_dir']}")
+    logger.info("="*80)
 
 
 if __name__ == "__main__":

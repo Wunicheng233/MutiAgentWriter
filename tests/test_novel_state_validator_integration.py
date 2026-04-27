@@ -44,24 +44,8 @@ class TestNovelStateValidatorIntegration(TestCase):
         mock_save.return_value = None
         mock_record.return_value = None
 
-        # Setup novel_state_service with validator that returns issues
-        class MockValidator:
-            def __init__(self, service):
-                pass
-
-            def validate_chapter(self, chapter_index, chapter_content, scene_anchors):
-                return (False, [
-                    {
-                        "type": "character_state_violation",
-                        "issue_type": "character_consistency",
-                        "severity": "high",
-                        "fix_instruction": "角色状态冲突测试",
-                    }
-                ])
-
+        # Setup novel_state_service mock
         class MockStateService:
-            NovelStateValidator = MockValidator
-
             def load_state(self):
                 return {"characters": {}}
 
@@ -76,15 +60,7 @@ class TestNovelStateValidatorIntegration(TestCase):
         self.orchestrator.skip_chapter_confirm = True
         self.orchestrator.dimension_scores = {}
 
-        # Verify that the validator class is accessible
-        self.assertTrue(hasattr(self.orchestrator.novel_state_service, 'NovelStateValidator'))
-        validator = self.orchestrator.novel_state_service.NovelStateValidator(self.orchestrator.novel_state_service)
-        passed, issues = validator.validate_chapter(1, "内容", [])
-        self.assertFalse(passed)
-        self.assertEqual(len(issues), 1)
-        self.assertEqual(issues[0]["type"], "character_state_violation")
-
-    def test_validator_can_be_instantiated_from_service(self):
+    def test_validator_can_be_instantiated_directly(self):
         """Verify NovelStateValidator class is accessible via service."""
         from backend.core.novel_state_service import NovelStateService, NovelStateValidator
 

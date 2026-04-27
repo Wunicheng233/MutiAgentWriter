@@ -47,8 +47,8 @@ class NovelStateService:
                     loaded = json.load(f)
                 if isinstance(loaded, Mapping):
                     state.update(loaded)
-            except (OSError, json.JSONDecodeError):
-                pass
+            except (OSError, json.JSONDecodeError) as e:
+                logger.warning(f"加载状态文件失败，使用默认状态: {type(e).__name__}: {e}")
         for key, default_value in DEFAULT_NOVEL_STATE.items():
             state.setdefault(key, deepcopy(default_value))
         return state
