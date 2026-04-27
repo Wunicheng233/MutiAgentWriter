@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { Card, Badge, Button, Progress, Modal, ModalHeader, ModalContent, ModalFooter, Empty, Skeleton } from '../components/v2'
+import { Badge, Button, Progress, Modal, ModalHeader, ModalContent, ModalFooter, Empty, Skeleton } from '../components/v2'
 import type { BadgeVariant } from '../components/v2'
 import { CanvasContainer } from '../components/layout/CanvasContainer'
 import { listProjects, deleteProject } from '../utils/endpoints'
