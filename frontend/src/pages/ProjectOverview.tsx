@@ -2,7 +2,7 @@ import React, { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
 
-import { Card, Badge, Button, Progress, Divider, StatsCard } from '../components/v2'
+import { Card, Badge, Button, Progress, Divider, StatsCard, AgentCard } from '../components/v2'
 import { useLayoutStore } from '../store/useLayoutStore'
 import { useProjectStore, type ProjectStatus } from '../store/useProjectStore'
 import type { BadgeVariant } from '../components/v2'
@@ -452,15 +452,12 @@ export const ProjectOverview: React.FC = () => {
         <h2 className="text-xl font-semibold text-[var(--text-primary)] mb-6">智能体状态</h2>
         <div className="grid gap-4 md:grid-cols-4">
           {agentCards.map(agent => (
-            <div
+            <AgentCard
               key={agent.key}
-              className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-secondary)] p-4 text-center"
-            >
-              <h3 className="text-lg font-medium text-[var(--text-primary)]">{agent.title}</h3>
-              <Badge variant={agentStates[agent.key] === 'done' ? 'success' : agentStates[agent.key] === 'running' ? 'status' : 'secondary'} className="mt-3">
-                {agentStates[agent.key] === 'done' ? '已完成' : agentStates[agent.key] === 'running' ? '运行中' : '等待'}
-              </Badge>
-            </div>
+              name={agent.title}
+              subtitle={agent.subtitle}
+              status={agentStates[agent.key]}
+            />
           ))}
         </div>
       </Card>
