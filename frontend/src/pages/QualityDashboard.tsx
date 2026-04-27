@@ -68,7 +68,7 @@ export const QualityDashboard: React.FC = () => {
   if (!analytics) {
     return (
       <Empty
-        icon="document"
+        icon="chart"
         title="暂无分析数据"
         description="先生成章节并运行质量分析后再来查看"
       />

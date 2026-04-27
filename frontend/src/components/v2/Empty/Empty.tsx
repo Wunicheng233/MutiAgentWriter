@@ -1,6 +1,6 @@
 import React from 'react'
 
-export type EmptyIconType = 'document' | 'folder' | 'list'
+export type EmptyIconType = 'document' | 'folder' | 'list' | 'chart'
 
 export interface EmptyProps {
   icon?: EmptyIconType | React.ReactNode
@@ -36,10 +36,19 @@ const ListIcon = () => (
   </svg>
 )
 
+// Chart icon
+const ChartIcon = () => (
+  <svg className="w-16 h-16" viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 48V28M24 48V16M36 48V24M48 48V8" strokeWidth="3" />
+    <path d="M8 48h48" strokeWidth="3" />
+  </svg>
+)
+
 const iconMap: Record<EmptyIconType, React.FC> = {
   document: DocumentIcon,
   folder: FolderIcon,
   list: ListIcon,
+  chart: ChartIcon,
 }
 
 export const Empty: React.FC<EmptyProps> = ({
