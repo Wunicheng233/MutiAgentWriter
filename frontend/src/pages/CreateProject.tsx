@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
 
-import { Card, Input, Textarea, Button, Progress, Divider, Alert } from '../components/v2'
+import { Card, Input, Textarea, Button, Progress, Divider, Alert, Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/v2'
 import { createProject } from '../utils/endpoints'
 import { useToast } from '../components/toastContext'
 import { getErrorMessage } from '../utils/errorMessage'
@@ -174,30 +174,23 @@ export const CreateProject: React.FC = () => {
                   onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) => updateForm({ description: event.target.value })}
                 />
 
-                <div className="space-y-3">
+                <div className="space-y-2">
                   <label className="text-body text-sm font-medium">内容类型</label>
-                  <div className="grid gap-3 md:grid-cols-3">
-                    {contentTypes.map(type => (
-                      <label
-                        key={type.value}
-                        className={`cursor-pointer rounded-comfortable border p-4 text-center transition-colors ${
-                          formData.content_type === type.value
-                            ? 'border-sage bg-sage/10 text-inkwell'
-                            : 'border-border bg-parchment/40 text-[var(--text-secondary)] hover:border-sage/30'
-                        }`}
-                      >
-                        <input
-                          type="radio"
-                          name="content_type"
-                          value={type.value}
-                          checked={formData.content_type === type.value}
-                          onChange={(event: React.ChangeEvent<HTMLInputElement>) => updateForm({ content_type: event.target.value as ContentType })}
-                          className="sr-only"
-                        />
-                        <div className="font-medium">{type.label}</div>
-                      </label>
-                    ))}
-                  </div>
+                  <Select
+                    value={formData.content_type}
+                    onValueChange={(value) => updateForm({ content_type: value as ContentType })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="选择内容类型" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {contentTypes.map(type => (
+                        <SelectItem key={type.value} value={type.value}>
+                          {type.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             )}
