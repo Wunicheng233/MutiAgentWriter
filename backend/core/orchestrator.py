@@ -274,6 +274,28 @@ class NovelOrchestrator:
             except Exception as e:
                 logger.error(f"工作流事件回调执行失败: {e}")
 
+    def _format_scene_anchors_for_critic(self, chapter_index: int) -> str:
+        """Format scene anchors into the string format expected by Critic prompt."""
+        if not hasattr(self, "scene_anchor_plans") or not self.scene_anchor_plans:
+            return "（无 scene anchors）"
+
+        for plan in self.scene_anchor_plans:
+            if plan.get("chapter_index") == chapter_index:
+                anchors = plan.get("scene_anchors", [])
+                if not anchors:
+                    return "（无 scene anchors）"
+                lines = []
+                for anchor in anchors:
+                    lines.append(
+                        f"- **{anchor.get('scene_id', 'unknown')}**: "
+                        f"目标={anchor.get('goal', '')}; "
+                        f"冲突={anchor.get('conflict', '')}; "
+                        f"角色动机={anchor.get('character_intent', '')}; "
+                        f"状态变更={anchor.get('state_change', '')}"
+                    )
+                return "\n".join(lines)
+        return "（无 scene anchors）"
+
     def _run_critic_harness(
         self,
         chapter_index: int,
@@ -282,6 +304,8 @@ class NovelOrchestrator:
         revision_round: int = 0,
     ) -> Tuple[bool, float, Dict[str, float], List[Dict]]:
         """Run Critic through the stable evaluation harness boundary."""
+        scene_anchors_context = self._format_scene_anchors_for_critic(chapter_index)
+        novel_state_snapshot = self.novel_state_service.build_prewrite_context(chapter_outline, [])
         report = evaluate_chapter_with_critic(
             critic=self.critic,
             chapter_content=chapter_content,
@@ -292,6 +316,8 @@ class NovelOrchestrator:
             revision_round=revision_round,
             perspective=self.writer_perspective if self.use_perspective_critic else None,
             perspective_strength=self.perspective_strength,
+            scene_anchors_context=scene_anchors_context,
+            novel_state_snapshot=novel_state_snapshot,
         )
         if not hasattr(self, "evaluation_reports"):
             self.evaluation_reports = []

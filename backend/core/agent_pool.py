@@ -94,12 +94,14 @@ class CriticAgent(BaseAgent):
     def __init__(self, client: openai.OpenAI, model: str, temperature: float):
         super().__init__("critic", client, model, temperature)
 
-    def critic_chapter(self, chapter_content: str, setting_bible: str, chapter_outline: str, content_type: str = "novel", perspective: str = None, perspective_strength: float = 0.7) -> tuple:
+    def critic_chapter(self, chapter_content: str, setting_bible: str, chapter_outline: str, content_type: str = "novel", perspective: str = None, perspective_strength: float = 0.7, scene_anchors_context: str = "", novel_state_snapshot: str = "") -> tuple:
         return critic_agent.critic_chapter(
             chapter_content, setting_bible, chapter_outline, content_type,
             perspective=perspective, perspective_strength=perspective_strength,
             project_config=getattr(self, "project_config", None),
-            client=self.client
+            client=self.client,
+            scene_anchors_context=scene_anchors_context,
+            novel_state_snapshot=novel_state_snapshot,
         )
 
 

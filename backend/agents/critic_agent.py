@@ -35,6 +35,8 @@ def critic_chapter(
     perspective: str = None,
     perspective_strength: float = 0.7,
     project_config: dict = None,
+    scene_anchors_context: str = "",
+    novel_state_snapshot: str = "",
 ) -> Tuple[bool, int, Dict, List, Optional[Dict]]:
     """
     评审章节，输出 JSON 格式的评审结果。
@@ -47,6 +49,8 @@ def critic_chapter(
         client: OpenAI客户端
         perspective: 写作视角
         perspective_strength: 视角强度
+        scene_anchors_context: Scene锚点上下文，用于精准定位问题
+        novel_state_snapshot: 截至上一章的小说事实状态快照
 
     Returns:
         (passed: 是否通过, score: 总分 1-10, dimensions: 各维度评分, issues: 问题列表, critique_v2: V2诊断数据)
@@ -58,6 +62,8 @@ def critic_chapter(
         "world_bible": setting_bible,
         "chapter_outline": chapter_outline,
         "content_type": content_type,
+        "scene_anchors_context": scene_anchors_context or "（无 scene anchors）",
+        "novel_state_snapshot": novel_state_snapshot or "（无状态快照）",
     }
 
     # 使用统一的 load_prompt 加载提示词（支持 Skill 注入）

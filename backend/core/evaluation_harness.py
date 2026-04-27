@@ -175,6 +175,8 @@ def evaluate_chapter_with_critic(
     revision_round: int = 0,
     perspective: str = None,
     perspective_strength: float = 0.7,
+    scene_anchors_context: str = "",
+    novel_state_snapshot: str = "",
 ) -> ChapterEvaluationReport:
     critic_result = critic.critic_chapter(
         chapter_content,
@@ -183,6 +185,8 @@ def evaluate_chapter_with_critic(
         content_type,
         perspective=perspective,
         perspective_strength=perspective_strength,
+        scene_anchors_context=scene_anchors_context,
+        novel_state_snapshot=novel_state_snapshot,
     )
     if not isinstance(critic_result, tuple):
         raise TypeError("Critic must return a tuple")
