@@ -4,6 +4,9 @@ import threading
 from backend.utils.logger import logger
 from backend.utils.file_utils import load_prompt
 
+# LLM API 调用超时设置（秒）
+LLM_API_TIMEOUT = 180  # 3分钟，对于长文本生成应该足够
+
 # 优先使用新的统一配置中心，如果不存在回退到旧配置
 try:
     from backend.core.config import settings
@@ -133,7 +136,8 @@ def call_volc_api(
                     {"role": "user", "content": user_input}
                 ],
                 temperature=temperature,
-                max_tokens=max_tokens
+                max_tokens=max_tokens,
+                timeout=LLM_API_TIMEOUT,
             )
             # 防御性检查：choices 可能为空，content 可能为 None（如拒绝服务、内容过滤等）
             if not response.choices:
