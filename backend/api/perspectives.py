@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 from backend.database import get_db
 from backend.models import Project, ProjectCollaborator, User
-from backend.api.auth import get_current_user
+from backend.deps import get_current_user
 from backend.rate_limiter import limit_requests
 from backend.core.skill_runtime import SkillRegistry
 
