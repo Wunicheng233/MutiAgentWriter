@@ -76,7 +76,7 @@ def critic_chapter(
         project_config=project_config,
     )
 
-    logger.info(f"🔍 Critic Agent正在评审章节，等待结果...")
+    logger.info("🔍 Critic Agent正在评审章节，等待结果...")
     temperature = settings.get_temperature_for_agent("critic")
     result = call_volc_api(
         "critic",

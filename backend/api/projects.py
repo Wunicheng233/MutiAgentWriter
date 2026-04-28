@@ -697,7 +697,7 @@ def trigger_export(
     if running_task:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"已有运行中的任务，请等待完成"
+            detail="已有运行中的任务，请等待完成"
         )
 
     # 检查是否有章节

@@ -76,7 +76,7 @@ class GenerateNovelTask(Task):
                         f.write(f"Task failed at: {datetime.utcnow().isoformat()}\n")
                         f.write(f"Error: {str(exc)}\n")
                         f.write(f"Task ID: {task_id}\n")
-                    logger.info(f"Marked project directory status: failed")
+                    logger.info("Marked project directory status: failed")
                 except Exception as status_error:
                     logger.warning(f"Failed to write status file: {status_error}")
         except Exception as cleanup_exception:
@@ -535,7 +535,7 @@ def generate_novel_task(
                                         source="agent",
                                     )
                             db.commit()
-                            logger.info(f"Final synchronization: all chapters to database")
+                            logger.info("Final synchronization: all chapters to database")
 
                             # 从info.json读取质量评分，更新到project和chapters
                             info_path = project_dir / "info.json"

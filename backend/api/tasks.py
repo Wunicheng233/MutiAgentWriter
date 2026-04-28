@@ -141,7 +141,7 @@ def confirm_chapter(
         status="pending",
         progress=task_record.progress,
         current_chapter=chapter_index if not request.approved else chapter_index + 1,
-        current_step=f"继续生成，等待启动..."
+        current_step="继续生成，等待启动..."
     )
     db.add(new_task_record)
     db.flush()

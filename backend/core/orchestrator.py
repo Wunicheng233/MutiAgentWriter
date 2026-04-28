@@ -412,7 +412,7 @@ class NovelOrchestrator:
             if use_user_plan and len(novel_description.strip()) > 200:
                 # 用户已提供完整大纲，直接使用
                 self._report_progress(15, "使用用户提供的完整大纲...")
-                logger.info(f"用户已提供完整故事大纲，直接使用用户大纲")
+                logger.info("用户已提供完整故事大纲，直接使用用户大纲")
                 self.plan = novel_description
                 # 生成设定圣经
                 self.setting_bible = self.plan
@@ -432,7 +432,7 @@ class NovelOrchestrator:
                         plan_content = f.read().strip()
                     self.plan = plan_content
                     self.setting_bible = world_bible
-                    logger.info(f"✅ 已加载项目中已存在的设定圣经和策划方案")
+                    logger.info("✅ 已加载项目中已存在的设定圣经和策划方案")
 
                     # 检查是否有策划方案的用户反馈（来自上一次确认不通过）
                     feedback_plan_path = self.output_dir / "feedback_plan.txt"
@@ -441,7 +441,7 @@ class NovelOrchestrator:
                             feedback = f.read().strip()
                         if feedback:
                             self._check_cancellation()
-                            logger.info(f"找到策划方案用户反馈，根据反馈重新优化...")
+                            logger.info("找到策划方案用户反馈，根据反馈重新优化...")
                             self.plan = self.planner.revise_plan(
                                 self.plan, feedback, self.original_requirement,
                                 perspective=self.writer_perspective,
@@ -939,7 +939,7 @@ class NovelOrchestrator:
         self._check_cancellation()
 
         # Step 2: 系统层防护（纯代码，零Token消耗）
-        logger.info(f"运行系统层防护检查...")
+        logger.info("运行系统层防护检查...")
         # 提取主角姓名（从设定圣经中简单提取，找不到就留空）
         protagonist_name = ""
         match = re.search(r'主角[:：]\s*([^\n]+)', self.setting_bible)
