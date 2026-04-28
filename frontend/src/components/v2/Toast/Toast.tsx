@@ -1,6 +1,57 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { Alert } from '../Alert/Alert'
 import { ToastContext, type Toast, type ToastType } from './toastContext'
+
+export type ToastVariant = 'success' | 'warning' | 'error' | 'info'
+
+export interface ToastProps {
+  message: string
+  open: boolean
+  onClose: () => void
+  duration?: number
+  variant?: ToastVariant
+}
+
+const variantClassMap: Record<ToastVariant, string> = {
+  success: 'success',
+  warning: 'warning',
+  error: 'error',
+  info: 'info',
+}
+
+export const Toast: React.FC<ToastProps> = ({
+  message,
+  open,
+  onClose,
+  duration = 3000,
+  variant = 'info',
+}) => {
+  useEffect(() => {
+    if (open && duration > 0) {
+      const timer = setTimeout(() => {
+        onClose()
+      }, duration)
+      return () => clearTimeout(timer)
+    }
+  }, [open, duration, onClose])
+
+  if (!open) {
+    return null
+  }
+
+  return (
+    <Alert
+      variant={variant}
+      closable
+      onClose={onClose}
+      className={variantClassMap[variant]}
+    >
+      {message}
+    </Alert>
+  )
+}
+
+Toast.displayName = 'Toast'
 
 export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [toasts, setToasts] = useState<Toast[]>([])
