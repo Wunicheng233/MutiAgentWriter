@@ -1021,6 +1021,7 @@ from pydantic import BaseModel
 class CreateShareResponse(BaseModel):
     share_url: str
     share_token: str
+    expires_at: str
 
 @router.post("/{project_id}/share", response_model=CreateShareResponse, summary="创建分享链接")
 def create_share_link(
@@ -1036,18 +1037,23 @@ def create_share_link(
             detail="项目不存在"
         )
 
+    # 默认过期时间：7 天后
+    default_expires_at = datetime.datetime.utcnow() + datetime.timedelta(days=7)
+
     # 检查是否已经存在分享链接
     existing = db.query(ShareLink).filter(ShareLink.project_id == project_id).first()
     if existing:
-        # 如果已存在但被撤销了，重新激活它
+        # 如果已存在但被撤销了，重新激活它并重置过期时间
         if not existing.is_active:
             existing.is_active = True
+            existing.expires_at = default_expires_at
             db.commit()
         # 返回已有链接
         share_url = f"/share/{existing.share_token}"
         return {
             "share_url": share_url,
-            "share_token": existing.share_token
+            "share_token": existing.share_token,
+            "expires_at": existing.expires_at.isoformat() + "Z" if existing.expires_at else None
         }
 
     # 创建新分享链接，token使用32字节随机字符串
@@ -1055,6 +1061,7 @@ def create_share_link(
     share_link = ShareLink(
         project_id=project_id,
         share_token=share_token,
+        expires_at=default_expires_at,
     )
     db.add(share_link)
     db.commit()
@@ -1062,7 +1069,8 @@ def create_share_link(
     share_url = f"/share/{share_token}"
     return {
         "share_url": share_url,
-        "share_token": share_token
+        "share_token": share_token,
+        "expires_at": share_link.expires_at.isoformat() + "Z"
     }
 
 
