@@ -43,7 +43,6 @@ def _get_client(agent_role: str) -> openai.OpenAI:
                 api_key = settings.get_api_key_for_agent(agent_role)
                 base_url = settings.base_url
             else:
-                from backend.config import API_KEYS, BASE_URL
                 api_key = API_KEYS.get(agent_role, API_KEYS.get("default", ""))
                 base_url = BASE_URL
 
