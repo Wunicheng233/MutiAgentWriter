@@ -1,12 +1,12 @@
 import React, { useRef, useEffect, useCallback } from 'react'
-import { useChatStore } from '../../store/useChatStore'
+import { useChatStore, type ChatMessage as ChatMessageType } from '../../store/useChatStore'
 import ChatMessage from './ChatMessage'
+import { aiChat } from '../../utils/endpoints'
 
 export const AIChatPanel: React.FC = () => {
   const { messages, inputText, isTyping, setInputText, addMessage, setIsTyping } = useChatStore()
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   // Adjust textarea height automatically
@@ -22,15 +22,6 @@ export const AIChatPanel: React.FC = () => {
     adjustTextareaHeight()
   }, [inputText, adjustTextareaHeight])
 
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current)
-      }
-    }
-  }, [])
-
   // Smart auto-scroll - only scroll if user is near the bottom
   useEffect(() => {
     const container = messagesContainerRef.current
@@ -42,39 +33,47 @@ export const AIChatPanel: React.FC = () => {
     }
   }, [messages, isTyping])
 
-  const handleSubmit = useCallback((e: React.FormEvent) => {
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault()
     if (!inputText.trim() || isTyping) return
 
-    const userMessage = inputText.trim()
-    setInputText('')
-
-    // Add user message
-    addMessage({
+    const userMessage: ChatMessageType = {
       id: Date.now().toString(),
       role: 'user',
-      content: userMessage,
+      content: inputText.trim(),
       timestamp: Date.now(),
-    })
-
-    setIsTyping(true)
-
-    // Clear any existing timeout
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current)
     }
 
-    // Simulate AI response (placeholder - integrate with real backend later)
-    timeoutRef.current = setTimeout(() => {
-      setIsTyping(false)
-      addMessage({
+    addMessage(userMessage)
+    setInputText('')
+    setIsTyping(true)
+
+    try {
+      // Call real backend API
+      const response = await aiChat({
+        user_input: userMessage.content,
+        // TODO: Inject context here for Phase 1 (project awareness)
+      })
+
+      const assistantMessage: ChatMessageType = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: `I received your message: "${userMessage}". This is a placeholder response until the AI backend is connected.`,
+        content: response.content,
         timestamp: Date.now(),
-      })
-      timeoutRef.current = null
-    }, 1000)
+      }
+
+      addMessage(assistantMessage)
+    } catch (error) {
+      const errorMessage: ChatMessageType = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: '抱歉，服务暂时不可用，请稍后再试。',
+        timestamp: Date.now(),
+      }
+      addMessage(errorMessage)
+    } finally {
+      setIsTyping(false)
+    }
   }, [inputText, isTyping, setInputText, addMessage, setIsTyping])
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
