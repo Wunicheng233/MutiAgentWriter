@@ -16,6 +16,8 @@ import type {
   WorkflowRunListResponse,
   SkillDefinition,
   EnabledSkillConfig,
+  ChatRequest,
+  ChatResponse,
 } from '../types/api'
 
 // ========== Auth ==========
@@ -431,4 +433,11 @@ export async function updateProjectPerspective(
 }> {
   const res = await api.put(`/perspectives/project/${projectId}`, data)
   return res.data
+}
+
+// ========== AI Assistant ==========
+
+export async function aiChat(request: ChatRequest): Promise<ChatResponse> {
+  const response = await api.post<ChatResponse>('/v1/ai/chat', request)
+  return response.data
 }

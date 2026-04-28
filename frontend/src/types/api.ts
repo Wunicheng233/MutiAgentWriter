@@ -231,3 +231,14 @@ export interface ChapterUpdate {
   content?: string
   status?: string
 }
+
+// ========== AI Assistant API ==========
+
+export interface ChatRequest {
+  user_input: string
+  context?: Record<string, unknown>
+}
+
+export interface ChatResponse {
+  content: string
+}
