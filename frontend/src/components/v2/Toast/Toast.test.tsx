@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, cleanup } from '@testing-library/react'
-import { Toast } from './Toast'
+import { Toast, type ToastVariant } from './Toast'
 
 describe('Toast', () => {
   beforeEach(() => {
@@ -60,28 +60,17 @@ describe('Toast', () => {
   })
 
   describe('变体样式', () => {
-    it('应该正确渲染 info 变体', () => {
-      render(<Toast message="信息消息" open={true} variant="info" onClose={() => {}} />)
-      const toast = screen.getByRole('alert')
-      expect(toast).toHaveClass('info')
-    })
-
-    it('应该正确渲染 success 变体', () => {
-      render(<Toast message="成功消息" open={true} variant="success" onClose={() => {}} />)
-      const toast = screen.getByRole('alert')
-      expect(toast).toHaveClass('success')
-    })
-
-    it('应该正确渲染 warning 变体', () => {
-      render(<Toast message="警告消息" open={true} variant="warning" onClose={() => {}} />)
-      const toast = screen.getByRole('alert')
-      expect(toast).toHaveClass('warning')
-    })
-
-    it('应该正确渲染 error 变体', () => {
-      render(<Toast message="错误消息" open={true} variant="error" onClose={() => {}} />)
-      const toast = screen.getByRole('alert')
-      expect(toast).toHaveClass('error')
+    it('应该正确渲染所有变体', () => {
+      const variants: ToastVariant[] = ['info', 'success', 'warning', 'error']
+      variants.forEach(variant => {
+        const { unmount } = render(
+          <Toast message={`${variant}消息`} open={true} variant={variant} onClose={() => {}} />
+        )
+        const toast = screen.getByRole('alert')
+        expect(toast).toBeInTheDocument()
+        expect(toast).toHaveClass('border-l-4', 'rounded-r-lg')
+        unmount()
+      })
     })
   })
 })

@@ -12,13 +12,6 @@ export interface ToastProps {
   variant?: ToastVariant
 }
 
-const variantClassMap: Record<ToastVariant, string> = {
-  success: 'success',
-  warning: 'warning',
-  error: 'error',
-  info: 'info',
-}
-
 export const Toast: React.FC<ToastProps> = ({
   message,
   open,
@@ -44,7 +37,6 @@ export const Toast: React.FC<ToastProps> = ({
       variant={variant}
       closable
       onClose={onClose}
-      className={variantClassMap[variant]}
     >
       {message}
     </Alert>
