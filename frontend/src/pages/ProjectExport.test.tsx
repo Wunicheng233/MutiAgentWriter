@@ -7,7 +7,7 @@ import { ToastContext } from '../components/toastContext'
 
 // Mock useAuthStore with proper selector support
 vi.mock('../store/useAuthStore', () => ({
-  useAuthStore: (selector?: (state: any) => any) => {
+  useAuthStore: <T,>(selector?: (state: Record<string, unknown>) => T) => {
     const state = { user: { id: 1, username: 'test' } }
     return selector ? selector(state) : state
   },
@@ -15,7 +15,7 @@ vi.mock('../store/useAuthStore', () => ({
 
 // Mock useLayoutStore
 vi.mock('../store/useLayoutStore', () => ({
-  useLayoutStore: (selector?: (state: any) => any) => {
+  useLayoutStore: <T,>(selector?: (state: Record<string, unknown>) => T) => {
     const state = {
       autoExpandHeaderInProject: true,
       setHeaderCollapsed: vi.fn(),
@@ -29,7 +29,7 @@ const mockSetCurrentProject = vi.fn()
 const mockSetProjectStatus = vi.fn()
 
 vi.mock('../store/useProjectStore', () => ({
-  useProjectStore: (selector?: (state: any) => any) => {
+  useProjectStore: <T,>(selector?: (state: Record<string, unknown>) => T) => {
     const state = {
       setCurrentProject: mockSetCurrentProject,
       setProjectStatus: mockSetProjectStatus,

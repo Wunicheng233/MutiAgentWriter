@@ -14,7 +14,7 @@ const mockSetAutoExpandHeaderInProject = vi.fn()
 const mockAutoExpandHeaderInProject = { current: true }
 
 vi.mock('../store/useLayoutStore', () => ({
-  useLayoutStore: (selector?: (state: any) => any) => {
+  useLayoutStore: <T,>(selector?: (state: Record<string, unknown>) => T) => {
     const state = {
       autoExpandHeaderInProject: mockAutoExpandHeaderInProject.current,
       setAutoExpandHeaderInProject: mockSetAutoExpandHeaderInProject,

@@ -17,7 +17,7 @@ const mockToggleFocusMode = vi.fn()
 describe('useKeyboardShortcuts', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    ;(useLayoutStore as any).mockReturnValue({
+    vi.mocked(useLayoutStore).mockReturnValue({
       toggleNavCollapsed: mockToggleNavCollapsed,
       toggleHeader: mockToggleHeader,
       setRightPanelOpen: mockSetRightPanelOpen,

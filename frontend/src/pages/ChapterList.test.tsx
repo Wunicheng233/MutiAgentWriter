@@ -10,7 +10,7 @@ const mockSetCurrentProject = vi.fn()
 const mockSetProjectStatus = vi.fn()
 
 vi.mock('../store/useProjectStore', () => ({
-  useProjectStore: (selector?: (state: any) => any) => {
+  useProjectStore: <T,>(selector?: (state: Record<string, unknown>) => T) => {
     const state = {
       setCurrentProject: mockSetCurrentProject,
       setProjectStatus: mockSetProjectStatus,

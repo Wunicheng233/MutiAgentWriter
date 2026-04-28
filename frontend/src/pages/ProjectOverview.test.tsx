@@ -15,7 +15,7 @@ const mockSetHeaderCollapsed = vi.fn()
 const mockAutoExpandHeaderInProject = { current: true }
 
 vi.mock('../store/useLayoutStore', () => ({
-  useLayoutStore: (selector?: (state: any) => any) => {
+  useLayoutStore: <T,>(selector?: (state: Record<string, unknown>) => T) => {
     const state = {
       autoExpandHeaderInProject: mockAutoExpandHeaderInProject.current,
       setHeaderCollapsed: mockSetHeaderCollapsed,
@@ -29,7 +29,7 @@ const mockSetCurrentProject = vi.fn()
 const mockSetProjectStatus = vi.fn()
 
 vi.mock('../store/useProjectStore', () => ({
-  useProjectStore: (selector?: (state: any) => any) => {
+  useProjectStore: <T,>(selector?: (state: Record<string, unknown>) => T) => {
     const state = {
       setCurrentProject: mockSetCurrentProject,
       setProjectStatus: mockSetProjectStatus,
