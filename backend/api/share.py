@@ -33,7 +33,7 @@ def get_shared_project(
         ShareLink.share_token == token
     ).first()
 
-    if not share_link:
+    if not share_link or not share_link.is_active:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="分享链接不存在或已过期"
@@ -88,7 +88,7 @@ def get_shared_chapter(
         ShareLink.share_token == token
     ).first()
 
-    if not share_link:
+    if not share_link or not share_link.is_active:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="分享链接不存在或已过期"

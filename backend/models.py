@@ -259,6 +259,7 @@ class ShareLink(Base):
     id = Column(Integer, primary_key=True, index=True)
     project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
     share_token = Column(String(64), unique=True, index=True, nullable=False)
+    is_active = Column(Boolean, default=True)  # 软删除标记
     expires_at = Column(DateTime, nullable=True)  # 可选过期时间
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 

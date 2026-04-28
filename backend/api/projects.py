@@ -963,6 +963,10 @@ def create_share_link(
     # 检查是否已经存在分享链接
     existing = db.query(ShareLink).filter(ShareLink.project_id == project_id).first()
     if existing:
+        # 如果已存在但被撤销了，重新激活它
+        if not existing.is_active:
+            existing.is_active = True
+            db.commit()
         # 返回已有链接
         share_url = f"/share/{existing.share_token}"
         return {
@@ -984,6 +988,39 @@ def create_share_link(
         "share_url": share_url,
         "share_token": share_token
     }
+
+
+@router.delete("/{project_id}/share", status_code=status.HTTP_204_NO_CONTENT, summary="撤销分享链接")
+def revoke_share_link(
+    project_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """撤销项目的公开分享链接（软删除）"""
+    # 只有所有者可以撤销分享链接
+    project = check_project_access(project_id, current_user, db, require_owner=True)
+    if not project:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="项目不存在"
+        )
+
+    # 查找活跃的分享链接
+    share = db.query(ShareLink).filter(
+        ShareLink.project_id == project_id,
+    ).first()
+
+    if not share:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="分享链接不存在"
+        )
+
+    # 软删除：标记为不活跃，保留历史记录
+    share.is_active = False
+    db.commit()
+
+    return None
 
 
 # ========== Collaborators ==========
