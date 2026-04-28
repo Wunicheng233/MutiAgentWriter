@@ -3,7 +3,6 @@ import { useCallback } from 'react'
 export type NavigationRole = 'option' | 'menuitem'
 
 export interface UseKeyboardNavigationOptions {
-  isOpen: boolean
   setIsOpen: (open: boolean) => void
   contentRef: React.RefObject<HTMLElement | null>
   role?: NavigationRole
@@ -15,7 +14,6 @@ export interface UseKeyboardNavigationOptions {
  * 支持 option (Select) 和 menuitem (DropdownMenu) 两种角色
  */
 export function useKeyboardNavigation({
-  isOpen,
   setIsOpen,
   contentRef,
   role = 'option',
@@ -49,7 +47,7 @@ export function useKeyboardNavigation({
         setIsOpen(false)
       }
     },
-    [isOpen, setIsOpen, contentRef, role, onSelect]
+    [setIsOpen, contentRef, role, onSelect]
   )
 
   return { handleKeyDown }

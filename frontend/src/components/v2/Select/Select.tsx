@@ -181,7 +181,6 @@ export const SelectContent: React.FC<SelectContentProps> = ({ children, classNam
   }, [open, searchable])
 
   const { handleKeyDown } = useKeyboardNavigation({
-    isOpen: open,
     setIsOpen: setOpen,
     contentRef,
     onSelect: setValue,

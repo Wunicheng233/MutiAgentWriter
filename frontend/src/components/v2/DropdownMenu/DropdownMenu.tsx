@@ -106,7 +106,6 @@ export const DropdownMenuContent: React.FC<DropdownMenuContentProps> = ({
   const { open, setOpen, contentRef } = context
 
   const { handleKeyDown } = useKeyboardNavigation({
-    isOpen: open,
     setIsOpen: setOpen,
     contentRef: contentRef as React.RefObject<HTMLElement>,
     role: 'menuitem',
