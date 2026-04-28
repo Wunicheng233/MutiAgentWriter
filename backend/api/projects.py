@@ -10,7 +10,7 @@ import logging
 import os
 from pathlib import Path
 from typing import Any, List
-from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
@@ -45,7 +45,6 @@ from backend.core.config import settings
 # 导入Celery任务（可选）
 try:
     from backend.tasks.writing_tasks import generate_novel_task
-    from celery.result import AsyncResult
     from celery_app import celery_app
     CELERY_AVAILABLE = True
 except ImportError:

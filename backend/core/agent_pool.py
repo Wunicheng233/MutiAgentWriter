@@ -206,8 +206,6 @@ class AgentPool:
 
 
 # 导出常用类给orchestrator
-from backend.agents.critic_agent import critic_chapter
-
 __all__ = [
     "BaseAgent",
     "PlannerAgent",

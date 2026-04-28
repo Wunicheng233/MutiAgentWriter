@@ -9,7 +9,7 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field
 from pathlib import Path
-from typing import Optional, Dict
+from typing import Dict
 
 # 项目根目录
 ROOT_DIR = Path(__file__).parent.parent.parent

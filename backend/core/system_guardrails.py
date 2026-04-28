@@ -10,7 +10,6 @@ import re
 import yaml
 from dataclasses import dataclass
 from typing import List, Optional, Dict
-from pathlib import Path
 
 from backend.utils.logger import logger
 from backend.config import ROOT_DIR

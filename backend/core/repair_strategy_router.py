@@ -6,7 +6,7 @@
 - 策略分类：局部修复 vs 整章重写
 """
 
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any
 from backend.utils.logger import logger
 
 

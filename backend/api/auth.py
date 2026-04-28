@@ -5,10 +5,10 @@
 
 import datetime
 from datetime import timedelta
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from sqlalchemy import exists, and_
-from sqlalchemy import func, extract
+from sqlalchemy import exists
+from sqlalchemy import func
 from pydantic import BaseModel
 from backend.models import TokenUsage
 from backend.core.config import settings

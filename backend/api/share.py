@@ -8,9 +8,8 @@ from __future__ import annotations
 import datetime
 from fastapi import APIRouter, HTTPException, status, Depends
 from sqlalchemy.orm import Session
-from sqlalchemy import desc
 from backend.database import get_db
-from backend.models import ShareLink, Project, Chapter
+from backend.models import ShareLink, Chapter
 from backend.rate_limiter import limit_requests
 
 from pydantic import BaseModel

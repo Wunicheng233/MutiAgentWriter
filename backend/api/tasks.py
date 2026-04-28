@@ -11,8 +11,7 @@ from celery.result import AsyncResult
 from pydantic import BaseModel
 
 from backend.database import get_db
-from backend.models import User, GenerationTask, Project, ProjectCollaborator, Chapter
-from backend.schemas import GenerationTaskResponse
+from backend.models import User, GenerationTask, Project, ProjectCollaborator
 from backend.task_dispatch import dispatch_tracked_task, make_task_id
 from backend.deps import get_current_user
 from backend.workflow_service import (

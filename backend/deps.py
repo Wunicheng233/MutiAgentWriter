@@ -4,7 +4,6 @@ FastAPI 依赖项
 - get_current_user: 获取当前认证用户
 """
 
-from typing import Generator
 from fastapi import Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 

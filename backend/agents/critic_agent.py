@@ -11,7 +11,6 @@ from typing import Tuple, List, Dict, Optional
 from backend.utils.volc_engine import call_volc_api
 from backend.utils.logger import logger
 from backend.core.config import settings
-from backend.config import CRITIC_PASS_SCORE
 from backend.utils.file_utils import load_prompt
 from backend.utils.json_utils import parse_json_result
 

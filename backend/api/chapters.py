@@ -4,7 +4,6 @@
 """
 
 import logging
-import os
 from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -12,12 +11,11 @@ from sqlalchemy import desc
 
 from backend.chapter_sync import html_content_to_plain_text, render_chapter_plain_text
 from backend.database import get_db
-from backend.models import User, Project, Chapter, GenerationTask, ChapterVersion
+from backend.models import User, Chapter, GenerationTask, ChapterVersion
 from backend.task_dispatch import dispatch_tracked_task, make_task_id
 from backend.task_status import get_active_project_task
 from backend.schemas import ChapterResponse, ChapterUpdate, GenerationTaskResponse
 from backend.deps import get_current_user
-from backend.core.config import settings
 
 logger = logging.getLogger(__name__)
 

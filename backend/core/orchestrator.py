@@ -21,7 +21,6 @@ from .config import settings
 from backend.utils.file_utils import write_file_atomic
 from .agent_pool import (
     PlannerAgent, WriterAgent, CriticAgent, ReviseAgent,
-    agent_pool
 )
 from .evaluation_harness import evaluate_chapter_with_critic
 from .novel_state_service import NovelStateService

@@ -1,5 +1,4 @@
 import yaml
-from pathlib import Path
 from backend.config import USER_REQUIREMENTS_FILE
 from backend.utils.logger import logger
 

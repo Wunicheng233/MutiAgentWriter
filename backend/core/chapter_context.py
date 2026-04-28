@@ -7,7 +7,7 @@
 - 解析和整合场景锚点
 """
 
-from typing import Tuple, List, Dict, Optional
+from typing import Tuple, List, Dict
 from backend.utils.logger import logger
 from .workflow_optimization import parse_scene_anchors_from_outline, format_scene_anchors_for_prompt
 
