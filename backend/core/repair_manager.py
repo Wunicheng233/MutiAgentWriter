@@ -67,7 +67,6 @@ class RepairManager:
             (修复后的内容, 是否使用了本地修复, 修复追踪记录)
         """
         repair_trace: List[Dict] = []
-        used_local_repair = False
         current_content = chapter_content
 
         # 本地修复逻辑（如果实现了 local patch 方法可以在这里扩展）
