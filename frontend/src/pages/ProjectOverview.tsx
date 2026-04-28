@@ -65,22 +65,22 @@ const agentCards: AgentCardConfig[] = [
   {
     key: 'planner',
     title: 'Planner',
-    subtitle: '把需求扩成结构化设定与章节路线',
+    subtitle: '生成结构化设定',
   },
   {
     key: 'writer',
     title: 'Writer',
-    subtitle: '结合上下文与章节目标生成正文初稿',
+    subtitle: '生成章节正文',
   },
   {
     key: 'critic',
     title: 'Critic',
-    subtitle: '按情节、人物、钩子、文笔、设定打分',
+    subtitle: '多维度质量评估',
   },
   {
     key: 'revise',
     title: 'Revise',
-    subtitle: '根据问题清单对章节进行定向修订',
+    subtitle: '智能修订优化',
   },
 ]
 

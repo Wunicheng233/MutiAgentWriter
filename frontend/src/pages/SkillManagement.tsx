@@ -162,8 +162,8 @@ export const SkillManagement: React.FC = () => {
       <div className="space-y-8">
         <div className="flex items-center justify-between">
           <div>
-            <Link to={`/projects/${projectId}/setup`}>
-              <Button variant="tertiary" size="sm">← 返回设置</Button>
+            <Link to={`/projects/${projectId}/outline`}>
+              <Button variant="tertiary" size="sm">← 返回大纲配置</Button>
             </Link>
             <h1 className="mt-4 text-2xl font-medium text-[var(--text-primary)]">创作风格库</h1>
           </div>

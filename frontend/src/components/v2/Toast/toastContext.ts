@@ -2,7 +2,7 @@ import { createContext, useContext } from 'react'
 
 export type ToastType = 'success' | 'error' | 'info' | 'warning'
 
-export interface Toast {
+export interface ToastState {
   id: number
   message: string
   type: ToastType

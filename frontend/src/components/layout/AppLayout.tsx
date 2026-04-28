@@ -1,8 +1,10 @@
-import { useEffect } from 'react'
-import { Outlet, useLocation } from 'react-router-dom'
+import { useEffect, useRef } from 'react'
+import { Outlet, useLocation, useParams } from 'react-router-dom'
 import { useShallow } from 'zustand/react/shallow'
+import { useQuery } from '@tanstack/react-query'
 import { useLayoutStore } from '../../store/useLayoutStore'
-import { useProjectStore } from '../../store/useProjectStore'
+import { useProjectStore, type ProjectStatus } from '../../store/useProjectStore'
+import { useToast } from '../toastContext'
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts'
 import { NavRail } from './NavRail'
 import { CanvasContainer } from './CanvasContainer'
@@ -11,9 +13,13 @@ import { AIChatPanel } from '../ai/AIChatPanel'
 import { FloatingToggleButton } from '../FloatingToggleButton'
 import { NavBar } from '../NavBar'
 import { ProjectHeader } from './ProjectHeader'
+import { getProject } from '../../utils/endpoints'
 
 export const AppLayout = () => {
   useLocation()
+  const { id: projectId } = useParams<{ id: string }>()
+  const { showToast } = useToast()
+  const notifiedStatusRef = useRef<string | null>(null)
 
   const {
     navCollapsed,
@@ -33,9 +39,10 @@ export const AppLayout = () => {
     }))
   )
 
-  const { isInProject } = useProjectStore(
+  const { isInProject, setProjectStatus } = useProjectStore(
     useShallow((state) => ({
       isInProject: state.isInProject,
+      setProjectStatus: state.setProjectStatus,
     }))
   )
 
@@ -48,6 +55,45 @@ export const AppLayout = () => {
       document.body.classList.remove('focus-mode-active')
     }
   }, [focusMode])
+
+  // 全局项目状态轮询 - 当在项目内时每3秒检查一次状态
+  const parsedProjectId = projectId ? parseInt(projectId, 10) : 0
+  const isValidProjectId = !Number.isNaN(parsedProjectId) && parsedProjectId > 0
+
+  useQuery({
+    queryKey: ['project-global-status', parsedProjectId],
+    queryFn: async () => {
+      const project = await getProject(parsedProjectId)
+
+      // 更新 ProjectStore 中的状态
+      const progress = project.current_generation_task?.progress ?? 0
+      const progressPercent = project.status === 'completed' ? 100 : progress * 100
+      setProjectStatus(project.status as ProjectStatus, progressPercent)
+
+      // 当状态变为 waiting_confirm 时显示通知（只通知一次）
+      if (project.status === 'waiting_confirm' && notifiedStatusRef.current !== 'waiting_confirm') {
+        notifiedStatusRef.current = 'waiting_confirm'
+        showToast('项目等待人工确认，请前往概览页面处理', 'info')
+      } else if (project.status !== 'waiting_confirm' && notifiedStatusRef.current === 'waiting_confirm') {
+        // 状态改变后重置通知标记
+        notifiedStatusRef.current = null
+      }
+
+      // 生成完成通知（仅当从生成状态变为完成时）
+      if (project.status === 'completed' && notifiedStatusRef.current !== 'completed') {
+        const hadProgress = notifiedStatusRef.current === 'generating' || notifiedStatusRef.current === 'waiting_confirm'
+        if (hadProgress) {
+          notifiedStatusRef.current = 'completed'
+          showToast('🎉 项目已全部生成完成！', 'success')
+        }
+      }
+
+      return project
+    },
+    enabled: isInProject && isValidProjectId,
+    refetchInterval: 3000,
+    staleTime: 3000,
+  })
 
   return (
     <div

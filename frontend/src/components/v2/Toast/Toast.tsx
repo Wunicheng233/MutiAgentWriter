@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react'
 import { Alert } from '../Alert/Alert'
-import { ToastContext, type Toast, type ToastType } from './toastContext'
+import { ToastContext, type ToastState, type ToastType } from './toastContext'
 
 export type ToastVariant = 'success' | 'warning' | 'error' | 'info'
 
@@ -46,7 +46,7 @@ export const Toast: React.FC<ToastProps> = ({
 Toast.displayName = 'Toast'
 
 export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [toasts, setToasts] = useState<Toast[]>([])
+  const [toasts, setToasts] = useState<ToastState[]>([])
 
   const showToast = useCallback((message: string, type: ToastType) => {
     const id = Date.now()

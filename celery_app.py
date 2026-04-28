@@ -41,7 +41,7 @@ celery_app.conf.update(
 )
 
 # 自动发现tasks目录下的任务
-celery_app.autodiscover_tasks(["tasks"])
+celery_app.autodiscover_tasks(["backend.tasks"])
 
 if __name__ == "__main__":
     celery_app.start()

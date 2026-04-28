@@ -16,6 +16,23 @@ vi.mock('../../hooks/useKeyboardShortcuts', () => ({
   useKeyboardShortcuts: vi.fn(),
 }))
 
+vi.mock('../toastContext', () => ({
+  useToast: () => ({
+    showToast: vi.fn(),
+  }),
+}))
+
+vi.mock('@tanstack/react-query', async () => {
+  const actual = await vi.importActual('@tanstack/react-query')
+  return {
+    ...actual,
+    useQuery: vi.fn().mockReturnValue({
+      data: null,
+      isLoading: false,
+    }),
+  }
+})
+
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom')
   return {

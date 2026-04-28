@@ -81,7 +81,7 @@ export function AppRoutes() {
             <Route path="workflows/:runId" element={<WorkflowRunDetail />} />
             <Route path="artifacts/:artifactId" element={<ArtifactDetail />} />
             <Route path="editor/:chapterIndex" element={<Editor />} />
-            <Route path="write/:chapterIndex" element={<Navigate to="../editor/:chapterIndex" replace />} />
+            <Route path="write/:chapterIndex" element={<Editor />} />
             <Route path="read/:chapterIndex" element={<Reader />} />
             <Route path="analytics" element={<QualityDashboard />} />
             <Route path="outline" element={<ProjectOutline />} />

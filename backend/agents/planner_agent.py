@@ -16,18 +16,17 @@ def generate_plan(
     perspective_strength: float = 0.7,
     project_config: dict = None,
 ) -> str:
-    # 构建占位符替换上下文
+    # 构建占位符替换上下文（与 prompts/planner.md 严格匹配）
     context = {}
-    if world_bible:
-        context["world_bible"] = world_bible
-    if genre:
-        context["genre"] = genre
     if target_platform:
         context["platform"] = target_platform
     if total_words:
-        context["total_words"] = total_words
+        context["target_words"] = str(total_words)
     if core_hook:
         context["core_hook"] = core_hook
+    context["content_type"] = content_type
+    context["user_requirements"] = core_requirement
+    context["chapter_word_count"] = str(chapter_word_count)
 
     user_input = f"""
     核心创作需求：{core_requirement}

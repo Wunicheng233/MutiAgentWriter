@@ -7,7 +7,6 @@ import { useLayoutStore } from '../store/useLayoutStore'
 import { useProjectStore, type ProjectStatus } from '../store/useProjectStore'
 import {
   addCollaborator,
-  cleanStuckTasks,
   createShareLink,
   downloadExportFile,
   getProject,
@@ -15,7 +14,6 @@ import {
   getTaskStatus,
   listCollaborators,
   removeCollaborator,
-  resetProject,
   triggerExport,
 } from '../utils/endpoints'
 import { useAuthStore } from '../store/useAuthStore'
@@ -76,11 +74,6 @@ export const ProjectExport: React.FC = () => {
   const [shareUrl, setShareUrl] = useState<string | null>(null)
   const [newCollaboratorUsername, setNewCollaboratorUsername] = useState('')
   const [addingCollaborator, setAddingCollaborator] = useState(false)
-  const [showResetConfirm, setShowResetConfirm] = useState(false)
-  const [resetting, setResetting] = useState(false)
-  const [resetConfirmText, setResetConfirmText] = useState('')
-  const [showCleanConfirm, setShowCleanConfirm] = useState(false)
-  const [cleaningStuck, setCleaningStuck] = useState(false)
 
   const { autoExpandHeaderInProject, setHeaderCollapsed } = useLayoutStore()
 
@@ -132,51 +125,6 @@ export const ProjectExport: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['collaborators', projectId] })
     } catch {
       showToast('移除失败', 'error')
-    }
-  }
-
-  const handleResetProject = async () => {
-    if (!showResetConfirm) {
-      setShowResetConfirm(true)
-      setResetConfirmText('')
-      return
-    }
-
-    if (resetConfirmText.trim() !== data?.name) {
-      showToast('请输入完整项目名后再重置', 'error')
-      return
-    }
-
-    try {
-      setResetting(true)
-      await resetProject(projectId)
-      showToast('项目已重置为草稿，所有生成内容已清除', 'success')
-      queryClient.invalidateQueries({ queryKey: ['project', projectId] })
-      setShowResetConfirm(false)
-      setResetConfirmText('')
-    } catch {
-      showToast('重置失败', 'error')
-    } finally {
-      setResetting(false)
-    }
-  }
-
-  const handleCleanStuckTasks = async () => {
-    if (!showCleanConfirm) {
-      setShowCleanConfirm(true)
-      return
-    }
-
-    try {
-      setCleaningStuck(true)
-      const result = await cleanStuckTasks(projectId)
-      showToast(result.message, result.cleaned_count > 0 ? 'success' : 'info')
-      queryClient.invalidateQueries({ queryKey: ['project', projectId] })
-      setShowCleanConfirm(false)
-    } catch {
-      showToast('清理失败', 'error')
-    } finally {
-      setCleaningStuck(false)
     }
   }
 
@@ -300,11 +248,6 @@ export const ProjectExport: React.FC = () => {
             <Link to={`/projects/${projectId}/analytics`}>
               <Button variant="secondary" size="sm">质量分析</Button>
             </Link>
-            {data.status !== 'draft' && (
-              <Button variant="secondary" size="sm" onClick={() => setShowCleanConfirm(true)} disabled={cleaningStuck}>
-                清理队列
-              </Button>
-            )}
           </div>
         </div>
       </Card>
@@ -428,63 +371,6 @@ export const ProjectExport: React.FC = () => {
         </Card>
       )}
 
-      {showCleanConfirm && (
-        <div className="rounded-standard border border-muted-gold/35 bg-muted-gold/10 p-4">
-          <p className="text-sm text-body">
-            <strong>确认清理任务队列吗？</strong> 这会将所有未完成的任务标记为失败，但不会删除已经生成的章节内容。
-          </p>
-          <div className="mt-3 flex justify-end gap-3">
-            <Button variant="secondary" onClick={() => setShowCleanConfirm(false)} disabled={cleaningStuck}>
-              取消
-            </Button>
-            <Button variant="secondary" onClick={handleCleanStuckTasks} disabled={cleaningStuck}>
-              {cleaningStuck ? '清理中...' : '确认清理'}
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {showResetConfirm && (
-        <div className="rounded-standard border border-terracotta/25 bg-terracotta/5 p-4">
-          <p className="text-sm text-body">
-            <strong>确认重置项目吗？</strong> 这会删除所有已生成章节和任务记录，项目将回到草稿状态。请输入完整项目名后再确认。
-          </p>
-          <div className="mt-3">
-            <Input
-              label={`输入项目名：${data.name}`}
-              value={resetConfirmText}
-              onChange={event => setResetConfirmText(event.target.value)}
-            />
-          </div>
-          <div className="mt-3 flex justify-end gap-3">
-            <Button
-              variant="secondary"
-              onClick={() => {
-                setShowResetConfirm(false)
-                setResetConfirmText('')
-              }}
-              disabled={resetting}
-            >
-              取消
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={handleResetProject}
-              disabled={resetting || resetConfirmText.trim() !== data.name}
-            >
-              {resetting ? '重置中...' : '确认重置'}
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {data.status !== 'draft' && (
-        <div className="flex justify-end">
-          <Button variant="tertiary" onClick={handleResetProject}>
-            展开重置确认
-          </Button>
-        </div>
-      )}
     </div>
   )
 }
