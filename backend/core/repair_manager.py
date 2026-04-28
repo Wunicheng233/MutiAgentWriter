@@ -72,7 +72,6 @@ class RepairManager:
 
         # 本地修复逻辑（如果实现了 local patch 方法可以在这里扩展）
         # 目前直接使用整章修订
-        used_local_repair = False
 
         # 本地修复失败，回退到整章修订
         current_content = self.revise_agent.revise_chapter(

@@ -450,7 +450,7 @@ def delete_project(
             if project_dir.exists():
                 import shutil
                 shutil.rmtree(project_dir)
-        except Exception as e:
+        except Exception:
             # 文件删除失败不阻止数据库删除
             pass
 

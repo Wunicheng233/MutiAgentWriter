@@ -125,10 +125,8 @@ def load_prompt(
             project_config=skill_project_config,
         )
         content = inject_skill_layer(content, assembled_skills)
-        skill_injected = bool(assembled_skills)
     except Exception as e:
         logger.warning(f"Skill 注入失败，使用原始prompt继续: {e}")
-        skill_injected = False
         if "{{skill_layer}}" in content:
             content = content.replace("{{skill_layer}}", "")
 

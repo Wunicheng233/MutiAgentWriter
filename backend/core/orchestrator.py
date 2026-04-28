@@ -686,7 +686,7 @@ class NovelOrchestrator:
 
         def _apply_single_repair(issue: Dict, scene_id_label: str) -> None:
             """应用单个修复的共享逻辑"""
-            nonlocal current_content, used_local_repair, repair_trace
+            nonlocal current_content, used_local_repair
             evidence_quote = str((issue.get("evidence_span") or {}).get("quote") or issue.get("location") or "")
             if not local_revise or not evidence_quote or evidence_quote == "全文":
                 return
