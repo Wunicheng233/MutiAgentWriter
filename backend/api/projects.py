@@ -562,10 +562,27 @@ def get_plan_preview(
     }
 
 
+def _validate_project_config(config: dict | None) -> None:
+    """验证项目配置是否存在，完全未配置时抛出异常"""
+    if not config:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="项目配置不能为空，请先完成项目设置"
+        )
+
+    # 检查是否是空字典
+    if len(config) == 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="项目配置不能为空，请先完成项目设置"
+        )
+
+
 @router.post("/{project_id}/generate", response_model=GenerationTaskResponse, summary="触发生成任务")
 def trigger_generation(
     project_id: int,
     regenerate: bool = Query(False, description="重新生成：清空所有已有章节文件后再开始"),
+    plan_only: bool = Query(False, description="仅生成策划方案，不生成正文"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -587,6 +604,10 @@ def trigger_generation(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="项目不存在"
         )
+
+    # 配置验证：plan_only 模式不检查配置（因为就是要生成策划方案）
+    if not plan_only:
+        _validate_project_config(project.config)
 
     # 检查是否已有运行中的任务
     running_task = get_active_project_task(db, project_id)
