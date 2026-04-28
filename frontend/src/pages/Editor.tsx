@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
+import type { AxiosError } from 'axios'
 import { Button, Card, Badge, Progress, AgentCard } from '../components/v2'
 import { useLayoutStore } from '../store/useLayoutStore'
 import { useProjectStore, type ProjectStatus } from '../store/useProjectStore'
@@ -99,7 +100,7 @@ export const Editor: React.FC = () => {
   })
 
   // 判断章节是否不存在（404）
-  const chapterNotFound = error && (error as any)?.response?.status === 404
+  const chapterNotFound = error && (error as AxiosError)?.response?.status === 404
 
   // 根据项目状态和章节状态初始化Agent状态
   // 如果项目已经完成生成，所有agent都应该显示为完成
