@@ -164,7 +164,6 @@ class ProjectCreate(BaseModel):
 class ProjectUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
-    status: Optional[str] = None
     config: Optional[Dict] = None
     bible: Optional[Dict] = None
 
