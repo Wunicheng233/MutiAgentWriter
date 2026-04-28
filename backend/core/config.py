@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     writer_api_key: str = Field("", description="Writer Agent API密钥", json_schema_extra={"env": ["WRITER_API_KEY", "WRITER_API_KEY_WRITER"]})
     critic_api_key: str = Field("", description="Critic Agent API密钥", json_schema_extra={"env": ["CRITIC_API_KEY", "WRITER_API_KEY_CRITIC"]})
     revise_api_key: str = Field("", description="Revise Agent API密钥", json_schema_extra={"env": ["REVISE_API_KEY", "WRITER_API_KEY_REVISE"]})
+    assistant_api_key: str = Field("", description="Assistant Agent API密钥", json_schema_extra={"env": ["ASSISTANT_API_KEY", "WRITER_API_KEY_ASSISTANT"]})
     # 保留旧字段用于兼容
     guardian_api_key: str = Field("", description="Guardian Agent API密钥 (deprecated)", json_schema_extra={"env": ["GUARDIAN_API_KEY", "WRITER_API_KEY_GUARDIAN"]})
     editor_api_key: str = Field("", description="Editor Agent API密钥 (deprecated)", json_schema_extra={"env": ["EDITOR_API_KEY", "WRITER_API_KEY_EDITOR"]})
@@ -57,6 +58,7 @@ class Settings(BaseSettings):
     writer_model: str = Field("doubao-seed-code-preview-latest", description="Writer模型名称", json_schema_extra={"env": ["WRITER_MODEL"]})
     critic_model: str = Field("ark-code-latest", description="Critic模型名称", json_schema_extra={"env": ["CRITIC_MODEL"]})
     revise_model: str = Field("ark-code-latest", description="Revise模型名称", json_schema_extra={"env": ["REVISE_MODEL"]})
+    assistant_model: str = Field("ark-code-latest", description="Assistant模型名称", json_schema_extra={"env": ["ASSISTANT_MODEL"]})
     # 保留旧字段用于兼容
     guardian_model: str = Field("ark-code-latest", description="Guardian模型名称 (deprecated)", json_schema_extra={"env": ["GUARDIAN_MODEL"]})
     editor_model: str = Field("doubao-seed-code-preview-latest", description="Editor模型名称 (deprecated)", json_schema_extra={"env": ["EDITOR_MODEL"]})
@@ -70,6 +72,7 @@ class Settings(BaseSettings):
     writer_temperature: float = Field(0.7, description="Writer温度（创作适中）")
     critic_temperature: float = Field(0.2, description="Critic温度（评审低温客观）")
     revise_temperature: float = Field(0.4, description="Revise温度（修复按指令执行，低温更准确）")
+    assistant_temperature: float = Field(0.7, description="Assistant温度（对话适中）")
     # 保留旧字段用于兼容
     guardian_temperature: float = Field(0.2, description="Guardian温度（deprecated）")
     editor_temperature: float = Field(0.5, description="Editor温度（deprecated）")
@@ -151,6 +154,7 @@ class Settings(BaseSettings):
             "writer": self.writer_api_key,
             "critic": self.critic_api_key,
             "revise": self.revise_api_key,
+            "assistant": self.assistant_api_key,
             # 保留旧键用于兼容
             "guardian": self.guardian_api_key,
             "editor": self.editor_api_key,
@@ -188,6 +192,7 @@ class Settings(BaseSettings):
             "writer": self.writer_model,
             "critic": self.critic_model,
             "revise": self.revise_model,
+            "assistant": self.assistant_model,
             # 保留旧键用于兼容
             "guardian": self.guardian_model,
             "editor": self.editor_model,
@@ -205,6 +210,7 @@ class Settings(BaseSettings):
             "writer": self.writer_temperature,
             "critic": self.critic_temperature,
             "revise": self.revise_temperature,
+            "assistant": self.assistant_temperature,
             # 保留旧键用于兼容
             "guardian": self.guardian_temperature,
             "editor": self.editor_temperature,
@@ -214,49 +220,6 @@ class Settings(BaseSettings):
             "trim": 0.3,
         }
         return temp_map.get(agent_name, 0.7)
-
-
-# ========== Agent 统一配置字典 ==========
-# 默认模型（与planner保持一致）
-DEFAULT_MODEL = "ark-code-latest"
-
-# 各Agent统一配置入口
-AGENT_CONFIGS = {
-    "planner": {
-        "model": DEFAULT_MODEL,
-        "temperature": 0.8,  # 创意规划需要高温
-        "max_tokens": 4000,
-    },
-    "writer": {
-        "model": "doubao-seed-code-preview-latest",
-        "temperature": 0.7,  # 创作适中
-        "max_tokens": 8192,
-    },
-    "critic": {
-        "model": DEFAULT_MODEL,
-        "temperature": 0.2,  # 评审需要低温客观
-        "max_tokens": 2000,
-    },
-    "revise": {
-        "model": DEFAULT_MODEL,
-        "temperature": 0.4,  # 修复按指令执行
-        "max_tokens": 4000,
-    },
-    "assistant": {
-        "model": DEFAULT_MODEL,
-        "temperature": 0.7,  # 创造性适中，适合对话
-        "max_tokens": 1000,
-    },
-}
-
-
-def get_agent_config(self, agent_name: str) -> dict:
-    """获取Agent的完整配置字典"""
-    return AGENT_CONFIGS.get(agent_name)
-
-
-# 动态绑定方法到 Settings 类
-Settings.get_agent_config = get_agent_config
 
 
 # 全局单例，其他模块从此导入
