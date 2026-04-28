@@ -8,7 +8,7 @@ const baseURL = import.meta.env.VITE_API_URL || '/api'
 
 const api: AxiosInstance = axios.create({
   baseURL,
-  timeout: 30000,
+  timeout: 120000, // 2分钟，LLM生成需要足够时间
 })
 
 // 请求拦截器：自动添加 JWT
