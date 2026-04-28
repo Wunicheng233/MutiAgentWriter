@@ -98,24 +98,6 @@ describe('ProjectOverview - UI 优化', () => {
     expect(exportButton.closest('a')).toHaveAttribute('href', '/projects/1/export')
   })
 
-  test.skip('Flow Story 描述应该精简，不应该有长段落说明', async () => {
-    renderWithProviders(<ProjectOverview />)
-    // 不应该有大段描述文字
-    const longDescription = screen.queryByText(/从创意到作品交付的关键路径收成一张总览/)
-    expect(longDescription).not.toBeInTheDocument()
-  })
-
-  test.skip('卡片应该有足够的内边距保证呼吸感', async () => {
-    renderWithProviders(<ProjectOverview />)
-    // 顶部卡片应该有足够的 padding
-    const cards = document.querySelectorAll('.paper-card')
-    cards.forEach(card => {
-      // 至少应该有 p-8 (32px) 或更大的内边距
-      const hasPadding = /\bp-(\d+)\b/.test(card.className) ||
-                       /\bpx-(\d+)\b/.test(card.className)
-      expect(hasPadding).toBe(true)
-    })
-  })
 })
 
 describe('ProjectOverview - 自动展开顶栏', () => {
