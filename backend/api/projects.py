@@ -24,7 +24,9 @@ from backend.task_status import (
     active_project_tasks_query,
     get_active_project_task,
     mark_active_project_tasks_terminal,
+    ACTIVE_TASK_STATUSES,
 )
+from celery_app import celery_app
 from backend.schemas import (
     ProjectCreate,
     ProjectUpdate,
@@ -441,6 +443,36 @@ def delete_project(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="项目不存在"
         )
+
+    # ====== 取消所有运行中的 Celery 任务 ======
+    # 查找所有活跃的任务
+    active_tasks = db.query(GenerationTask).filter(
+        GenerationTask.project_id == project_id,
+        GenerationTask.status.in_(ACTIVE_TASK_STATUSES)
+    ).all()
+
+    # 取消每个活跃的 Celery 任务
+    for task in active_tasks:
+        if task.celery_task_id:
+            try:
+                celery_app.control.revoke(
+                    task.celery_task_id,
+                    terminate=True,
+                    signal='SIGTERM'
+                )
+            except Exception as e:
+                # 记录日志但不阻止删除，因为任务可能已经完成或不存在
+                logger.warning(f"Failed to revoke Celery task {task.celery_task_id}: {e}")
+
+    # 将所有任务标记为 cancelled 状态，保持历史记录一致性
+    if active_tasks:
+        mark_active_project_tasks_terminal(
+            db=db,
+            project_id=project_id,
+            task_status='cancelled',
+            current_step_key='project_deleted',
+        )
+    # =================================================
 
     # 删除文件（如果存在）
     if project.file_path:
