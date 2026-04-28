@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useRef, useCallback, useMemo, useEffect } from 'react'
 import { useClickOutside } from '../hooks/useClickOutside'
 import { useId } from '../hooks/useId'
-import { useKeyboardNavigation } from './useKeyboardNavigation'
+import { useKeyboardNavigation } from '../hooks/useKeyboardNavigation'
 
 interface SelectContextValue {
   value: string

@@ -392,7 +392,7 @@ export const ProjectOverview: React.FC = () => {
           </div>
 
           <div className="grid gap-3 md:grid-cols-5">
-            {flowSteps.map((step, _index) => {
+            {flowSteps.map((step) => {
               const status = getFlowStepStatus(data, step.key)
               const isDone = status === 'done'
               const isActive = status === 'active'
