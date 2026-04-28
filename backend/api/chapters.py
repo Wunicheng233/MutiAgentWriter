@@ -13,7 +13,7 @@ from backend.chapter_sync import html_content_to_plain_text, render_chapter_plai
 from backend.database import get_db
 from backend.models import User, Chapter, GenerationTask, ChapterVersion
 from backend.task_dispatch import dispatch_tracked_task, make_task_id
-from backend.task_status import get_active_project_task
+from backend.task_status import get_active_project_task, ACTIVE_TASK_STATUSES
 from backend.schemas import ChapterResponse, ChapterUpdate, GenerationTaskResponse
 from backend.deps import get_current_user
 
@@ -95,6 +95,19 @@ def update_chapter(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="章节不存在"
+        )
+
+    # 检查：该章节是否正在被生成任务处理（防止并发写入导致数据丢失）
+    running_task = db.query(GenerationTask).filter(
+        GenerationTask.project_id == project_id,
+        GenerationTask.status.in_(ACTIVE_TASK_STATUSES),
+        GenerationTask.current_chapter == chapter_index,
+    ).first()
+
+    if running_task:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"章节 {chapter_index} 正在生成中，请等待生成完成后再编辑"
         )
 
     # 更新字段
@@ -361,6 +374,19 @@ def restore_version(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="版本不存在"
+        )
+
+    # 检查：该章节是否正在被生成任务处理（防止并发写入导致数据丢失）
+    running_task = db.query(GenerationTask).filter(
+        GenerationTask.project_id == project_id,
+        GenerationTask.status.in_(ACTIVE_TASK_STATUSES),
+        GenerationTask.current_chapter == chapter_index,
+    ).first()
+
+    if running_task:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"章节 {chapter_index} 正在生成中，请等待生成完成后再恢复版本"
         )
 
     # 保存当前内容作为新版本（避免丢失）
