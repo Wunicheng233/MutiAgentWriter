@@ -99,5 +99,22 @@ class TestAIAssistantAPI(unittest.TestCase):
         )
 
 
+    @patch('backend.api.ai.AIAssistantService')
+    def test_chat_endpoint_error_handling(self, mock_service):
+        """Test POST /ai/chat endpoint properly handles service errors"""
+        mock_service.chat.side_effect = Exception("LLM API connection failed")
+
+        response = client.post(
+            "/api/v1/ai/chat",
+            json={"user_input": "Hello"}
+        )
+
+        self.assertEqual(response.status_code, 500)
+        data = response.json()
+        self.assertIn("detail", data)
+        self.assertIn("AI service error", data["detail"])
+        self.assertIn("LLM API connection failed", data["detail"])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -6,7 +6,7 @@ Extensibility Points:
 - /ai/conversations: Conversation history management (Phase 4)
 - /ai/suggestions: Smart suggestions based on context
 """
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from backend.services.ai_assistant_service import AIAssistantService
 
@@ -25,16 +25,18 @@ class ChatResponse(BaseModel):
 
 
 @router.post("/chat", response_model=ChatResponse)
-async def chat(request: ChatRequest):
+def chat(request: ChatRequest):
     """
     AI Assistant chat endpoint.
 
     Accepts user input and optional context, returns AI response.
     Designed for future extensibility with streaming and context-aware features.
     """
-    result = AIAssistantService.chat(
-        user_input=request.user_input,
-        context=request.context,
-    )
-
-    return {"content": result}
+    try:
+        result = AIAssistantService.chat(
+            user_input=request.user_input,
+            context=request.context,
+        )
+        return ChatResponse(content=result)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"AI service error: {str(e)}")
