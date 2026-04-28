@@ -216,6 +216,49 @@ class Settings(BaseSettings):
         return temp_map.get(agent_name, 0.7)
 
 
+# ========== Agent 统一配置字典 ==========
+# 默认模型（与planner保持一致）
+DEFAULT_MODEL = "ark-code-latest"
+
+# 各Agent统一配置入口
+AGENT_CONFIGS = {
+    "planner": {
+        "model": DEFAULT_MODEL,
+        "temperature": 0.8,  # 创意规划需要高温
+        "max_tokens": 4000,
+    },
+    "writer": {
+        "model": "doubao-seed-code-preview-latest",
+        "temperature": 0.7,  # 创作适中
+        "max_tokens": 8192,
+    },
+    "critic": {
+        "model": DEFAULT_MODEL,
+        "temperature": 0.2,  # 评审需要低温客观
+        "max_tokens": 2000,
+    },
+    "revise": {
+        "model": DEFAULT_MODEL,
+        "temperature": 0.4,  # 修复按指令执行
+        "max_tokens": 4000,
+    },
+    "assistant": {
+        "model": DEFAULT_MODEL,
+        "temperature": 0.7,  # 创造性适中，适合对话
+        "max_tokens": 1000,
+    },
+}
+
+
+def get_agent_config(self, agent_name: str) -> dict:
+    """获取Agent的完整配置字典"""
+    return AGENT_CONFIGS.get(agent_name)
+
+
+# 动态绑定方法到 Settings 类
+Settings.get_agent_config = get_agent_config
+
+
 # 全局单例，其他模块从此导入
 settings = Settings()
 
