@@ -51,5 +51,53 @@ class TestAIAssistantService(unittest.TestCase):
         )
 
 
+import json
+from fastapi.testclient import TestClient
+from backend.main import app
+
+client = TestClient(app)
+
+
+class TestAIAssistantAPI(unittest.TestCase):
+
+    @patch('backend.api.ai.AIAssistantService')
+    def test_chat_endpoint_basic(self, mock_service):
+        """Test POST /ai/chat endpoint with basic input"""
+        mock_service.chat.return_value = "Hello from AI!"
+
+        response = client.post(
+            "/api/v1/ai/chat",  # Note: Full path including /api/v1 prefix
+            json={"user_input": "Hello"}
+        )
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertIn("content", data)
+        self.assertEqual(data["content"], "Hello from AI!")
+        mock_service.chat.assert_called_once_with(
+            user_input="Hello",
+            context=None,
+        )
+
+    @patch('backend.api.ai.AIAssistantService')
+    def test_chat_endpoint_with_context(self, mock_service):
+        """Test POST /ai/chat endpoint with context parameter"""
+        mock_service.chat.return_value = "Got context"
+
+        response = client.post(
+            "/api/v1/ai/chat",  # Note: Full path including /api/v1 prefix
+            json={
+                "user_input": "Check project",
+                "context": {"project_id": 1}
+            }
+        )
+
+        self.assertEqual(response.status_code, 200)
+        mock_service.chat.assert_called_once_with(
+            user_input="Check project",
+            context={"project_id": 1},
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
