@@ -26,27 +26,40 @@ def check_project_access(
     project_id: int,
     current_user: User,
     db: Session,
-    require_owner: bool = False
+    require_owner: bool = False,
+    min_role: str | None = None,
 ) -> Project:
     """检查当前用户是否有权限访问项目（与 projects.py 保持一致）"""
     project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
         return None
 
+    # 所有者总是直接通过
     if project.user_id == current_user.id:
         return project
 
+    # 如果要求必须是所有者
     if require_owner:
         return None
 
+    # 检查是否是协作者
     collab = db.query(ProjectCollaborator).filter(
         ProjectCollaborator.project_id == project_id,
         ProjectCollaborator.user_id == current_user.id
     ).first()
 
-    if collab:
-        return project
-    return None
+    if not collab:
+        return None
+
+    # 角色检查
+    if min_role:
+        role_levels = {'viewer': 1, 'editor': 2}
+        required_level = role_levels.get(min_role, 0)
+        actual_level = role_levels.get(collab.role, 0)
+        if actual_level < required_level:
+            return None
+
+    return project
 from celery_app import celery_app
 from backend.tasks.writing_tasks import generate_novel_task
 
@@ -84,12 +97,19 @@ def confirm_chapter(
     # 刷新从数据库拿到最新状态
     db.refresh(task_record)
 
-    # 验证权限：确认操作需要所有者权限
-    project = check_project_access(task_record.project_id, current_user, db, require_owner=True)
+    # 验证权限：确认操作需要 editor 或所有者权限
+    project = check_project_access(task_record.project_id, current_user, db, require_owner=False, min_role='editor')
     if not project:
+        # 区分"任务不存在"和"权限不足"
+        existing_task = db.query(GenerationTask).filter(GenerationTask.id == task_record.id).first()
+        if not existing_task:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="任务不存在"
+            )
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="任务不存在"
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="权限不足：需要 editor 或所有者角色才能确认章节"
         )
 
     if task_record.status != "waiting_confirm":

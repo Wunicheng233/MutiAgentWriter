@@ -77,13 +77,21 @@ def update_chapter(
     db: Session = Depends(get_db)
 ):
     """更新章节内容（人工编辑），同时同步更新文件系统"""
-    # 验证项目权限 - 更新需要所有者权限（协作者目前只读）
+    # 验证项目权限 - 更新需要 editor 或所有者权限
     from backend.api.projects import check_project_access
-    project = check_project_access(project_id, current_user, db, require_owner=True)
+    project = check_project_access(project_id, current_user, db, require_owner=False, min_role='editor')
     if not project:
+        # 区分"项目不存在"和"权限不足"
+        from backend.models import Project
+        existing_project = db.query(Project).filter(Project.id == project_id).first()
+        if not existing_project:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="项目不存在"
+            )
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="项目不存在"
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="权限不足：需要 editor 或所有者角色才能编辑章节"
         )
 
     chapter = db.query(Chapter).filter(
@@ -187,13 +195,21 @@ def regenerate_chapter(
             detail="Celery 异步任务未配置"
         )
 
-    # 验证项目权限 - 需要所有者权限
+    # 验证项目权限 - 需要 editor 或所有者权限
     from backend.api.projects import check_project_access
-    project = check_project_access(project_id, current_user, db, require_owner=True)
+    project = check_project_access(project_id, current_user, db, require_owner=False, min_role='editor')
     if not project:
+        # 区分"项目不存在"和"权限不足"
+        from backend.models import Project
+        existing_project = db.query(Project).filter(Project.id == project_id).first()
+        if not existing_project:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="项目不存在"
+            )
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="项目不存在"
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="权限不足：需要 editor 或所有者角色才能重新生成章节"
         )
 
     chapter = db.query(Chapter).filter(
@@ -348,13 +364,21 @@ def restore_version(
     db: Session = Depends(get_db)
 ):
     """将章节恢复到指定版本"""
-    # 验证项目权限 - 修改需要所有者权限
+    # 验证项目权限 - 修改需要 editor 或所有者权限
     from backend.api.projects import check_project_access
-    project = check_project_access(project_id, current_user, db, require_owner=True)
+    project = check_project_access(project_id, current_user, db, require_owner=False, min_role='editor')
     if not project:
+        # 区分"项目不存在"和"权限不足"
+        from backend.models import Project
+        existing_project = db.query(Project).filter(Project.id == project_id).first()
+        if not existing_project:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="项目不存在"
+            )
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="项目不存在"
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="权限不足：需要 editor 或所有者角色才能恢复章节版本"
         )
 
     chapter = db.query(Chapter).filter(

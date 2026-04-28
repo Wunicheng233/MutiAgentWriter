@@ -598,11 +598,18 @@ def trigger_generation(
             detail="Celery 异步任务未配置，请先安装 celery 和 redis"
         )
 
-    project = check_project_access(project_id, current_user, db, require_owner=False)
+    project = check_project_access(project_id, current_user, db, require_owner=False, min_role='editor')
     if not project:
+        # 检查项目是否存在，区分"项目不存在"和"权限不足"
+        existing_project = db.query(Project).filter(Project.id == project_id).first()
+        if not existing_project:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="项目不存在"
+            )
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="项目不存在"
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="权限不足：需要 editor 或所有者角色才能触发生成任务"
         )
 
     # 配置验证：plan_only 模式不检查配置（因为就是要生成策划方案）
@@ -737,11 +744,18 @@ def trigger_export(
             detail="Celery 异步任务未配置，请先安装 celery 和 redis"
         )
 
-    project = check_project_access(project_id, current_user, db, require_owner=False)
+    project = check_project_access(project_id, current_user, db, require_owner=False, min_role='editor')
     if not project:
+        # 检查项目是否存在，区分"项目不存在"和"权限不足"
+        existing_project = db.query(Project).filter(Project.id == project_id).first()
+        if not existing_project:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="项目不存在"
+            )
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="项目不存在"
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="权限不足：需要 editor 或所有者角色才能触发导出"
         )
 
     # 检查是否已有运行中的导出任务；这里复用 GenerationTask 记录任务。
@@ -877,25 +891,33 @@ def check_project_access(
     project_id: int,
     current_user: User,
     db: Session,
-    require_owner: bool = False
+    require_owner: bool = False,
+    min_role: str | None = None,
 ) -> Project:
     """
     检查当前用户是否有权限访问项目
-    - 如果是所有者：总是允许
-    - 如果是协作者：
-      - require_owner=False: 允许
-      - require_owner=True: 只允许所有者
+
+    Args:
+        require_owner: 如果为 True，只有所有者可以访问
+        min_role: 如果指定，协作者必须至少有此角色
+            支持的角色层级: viewer < editor
+            viewer: 只能读
+            editor: 可以编辑和触发生成/导出等操作
+            所有者总是拥有全部权限，不受此参数影响
+
+    Returns:
+        Project: 如果有权限返回项目对象，否则返回 None
     """
     project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
         return None
 
-    # 所有者直接通过
+    # 所有者总是直接通过，拥有全部权限
     if project.user_id == current_user.id:
         return project
 
+    # 如果要求必须是所有者，协作者不行
     if require_owner:
-        # 需要所有者权限，协作者不行
         return None
 
     # 检查是否是协作者
@@ -904,11 +926,25 @@ def check_project_access(
         ProjectCollaborator.user_id == current_user.id
     ).first()
 
-    if collab:
-        # editor 和 viewer 都允许访问
-        return project
+    if not collab:
+        return None
 
-    return None
+    # 角色检查 - 如果指定了最小角色
+    if min_role:
+        # 定义角色层级，数值越大权限越高
+        role_levels = {
+            'viewer': 1,
+            'editor': 2,
+        }
+        required_level = role_levels.get(min_role, 0)
+        actual_level = role_levels.get(collab.role, 0)
+
+        if actual_level < required_level:
+            # 角色权限不足，拒绝访问
+            return None
+
+    # 协作者通过了所有检查
+    return project
 
 class TokenUsageStats(BaseModel):
     total_prompt_tokens: int

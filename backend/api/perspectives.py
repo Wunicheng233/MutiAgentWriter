@@ -14,27 +14,40 @@ def check_project_access(
     project_id: int,
     current_user: User,
     db: Session,
-    require_owner: bool = True
+    require_owner: bool = True,
+    min_role: str | None = None,
 ) -> Project:
     """检查当前用户是否有权限访问项目（与 projects.py 保持一致）"""
     project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
         return None
 
+    # 所有者总是直接通过
     if project.user_id == current_user.id:
         return project
 
+    # 如果要求必须是所有者
     if require_owner:
         return None
 
+    # 检查是否是协作者
     collab = db.query(ProjectCollaborator).filter(
         ProjectCollaborator.project_id == project_id,
         ProjectCollaborator.user_id == current_user.id
     ).first()
 
-    if collab:
-        return project
-    return None
+    if not collab:
+        return None
+
+    # 角色检查
+    if min_role:
+        role_levels = {'viewer': 1, 'editor': 2}
+        required_level = role_levels.get(min_role, 0)
+        actual_level = role_levels.get(collab.role, 0)
+        if actual_level < required_level:
+            return None
+
+    return project
 
 @router.get("", dependencies=[Depends(limit_requests(60))])
 def list_perspectives(db: Session = Depends(get_db)):
