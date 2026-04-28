@@ -11,7 +11,7 @@ describe('aiChat', () => {
 
     const result = await aiChat({ user_input: 'Hi' })
 
-    expect(api.post).toHaveBeenCalledWith('/v1/ai/chat', { user_input: 'Hi' })
+    expect(api.post).toHaveBeenCalledWith('v1/ai/chat', { user_input: 'Hi' })
     expect(result).toEqual({ content: 'Hello!' })
   })
 
@@ -22,7 +22,7 @@ describe('aiChat', () => {
     const context = { project_id: 1 }
     await aiChat({ user_input: 'Hi', context })
 
-    expect(api.post).toHaveBeenCalledWith('/v1/ai/chat', {
+    expect(api.post).toHaveBeenCalledWith('v1/ai/chat', {
       user_input: 'Hi',
       context,
     })

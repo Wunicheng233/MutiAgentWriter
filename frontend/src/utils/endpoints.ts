@@ -438,6 +438,6 @@ export async function updateProjectPerspective(
 // ========== AI Assistant ==========
 
 export async function aiChat(request: ChatRequest): Promise<ChatResponse> {
-  const response = await api.post<ChatResponse>('/v1/ai/chat', request)
+  const response = await api.post<ChatResponse>('v1/ai/chat', request)
   return response.data
 }
