@@ -152,6 +152,30 @@ def confirm_chapter(
                 f.write(request.feedback)
 
     new_task_id = make_task_id("continue")
+    review_outcome = "approved" if request.approved else "rejected"
+
+    # 先将当前任务标记为完成状态，这样才能创建新任务（避免部分唯一索引冲突）
+    # 注意：必须先完成旧任务，再创建新任务，否则会触发唯一索引约束
+    task_record.status = "success"
+    task_record.completed_at = datetime.utcnow()
+    task_record.current_step = (
+        f"第{chapter_index}章已确认，已继续生成下一章"
+        if request.approved
+        else f"第{chapter_index}章已驳回，已启动重写"
+    )
+    update_workflow_run_status(
+        db=db,
+        generation_task=task_record,
+        task_status="success",
+        current_step_key="completed",
+        current_chapter=chapter_index,
+        metadata_updates={
+            "review_decision": review_outcome,
+            "review_feedback": request.feedback.strip() or None,
+            "continued_with_task_id": new_task_id,
+        },
+    )
+    db.flush()  # 确保旧任务状态更新到数据库
 
     # 创建新的任务记录
     new_task_record = GenerationTask(
@@ -172,27 +196,6 @@ def confirm_chapter(
         triggered_by_user_id=current_user.id,
         regenerate=not request.approved,
         parent_run=task_record.workflow_run,
-    )
-
-    review_outcome = "approved" if request.approved else "rejected"
-    task_record.status = "success"
-    task_record.completed_at = datetime.utcnow()
-    task_record.current_step = (
-        f"第{chapter_index}章已确认，已继续生成下一章"
-        if request.approved
-        else f"第{chapter_index}章已驳回，已启动重写"
-    )
-    update_workflow_run_status(
-        db=db,
-        generation_task=task_record,
-        task_status="success",
-        current_step_key="completed",
-        current_chapter=chapter_index,
-        metadata_updates={
-            "review_decision": review_outcome,
-            "review_feedback": request.feedback.strip() or None,
-            "continued_with_task_id": new_task_id,
-        },
     )
 
     # 更新原项目状态

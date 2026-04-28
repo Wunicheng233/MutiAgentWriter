@@ -14,6 +14,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
+from sqlalchemy.exc import IntegrityError
 
 logger = logging.getLogger(__name__)
 
@@ -663,7 +664,16 @@ def trigger_generation(
         progress=0.0,
     )
     db.add(task)
-    db.flush()
+    try:
+        db.flush()
+    except IntegrityError:
+        # 数据库级别的唯一约束冲突：已有活跃任务
+        # 这是防止 TOCTOU 竞态条件的最后一道防线
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="该项目已有正在运行的生成任务，请等待完成或取消后再试。"
+        )
 
     create_generation_workflow_run(
         db=db,
@@ -787,6 +797,15 @@ def trigger_export(
         current_step=f"准备导出 {format}...",
     )
     db.add(task)
+    try:
+        db.flush()
+    except IntegrityError:
+        # 数据库级别的唯一约束冲突：已有活跃任务
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="该项目已有正在运行的任务，请等待完成后再试。"
+        )
     db.commit()
     db.refresh(task)
 

@@ -76,23 +76,40 @@ class WorkflowFoundationTests(BaseWorkflowTestCase):
             db.close()
 
     def test_active_project_task_helper_includes_waiting_confirm_and_prefers_latest(self):
+        """测试：活跃任务状态包含 waiting_confirm。
+
+        注意：由于部分唯一索引约束，同一项目不能同时有多个活跃任务。
+        测试先创建 progress 任务，完成后再创建 waiting_confirm 任务。
+        """
         owner = self._create_user("active_helper_owner", "active_helper_owner@example.com")
         project = self._create_project_full(owner, name="Active Helper Novel")
 
         db = self.SessionLocal()
         try:
-            older_active_task = GenerationTask(
+            # 第一步：创建 progress 状态的任务，然后标记为完成
+            progress_task = GenerationTask(
                 project_id=project.id,
                 celery_task_id="celery-active-helper-old",
                 status="progress",
                 progress=0.4,
             )
+            db.add(progress_task)
+            db.commit()
+            # 将旧任务标记为成功
+            progress_task.status = "success"
+            db.commit()
+
+            # 第二步：创建已完成的终端状态任务（非活跃）
             completed_task = GenerationTask(
                 project_id=project.id,
                 celery_task_id="celery-active-helper-done",
                 status="success",
                 progress=1.0,
             )
+            db.add(completed_task)
+            db.commit()
+
+            # 第三步：创建 waiting_confirm 状态的任务（活跃状态）
             waiting_task = GenerationTask(
                 project_id=project.id,
                 celery_task_id="celery-active-helper-waiting",
@@ -100,11 +117,11 @@ class WorkflowFoundationTests(BaseWorkflowTestCase):
                 progress=0.6,
                 current_chapter=2,
             )
-            db.add_all([older_active_task, completed_task, waiting_task])
+            db.add(waiting_task)
             db.commit()
 
+            # 验证：当前活跃任务应该是 waiting_confirm 状态的任务
             active_task = get_active_project_task(db, project.id)
-
             self.assertEqual(active_task.celery_task_id, "celery-active-helper-waiting")
         finally:
             db.close()

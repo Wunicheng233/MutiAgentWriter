@@ -7,9 +7,15 @@ SQLAlchemy ORM 数据模型
 """
 
 import datetime
+import sqlalchemy as sa
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, JSON, Float, Boolean
 from sqlalchemy.orm import relationship
 from backend.database import Base
+
+# 活跃任务状态 - 用于部分唯一索引
+# 注意：这里必须与 backend.task_status.ACTIVE_TASK_STATUSES 保持一致
+# 不能从 task_status 导入，否则会造成循环导入
+_ACTIVE_TASK_STATUSES = ('pending', 'started', 'progress', 'waiting_confirm')
 
 
 class User(Base):
@@ -110,7 +116,7 @@ class GenerationTask(Base):
     id = Column(Integer, primary_key=True, index=True)
     project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True)
     celery_task_id = Column(String(50), unique=True, nullable=False)
-    status = Column(String(20), default="pending")  # pending / started / progress / success / failure
+    status = Column(String(20), default="pending")  # pending / started / progress / success / failure / cancelled / waiting_confirm
     progress = Column(Float, default=0.0)  # 0-1
     current_step = Column(Text, nullable=True)  # 使用Text存储长文本
     current_chapter = Column(Integer, nullable=True)
@@ -120,6 +126,25 @@ class GenerationTask(Base):
 
     project = relationship("Project", back_populates="generation_tasks")
     workflow_run = relationship("WorkflowRun", back_populates="generation_task", uselist=False)
+
+    # 部分唯一索引：同一项目只能有一个活跃状态的任务
+    # 防止 TOCTOU 竞态条件（检查-使用漏洞）
+    # 注意：这里的状态列表必须与 backend.task_status.ACTIVE_TASK_STATUSES 保持一致
+    __table_args__ = (
+        sa.Index(
+            'idx_one_active_task_per_project',
+            'project_id',
+            unique=True,
+            # PostgreSQL 方言
+            postgresql_where=sa.text(
+                "status IN ('pending', 'started', 'progress', 'waiting_confirm')"
+            ),
+            # SQLite 方言（SQLite 3.8.0+ 支持部分索引）
+            sqlite_where=sa.text(
+                "status IN ('pending', 'started', 'progress', 'waiting_confirm')"
+            )
+        ),
+    )
 
 
 class WorkflowRun(Base):

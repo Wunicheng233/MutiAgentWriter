@@ -64,11 +64,17 @@ class TestProjectDeleteTaskCancel(unittest.TestCase):
         finally:
             db.close()
 
-    def test_delete_project_handles_multiple_tasks(self):
-        """测试：删除项目时有多个运行中的任务应该全部取消"""
+    def test_delete_project_handles_active_and_completed_tasks(self):
+        """测试：删除项目时活跃任务应该被取消
+
+        注意：由于部分唯一索引约束，同一项目不能同时有多个活跃任务。
+        测试验证：
+        - 删除项目时活跃任务会被取消
+        - 已完成的任务不会被处理
+        """
         db = self.base.SessionLocal()
         try:
-            # GIVEN: 创建用户、项目和多个运行任务
+            # GIVEN: 创建用户、项目
             user = self.base._create_user("testuser2", "test2@example.com")
             self.base._set_current_user(user)
 
@@ -81,15 +87,25 @@ class TestProjectDeleteTaskCancel(unittest.TestCase):
             db.commit()
             db.refresh(project)
 
-            # 多个任务
-            task_ids = ["task-1", "task-2", "task-3"]
-            for task_id in task_ids:
+            # GIVEN: 一个活跃任务和两个已完成任务
+            # 由于部分唯一索引约束，同一项目只能有一个活跃任务
+            completed_tasks = ["task-done-1", "task-done-2"]
+            for task_id in completed_tasks:
                 task = GenerationTask(
                     project_id=project.id,
                     celery_task_id=task_id,
-                    status="pending",
+                    status="success",
                 )
                 db.add(task)
+            db.commit()
+
+            active_task_id = "task-active-1"
+            active_task = GenerationTask(
+                project_id=project.id,
+                celery_task_id=active_task_id,
+                status="pending",
+            )
+            db.add(active_task)
             db.commit()
 
             with patch('celery_app.celery_app.control.revoke') as mock_revoke:
@@ -101,10 +117,10 @@ class TestProjectDeleteTaskCancel(unittest.TestCase):
                 # THEN: 应该成功删除
                 self.assertEqual(response.status_code, 200)
 
-                # THEN: 每个任务都被 revoke
-                self.assertEqual(mock_revoke.call_count, 3)
+                # THEN: 只有活跃任务被 revoke，已完成任务不会被处理
+                self.assertEqual(mock_revoke.call_count, 1)
                 called_task_ids = [call[0][0] for call in mock_revoke.call_args_list]
-                self.assertEqual(set(called_task_ids), set(task_ids))
+                self.assertEqual(called_task_ids, [active_task_id])
         finally:
             db.close()
 
