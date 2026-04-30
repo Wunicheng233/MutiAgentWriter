@@ -1,12 +1,22 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { renderHook } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
+import { act, renderHook, render, screen } from '@testing-library/react'
+import { MemoryRouter, useLocation } from 'react-router-dom'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import { useLayoutStore } from '../store/useLayoutStore'
 
 const RouterWrapper = ({ children }: { children: React.ReactNode }) => (
   <MemoryRouter>{children}</MemoryRouter>
 )
+
+const ProjectRouterWrapper = ({ children }: { children: React.ReactNode }) => (
+  <MemoryRouter initialEntries={['/projects/12/overview']}>{children}</MemoryRouter>
+)
+
+function ShortcutProbe() {
+  useKeyboardShortcuts()
+  const location = useLocation()
+  return <div data-testid="location">{location.pathname}</div>
+}
 
 describe('Keyboard Shortcuts', () => {
   beforeEach(() => {
@@ -67,5 +77,16 @@ describe('Keyboard Shortcuts', () => {
 
     addEventListenerSpy.mockRestore()
     removeEventListenerSpy.mockRestore()
+  })
+
+  it('should navigate within the current project for Command+number shortcuts', () => {
+    render(<ShortcutProbe />, { wrapper: ProjectRouterWrapper })
+
+    act(() => {
+      const event = new KeyboardEvent('keydown', { metaKey: true, key: '3' })
+      window.dispatchEvent(event)
+    })
+
+    expect(screen.getByTestId('location')).toHaveTextContent('/projects/12/read/1')
   })
 })

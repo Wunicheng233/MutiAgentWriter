@@ -124,6 +124,8 @@ def confirm_chapter(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="任务没有等待确认的章节"
         )
+    configured_start_chapter = project.config.get("start_chapter", 1) if project.config else 1
+    configured_end_chapter = project.config.get("end_chapter") if project.config else None
 
     # 如果用户不通过且提供了修改意见，需要将反馈保存到项目目录
     # 供orchestrator下次启动时读取并重新优化
@@ -158,11 +160,18 @@ def confirm_chapter(
     # 注意：必须先完成旧任务，再创建新任务，否则会触发唯一索引约束
     task_record.status = "success"
     task_record.completed_at = datetime.utcnow()
-    task_record.current_step = (
-        f"第{chapter_index}章已确认，已继续生成下一章"
-        if request.approved
-        else f"第{chapter_index}章已驳回，已启动重写"
-    )
+    if chapter_index == 0:
+        task_record.current_step = (
+            "策划方案已确认，已继续生成正文"
+            if request.approved
+            else "策划方案已驳回，已启动重策划"
+        )
+    else:
+        task_record.current_step = (
+            f"第{chapter_index}章已确认，已继续生成下一章"
+            if request.approved
+            else f"第{chapter_index}章已驳回，已启动重写"
+        )
     update_workflow_run_status(
         db=db,
         generation_task=task_record,
@@ -177,13 +186,18 @@ def confirm_chapter(
     )
     db.flush()  # 确保旧任务状态更新到数据库
 
+    if chapter_index == 0:
+        next_current_chapter = configured_start_chapter if request.approved else 0
+    else:
+        next_current_chapter = chapter_index + 1 if request.approved else chapter_index
+
     # 创建新的任务记录
     new_task_record = GenerationTask(
         project_id=project.id,
         celery_task_id=new_task_id,
         status="pending",
         progress=task_record.progress,
-        current_chapter=chapter_index if not request.approved else chapter_index + 1,
+        current_chapter=next_current_chapter,
         current_step="继续生成，等待启动..."
     )
     db.add(new_task_record)
@@ -202,11 +216,20 @@ def confirm_chapter(
     project.status = "generating"
     db.commit()
 
+    # 确定从哪一章开始生成
+    # 章节确认通过后从下一章开始，不通过则重写当前章。
+    # 策划确认的 chapter_index 为 0，继续执行时必须回到用户配置的正文起始章。
+    if chapter_index == 0:
+        start_chapter = configured_start_chapter
+    else:
+        start_chapter = chapter_index + 1 if request.approved else chapter_index
+    end_chapter = configured_end_chapter
+
     dispatch_tracked_task(
         db=db,
         task=new_task_record,
         celery_task=generate_novel_task,
-        args=(project.file_path, str(current_user.id)),
+        args=(project.file_path, str(current_user.id), start_chapter, end_chapter),
         project=project,
     )
 

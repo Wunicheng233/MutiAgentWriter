@@ -44,6 +44,7 @@ from backend.schemas import (
 from backend.deps import get_current_user
 from backend.workflow_service import create_generation_workflow_run, serialize_workflow_run
 from backend.core.config import settings
+from backend.rate_limiter import limit_requests_by_user
 
 # 导入Celery任务（可选）
 try:
@@ -67,6 +68,155 @@ class EnabledSkillConfig(BaseModel):
 
 class UpdateProjectSkillsRequest(BaseModel):
     enabled: List[EnabledSkillConfig] = Field(default_factory=list)
+
+
+def _validate_enabled_skill_configs(items: List[EnabledSkillConfig]) -> list[dict[str, Any]]:
+    """Validate and normalize project skill selections for create/update flows."""
+    from backend.core.skill_runtime import SkillRegistry, is_author_style_skill
+
+    registry = SkillRegistry()
+    enabled: list[dict[str, Any]] = []
+    author_style_count = 0
+
+    for item in items:
+        skill = registry.load_skill(item.skill_id)
+        if skill is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Skill 不存在: {item.skill_id}",
+            )
+        if is_author_style_skill(skill):
+            author_style_count += 1
+            if author_style_count > 1:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="同一项目只能启用一个作家风格 Skill，请先替换或取消已有风格",
+                )
+
+        enabled_item: dict[str, Any] = {
+            "skill_id": item.skill_id,
+            "config": item.config or {},
+        }
+        if item.applies_to_override is not None:
+            enabled_item["applies_to_override"] = item.applies_to_override
+        enabled.append(enabled_item)
+
+    return enabled
+
+
+def _initial_skills_config(raw_config: dict | None) -> dict[str, Any] | None:
+    if not raw_config:
+        return None
+
+    raw_skills = raw_config.get("skills")
+    if not isinstance(raw_skills, dict):
+        return None
+
+    raw_enabled = raw_skills.get("enabled") or []
+    enabled_items = [EnabledSkillConfig.model_validate(item) for item in raw_enabled]
+    skills_config = dict(raw_skills)
+    skills_config["enabled"] = _validate_enabled_skill_configs(enabled_items)
+    return skills_config
+
+
+def _clean_text(value: Any) -> str:
+    return str(value or "").strip()
+
+
+def _positive_int(value: Any, *, default: int | None = None) -> int:
+    if value is None:
+        if default is None:
+            raise ValueError
+        return default
+    try:
+        number = int(value)
+    except (TypeError, ValueError):
+        raise ValueError
+    if number <= 0:
+        raise ValueError
+    return number
+
+
+def _validate_generation_config(config: dict | None, *, project_name: str | None = None) -> None:
+    """Reject incomplete project settings before the expensive generation workflow starts."""
+    if not config:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="项目配置不能为空，请先完成项目设置",
+        )
+
+    novel_name = _clean_text(config.get("novel_name") or project_name)
+    if not novel_name:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="项目名称不能为空，请先完成作品定位",
+        )
+
+    if not _clean_text(config.get("core_requirement")):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="核心创作需求不能为空，请先补充创作 Brief",
+        )
+
+    try:
+        _positive_int(config.get("chapter_word_count"), default=2000)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="每章字数必须大于 0",
+        )
+
+    try:
+        start_chapter = _positive_int(config.get("start_chapter"), default=1)
+        end_chapter = _positive_int(config.get("end_chapter"), default=10)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="章节范围必须是正整数",
+        )
+    if end_chapter < start_chapter:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="结束章节不能小于起始章节",
+        )
+
+    total_words = config.get("total_words")
+    if total_words is not None:
+        try:
+            _positive_int(total_words)
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="目标总字数必须大于 0",
+            )
+
+def _project_config_from_create(project_in: ProjectCreate) -> dict[str, Any]:
+    name = _clean_text(project_in.name)
+    core_requirement = _clean_text(project_in.core_requirement)
+    target_platform = _clean_text(project_in.target_platform) or "网络小说"
+    novel_name = _clean_text(project_in.novel_name) or name
+
+    config = {
+        "novel_name": novel_name,
+        "novel_description": _clean_text(project_in.novel_description),
+        "core_requirement": core_requirement,
+        "genre": _clean_text(project_in.genre),
+        "total_words": project_in.total_words,
+        "core_hook": _clean_text(project_in.core_hook),
+        "target_platform": target_platform,
+        "chapter_word_count": project_in.chapter_word_count if project_in.chapter_word_count is not None else 2000,
+        "start_chapter": project_in.start_chapter if project_in.start_chapter is not None else 1,
+        "end_chapter": project_in.end_chapter if project_in.end_chapter is not None else 10,
+        "skip_plan_confirmation": project_in.skip_plan_confirmation or False,
+        "skip_chapter_confirmation": project_in.skip_chapter_confirmation or False,
+        "allow_plot_adjustment": project_in.allow_plot_adjustment or False,
+    }
+    skills_config = _initial_skills_config(project_in.config)
+    if skills_config is not None:
+        config["skills"] = skills_config
+
+    _validate_generation_config(config, project_name=name)
+    return config
 
 
 @router.get("", response_model=ProjectListResponse, summary="列出用户所有项目")
@@ -93,28 +243,17 @@ def create_project(
     db: Session = Depends(get_db)
 ):
     """创建新项目，保存基础信息并创建文件目录"""
+    project_name = _clean_text(project_in.name)
+    config = _project_config_from_create(project_in)
+
     # 创建项目记录
     project = Project(
         user_id=current_user.id,
-        name=project_in.name,
-        description=project_in.description,
+        name=project_name,
+        description=_clean_text(project_in.description),
         content_type=project_in.content_type or "full_novel",
         status="draft",
-        config={
-            "novel_name": project_in.novel_name or project_in.name,
-            "novel_description": project_in.novel_description,
-            "core_requirement": project_in.core_requirement,
-            "genre": project_in.genre,
-            "total_words": project_in.total_words,
-            "core_hook": project_in.core_hook,
-            "target_platform": project_in.target_platform or "网络小说",
-            "chapter_word_count": project_in.chapter_word_count or 2000,
-            "start_chapter": project_in.start_chapter or 1,
-            "end_chapter": project_in.end_chapter or 10,
-            "skip_plan_confirmation": project_in.skip_plan_confirmation or False,
-            "skip_chapter_confirmation": project_in.skip_chapter_confirmation or False,
-            "allow_plot_adjustment": project_in.allow_plot_adjustment or False,
-        }
+        config=config,
     )
 
     # 创建项目文件目录：data/projects/{user_id}/{project_id}/
@@ -396,8 +535,6 @@ def update_project_skills(
     db: Session = Depends(get_db),
 ):
     """更新项目启用的 Skill 列表，存储在 Project.config.skills.enabled。"""
-    from backend.core.skill_runtime import SkillRegistry
-
     project = check_project_access(project_id, current_user, db, require_owner=True)
     if not project:
         raise HTTPException(
@@ -405,21 +542,7 @@ def update_project_skills(
             detail="项目不存在",
         )
 
-    registry = SkillRegistry()
-    enabled = []
-    for item in payload.enabled:
-        if registry.load_skill(item.skill_id) is None:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Skill 不存在: {item.skill_id}",
-            )
-        enabled_item: dict[str, Any] = {
-            "skill_id": item.skill_id,
-            "config": item.config or {},
-        }
-        if item.applies_to_override is not None:
-            enabled_item["applies_to_override"] = item.applies_to_override
-        enabled.append(enabled_item)
+    enabled = _validate_enabled_skill_configs(payload.enabled)
 
     config = dict(project.config or {})
     skills_config = dict(config.get("skills") or {})
@@ -563,20 +686,9 @@ def get_plan_preview(
     }
 
 
-def _validate_project_config(config: dict | None) -> None:
+def _validate_project_config(config: dict | None, *, project_name: str | None = None) -> None:
     """验证项目配置是否存在，完全未配置时抛出异常"""
-    if not config:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="项目配置不能为空，请先完成项目设置"
-        )
-
-    # 检查是否是空字典
-    if len(config) == 0:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="项目配置不能为空，请先完成项目设置"
-        )
+    _validate_generation_config(config, project_name=project_name)
 
 
 @router.post("/{project_id}/generate", response_model=GenerationTaskResponse, summary="触发生成任务")
@@ -613,9 +725,7 @@ def trigger_generation(
             detail="权限不足：需要 editor 或所有者角色才能触发生成任务"
         )
 
-    # 配置验证：plan_only 模式不检查配置（因为就是要生成策划方案）
-    if not plan_only:
-        _validate_project_config(project.config)
+    _validate_project_config(project.config, project_name=project.name)
 
     # 检查是否已有运行中的任务
     running_task = get_active_project_task(db, project_id)
@@ -687,11 +797,15 @@ def trigger_generation(
     db.commit()
     db.refresh(task)
 
+    # 获取章节范围，确保连续生成所有章节
+    project_start_chapter = project.config.get("start_chapter", 1) if project.config else 1
+    project_end_chapter = project.config.get("end_chapter", 10) if project.config else 10
+
     dispatch_tracked_task(
         db=db,
         task=task,
         celery_task=generate_novel_task,
-        args=(project_dir, str(current_user.id)),
+        args=(project_dir, str(current_user.id), project_start_chapter, project_end_chapter),
         project=project,
     )
 
@@ -743,7 +857,8 @@ def trigger_export(
     project_id: int,
     format: str = Query(..., pattern="^(epub|docx|html)$"),
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _rate_limit: None = Depends(limit_requests_by_user(max_requests=5, window_seconds=60, action_key="export")),
 ):
     """
     触发生成导出文件，返回 Celery 任务 ID 供轮询
@@ -1027,7 +1142,8 @@ class CreateShareResponse(BaseModel):
 def create_share_link(
     project_id: int,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _rate_limit: None = Depends(limit_requests_by_user(max_requests=10, window_seconds=60, action_key="share_create")),
 ):
     """创建只读分享链接，无需登录即可访问"""
     project = check_project_access(project_id, current_user, db, require_owner=True)
@@ -1277,10 +1393,17 @@ def reset_project(
     # 2. 删除所有已生成的章节
     db.query(Chapter).filter(Chapter.project_id == project_id).delete()
 
-    # 3. 重置项目状态
+    # 3. 重置项目状态和生成配置
     project.status = "draft"
     project.overall_quality_score = 0
     project.dimension_average_scores = None
+
+    # 重置 config 中的运行时状态，但保留用户选择的生成模式（skip_*_confirmation）
+    # 保留章节范围（start_chapter, end_chapter）确保重置后仍能按用户期望的范围生成
+    if isinstance(project.config, dict):
+        # 只清理可能遗留的运行时标记，不清理用户配置的生成模式
+        pass
+
     db.commit()
 
     # 4. 清空项目目录中的生成文件
@@ -1300,6 +1423,13 @@ def reset_project(
                         f.unlink()
                     for f in chapters_dir.glob("feedback_*.txt"):
                         f.unlink()
+                # 删除策划方案和设定圣经（确保重置后重新生成）
+                plan_file = project_dir / "novel_plan.md"
+                if plan_file.exists():
+                    plan_file.unlink()
+                setting_file = project_dir / "setting_bible.md"
+                if setting_file.exists():
+                    setting_file.unlink()
                 # 删除 bible.json 如果存在
                 bible_file = project_dir / "bible.json"
                 if bible_file.exists():
@@ -1308,6 +1438,10 @@ def reset_project(
                 info_file = project_dir / "info.json"
                 if info_file.exists():
                     info_file.unlink()
+                # 删除用户需求文件
+                req_file = project_dir / "user_requirements.yaml"
+                if req_file.exists():
+                    req_file.unlink()
         except Exception as e:
             logger.warning(f"Failed to clean project directory: {e}")
 

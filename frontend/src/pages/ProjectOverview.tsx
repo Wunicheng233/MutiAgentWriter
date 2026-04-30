@@ -1,8 +1,8 @@
-import React, { useEffect } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { Link, useParams } from 'react-router-dom'
+import React, { useEffect, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { Link, useLocation, useParams } from 'react-router-dom'
 
-import { Card, Badge, Button, Progress, Divider, StatsCard, AgentCard } from '../components/v2'
+import { Card, Badge, Button, Progress, Divider, StatsCard, AgentCard, Modal, ModalHeader, ModalContent, ModalFooter } from '../components/v2'
 import { useLayoutStore } from '../store/useLayoutStore'
 import { useProjectStore, type ProjectStatus } from '../store/useProjectStore'
 import type { BadgeVariant } from '../components/v2'
@@ -10,7 +10,9 @@ import {
   getProject,
   getProjectTokenStats,
   triggerGenerate,
+  confirmTask,
 } from '../utils/endpoints'
+import { renderSafeMarkdown } from '../utils/safeContent'
 import type { GenerationTask, Project, WorkflowRun } from '../types/api'
 import { useToast } from '../components/toastContext'
 import { getErrorMessage } from '../utils/errorMessage'
@@ -156,19 +158,22 @@ function getRunSummary(project: Project): {
   }
 
   if (task?.status === 'waiting_confirm') {
-    if (workflow?.current_chapter === 0) {
+    const currentChapter = workflow?.current_chapter ?? task.current_chapter ?? null
+
+    if (currentChapter === 0) {
       return {
         headline: '策划方案正在等待人工确认',
         detail: '这一步最能体现人在环路。确认后系统会继续进入逐章生成。',
-        ctaLabel: '进入写作台',
-        ctaHref: `/projects/${project.id}/write/1`,
+        ctaLabel: '处理策划确认',
+        ctaHref: `/projects/${project.id}/overview?confirm-plan=true`,
       }
     }
+    const chapterForConfirmation = currentChapter ?? 1
     return {
-      headline: `第 ${workflow?.current_chapter || task.current_chapter || 1} 章正在等待人工确认`,
+      headline: `第 ${chapterForConfirmation} 章正在等待人工确认`,
       detail: '当前章节已经过多 Agent 流程处理，现在需要作者决定继续通过还是给出修改意见。',
       ctaLabel: '处理当前章节',
-      ctaHref: `/projects/${project.id}/write/${workflow?.current_chapter || task.current_chapter || 1}`,
+      ctaHref: `/projects/${project.id}/editor/${chapterForConfirmation}`,
     }
   }
 
@@ -232,12 +237,18 @@ function renderWorkflowMeta(workflow?: WorkflowRun): Array<{ label: string; valu
 
 export const ProjectOverview: React.FC = () => {
   const { id } = useParams<{ id: string }>()
+  const location = useLocation()
   const projectId = id ? parseInt(id, 10) : 0
   const isValidProjectId = !Number.isNaN(projectId) && projectId > 0
   const { showToast } = useToast()
+  const queryClient = useQueryClient()
 
   const setCurrentProject = useProjectStore(state => state.setCurrentProject)
   const setProjectStatus = useProjectStore(state => state.setProjectStatus)
+
+  const [confirmModalOpen, setConfirmModalOpen] = useState(false)
+  const [confirmFeedback, setConfirmFeedback] = useState('')
+  const [confirming, setConfirming] = useState(false)
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['project', projectId],
@@ -264,6 +275,23 @@ export const ProjectOverview: React.FC = () => {
 
   const { autoExpandHeaderInProject, setHeaderCollapsed } = useLayoutStore()
 
+  // 获取策划预览内容（需要在 data 加载后才启用）
+  const isWaitingConfirm = data?.current_generation_task?.status === 'waiting_confirm'
+  const waitingConfirmChapter =
+    data?.current_generation_task?.current_workflow_run?.current_chapter ??
+    data?.current_generation_task?.current_chapter ??
+    null
+  const isPlanWaitingConfirm = isWaitingConfirm && waitingConfirmChapter === 0
+  const { data: planPreview } = useQuery({
+    queryKey: ['plan-preview', projectId],
+    queryFn: async () => {
+      const api = (await import('../utils/api')).default
+      const res = await api.get(`/projects/${projectId}/plan-preview`)
+      return res.data
+    },
+    enabled: isValidProjectId && isPlanWaitingConfirm,
+  })
+
   useEffect(() => {
     if (id && autoExpandHeaderInProject) {
       setHeaderCollapsed(false)
@@ -286,6 +314,17 @@ export const ProjectOverview: React.FC = () => {
     return () => window.clearInterval(interval)
   }, [data, refetch])
 
+  useEffect(() => {
+    if (!isPlanWaitingConfirm) return
+
+    const params = new URLSearchParams(location.search)
+    if (params.get('confirm-plan') === 'true') {
+      queueMicrotask(() => {
+        setConfirmModalOpen(true)
+      })
+    }
+  }, [isPlanWaitingConfirm, location.search])
+
   const handleTriggerGenerate = async () => {
     try {
       const isRegenerate = data?.status !== 'draft'
@@ -294,6 +333,24 @@ export const ProjectOverview: React.FC = () => {
       refetch()
     } catch (error: unknown) {
       showToast(getErrorMessage(error, '提交失败'), 'error')
+    }
+  }
+
+  const handleConfirm = async (approved: boolean) => {
+    if (!data?.current_generation_task) return
+
+    try {
+      setConfirming(true)
+      await confirmTask(data.current_generation_task.celery_task_id, approved, confirmFeedback)
+      showToast(approved ? '已确认通过，系统继续生成' : '已提交修改意见', 'success')
+      setConfirmModalOpen(false)
+      setConfirmFeedback('')
+      queryClient.invalidateQueries({ queryKey: ['project', projectId] })
+      queryClient.invalidateQueries({ queryKey: ['project-global-status', projectId] })
+    } catch (error: unknown) {
+      showToast(getErrorMessage(error, '确认失败'), 'error')
+    } finally {
+      setConfirming(false)
     }
   }
 
@@ -319,6 +376,30 @@ export const ProjectOverview: React.FC = () => {
 
   return (
     <div className="mx-auto max-w-content space-y-6">
+      {/* 等待确认醒目标识 */}
+      {isWaitingConfirm && (
+        <Card className="border-[var(--accent-primary)] bg-[var(--accent-primary)]/10">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <h3 className="text-lg font-semibold text-[var(--accent-primary)]">{runSummary.headline}</h3>
+              <p className="mt-1 text-[var(--text-secondary)]">{runSummary.detail}</p>
+            </div>
+            <div className="flex gap-2">
+              {isPlanWaitingConfirm && (
+                <Button variant="primary" size="sm" onClick={() => setConfirmModalOpen(true)}>
+                  立即确认
+                </Button>
+              )}
+              {runSummary.ctaHref && (
+                <Link to={runSummary.ctaHref}>
+                  <Button variant="secondary" size="sm">{runSummary.ctaLabel}</Button>
+                </Link>
+              )}
+            </div>
+          </div>
+        </Card>
+      )}
+
       {/* 顶部项目信息栏 */}
       <Card className="border-[var(--border-default)]">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -461,6 +542,76 @@ export const ProjectOverview: React.FC = () => {
           ))}
         </div>
       </Card>
+
+      {/* 确认弹窗 */}
+      <Modal isOpen={confirmModalOpen} onClose={() => setConfirmModalOpen(false)}>
+        <ModalHeader>策划确认</ModalHeader>
+        <ModalContent>
+          <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+            <p className="text-[var(--text-primary)]">{runSummary.detail}</p>
+
+            {/* 策划内容预览 */}
+            <div className="rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-4">
+              <h4 className="font-medium text-[var(--text-primary)] mb-3">策划内容预览</h4>
+              <div className="text-sm text-[var(--text-primary)] max-h-[300px] overflow-y-auto prose prose-sm">
+                {planPreview?.preview ? (
+                  <div dangerouslySetInnerHTML={{ __html: renderSafeMarkdown(
+                    planPreview.preview
+                      .replace(/^```markdown\s*/i, '')
+                      .replace(/^```\s*/i, '')
+                      .replace(/```\s*$/, '')
+                  )}} />
+                ) : (
+                  <p className="text-[var(--text-secondary)]">加载中...</p>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
+                修改意见（可选）
+              </label>
+              <textarea
+                className="w-full px-4 py-2 rounded-[var(--radius-md)] border border-[var(--border-default)]
+                  bg-[var(--bg-primary)] text-[var(--text-primary)] placeholder-[var(--text-muted)]
+                  focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]/50 focus:border-[var(--accent-primary)]
+                  resize-none"
+                rows={4}
+                placeholder="如果有需要修改的地方，请在这里描述..."
+                value={confirmFeedback}
+                onChange={e => setConfirmFeedback(e.target.value)}
+                disabled={confirming}
+              />
+            </div>
+          </div>
+        </ModalContent>
+        <ModalFooter>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setConfirmModalOpen(false)}
+            disabled={confirming}
+          >
+            取消
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => handleConfirm(false)}
+            disabled={confirming}
+          >
+            返回修改
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => handleConfirm(true)}
+            disabled={confirming}
+          >
+            {confirming ? '提交中...' : '确认通过'}
+          </Button>
+        </ModalFooter>
+      </Modal>
     </div>
   )
 }

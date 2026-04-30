@@ -13,6 +13,8 @@ interface ChapterTableProps {
 const getChapterBadge = (status: string) => {
   switch (status) {
     case 'completed':
+    case 'generated':
+    case 'edited':
       return 'agent'
     case 'processing':
       return 'status'
@@ -27,6 +29,10 @@ const getChapterStatusText = (status: string) => {
   switch (status) {
     case 'completed':
       return '已完成'
+    case 'generated':
+      return '已生成'
+    case 'edited':
+      return '已编辑'
     case 'processing':
       return '生成中'
     case 'failed':
@@ -42,7 +48,8 @@ export const ChapterTable: React.FC<ChapterTableProps> = ({
   status,
   overallQualityScore,
 }) => {
-  const completedChapters = chapters.filter(c => c.status === 'completed').length
+  const editableStatuses = new Set(['completed', 'generated', 'edited'])
+  const completedChapters = chapters.filter(c => editableStatuses.has(c.status)).length
 
   if (status === 'draft') {
     return (
@@ -102,8 +109,8 @@ export const ChapterTable: React.FC<ChapterTableProps> = ({
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
-              {chapter.status === 'completed' && (
-                <Link to={`/projects/${projectId}/chapters/${chapter.chapter_index}`}>
+              {editableStatuses.has(chapter.status) && (
+                <Link to={`/projects/${projectId}/editor/${chapter.chapter_index}`}>
                   <Button variant="tertiary" size="sm">
                     编辑
                   </Button>

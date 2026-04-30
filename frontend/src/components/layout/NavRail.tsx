@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useMemo } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useProjectStore } from '../../store/useProjectStore'
 
@@ -51,6 +51,14 @@ NavItem.displayName = 'NavItem'
 interface NavRailProps {
   collapsed: boolean
   onToggleCollapse: () => void
+}
+
+interface NavConfigItem {
+  id: string
+  label: string
+  path: string
+  activePath?: string
+  icon: React.ReactNode
 }
 
 // SVG Icons (outline style, no emoji)
@@ -106,6 +114,13 @@ const EditorIcon = () => (
   </svg>
 )
 
+const ReaderIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M2 4.5A2.5 2.5 0 0 1 4.5 2H11v18H4.5A2.5 2.5 0 0 0 2 22V4.5z" />
+    <path d="M22 4.5A2.5 2.5 0 0 0 19.5 2H13v18h6.5A2.5 2.5 0 0 1 22 22V4.5z" />
+  </svg>
+)
+
 const ExportIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -115,19 +130,9 @@ const ExportIcon = () => (
 )
 
 // 全局导航项
-const globalNavItems = [
+const globalNavItems: NavConfigItem[] = [
   { id: 'dashboard', label: '书架', path: '/dashboard', icon: <ProjectIcon /> },
   { id: 'settings', label: '设置', path: '/settings', icon: <SettingsIcon /> },
-]
-
-// 项目内导航项
-const projectNavItems = [
-  { id: 'overview', label: '概览', path: 'overview', icon: <ProjectIcon /> },
-  { id: 'outline', label: '大纲', path: 'outline', icon: <OutlineIcon /> },
-  { id: 'chapters', label: '章节', path: 'chapters', icon: <ChaptersIcon /> },
-  { id: 'editor', label: '编辑器', path: 'editor/0', icon: <EditorIcon /> },
-  { id: 'analytics', label: '质量中心', path: 'analytics', icon: <AnalyticsIcon /> },
-  { id: 'export', label: '导出分享', path: 'export', icon: <ExportIcon /> },
 ]
 
 export const NavRail: React.FC<NavRailProps> = React.memo(({ collapsed, onToggleCollapse }) => {
@@ -135,23 +140,41 @@ export const NavRail: React.FC<NavRailProps> = React.memo(({ collapsed, onToggle
   const location = useLocation()
   const [, setHovered] = useState(false)
   const { isInProject, currentProjectId } = useProjectStore()
+  const routeProjectId = location.pathname.match(/^\/projects\/(?!new(?:\/|$))([^/]+)/)?.[1] ?? null
+  const activeProjectId = routeProjectId ?? currentProjectId
+  const isProjectContext = !!routeProjectId || (
+    !!isInProject &&
+    !!currentProjectId &&
+    location.pathname.startsWith(`/projects/${currentProjectId}`)
+  )
 
-  const navItems = isInProject ? projectNavItems : globalNavItems
+  // 项目内导航项
+  const projectNavItems = useMemo<NavConfigItem[]>(() => [
+    { id: 'overview', label: '概览', path: 'overview', icon: <ProjectIcon /> },
+    { id: 'outline', label: '大纲', path: 'outline', icon: <OutlineIcon /> },
+    { id: 'chapters', label: '章节', path: 'chapters', icon: <ChaptersIcon /> },
+    { id: 'reader', label: '阅读器', path: 'read/1', activePath: 'read', icon: <ReaderIcon /> },
+    { id: 'editor', label: '编辑器', path: 'editor/1', activePath: 'editor', icon: <EditorIcon /> },
+    { id: 'analytics', label: '质量中心', path: 'analytics', icon: <AnalyticsIcon /> },
+    { id: 'export', label: '导出分享', path: 'export', icon: <ExportIcon /> },
+  ], [])
+
+  const navItems = isProjectContext ? projectNavItems : globalNavItems
 
   const handleNavigate = useCallback((path: string) => {
-    if (isInProject && currentProjectId) {
-      navigate(`/projects/${currentProjectId}/${path}`)
+    if (isProjectContext && activeProjectId) {
+      navigate(`/projects/${activeProjectId}/${path}`)
     } else {
       navigate(path)
     }
-  }, [navigate, isInProject, currentProjectId])
+  }, [navigate, isProjectContext, activeProjectId])
 
-  const isActive = useCallback((path: string) => {
-    if (isInProject && currentProjectId) {
-      return location.pathname.startsWith(`/projects/${currentProjectId}/${path}`)
+  const isActive = useCallback((path: string, activePath?: string) => {
+    if (isProjectContext && activeProjectId) {
+      return location.pathname.startsWith(`/projects/${activeProjectId}/${activePath ?? path}`)
     }
     return location.pathname.startsWith(path)
-  }, [location.pathname, isInProject, currentProjectId])
+  }, [location.pathname, isProjectContext, activeProjectId])
 
   const handleMouseEnter = useCallback(() => {
     if (collapsed) setHovered(true)
@@ -181,7 +204,7 @@ export const NavRail: React.FC<NavRailProps> = React.memo(({ collapsed, onToggle
             key={item.id}
             icon={item.icon}
             label={item.label}
-            active={isActive(item.path)}
+            active={isActive(item.path, item.activePath)}
             onClick={() => handleNavigate(item.path)}
           />
         ))}

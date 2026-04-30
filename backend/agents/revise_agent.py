@@ -11,7 +11,6 @@ import openai
 from backend.utils.volc_engine import call_volc_api
 from backend.utils.logger import logger
 from backend.core.config import settings
-from backend.utils.file_utils import load_prompt
 from backend.utils.json_utils import parse_json_result
 
 
@@ -45,21 +44,13 @@ def revise_chapter(
         "world_bible": setting_bible,
     }
 
-    # 使用统一的 load_prompt 加载提示词（支持 Skill 注入）
-    template = load_prompt(
-        "revise",
-        context=context,
-        perspective=perspective,
-        perspective_strength=perspective_strength,
-        project_config=project_config,
-    )
-
     logger.info(f"✂️  Revise Agent正在修订章节，问题数: {len(critic_issues)}")
     temperature = settings.get_temperature_for_agent("revise")
     return call_volc_api(
         "revise",
-        template,
+        "请根据系统提示和输入上下文修订章节，只输出修订后的完整正文。",
         temperature=temperature,
+        context=context,
         client=client,
         perspective=perspective,
         perspective_strength=perspective_strength,
@@ -85,21 +76,13 @@ def revise_local_patch(
         "original_chapter_excerpt": _build_local_excerpt(local_context),
     }
 
-    # 使用统一的 load_prompt 加载提示词（支持 Skill 注入）
-    template = load_prompt(
-        "revise_local_patch",
-        context=context,
-        perspective=perspective,
-        perspective_strength=perspective_strength,
-        project_config=project_config,
-    )
-
     logger.info("✂️  Revise Agent正在执行局部片段修复")
     temperature = settings.get_temperature_for_agent("revise")
     result = call_volc_api(
-        "revise",
-        template,
+        "revise_local_patch",
+        "请根据系统提示和输入上下文执行局部片段修复，只输出 JSON。",
         temperature=temperature,
+        context=context,
         client=client,
         perspective=perspective,
         perspective_strength=perspective_strength,
@@ -135,21 +118,13 @@ def stitch_chapter(
         "repair_trace": json.dumps(repair_trace, ensure_ascii=False, indent=2),
     }
 
-    # 使用统一的 load_prompt 加载提示词（支持 Skill 注入）
-    template = load_prompt(
-        "stitch",
-        context=context,
-        perspective=perspective,
-        perspective_strength=perspective_strength,
-        project_config=project_config,
-    )
-
     logger.info("🪡 Revise Agent正在执行章节拼接连贯性修复")
     temperature = settings.get_temperature_for_agent("revise")
     result = call_volc_api(
-        "revise",
-        template,
+        "stitch",
+        "请根据系统提示和输入上下文执行章节拼接修复，只输出修复后的章节内容或 JSON。",
         temperature=temperature,
+        context=context,
         client=client,
         perspective=perspective,
         perspective_strength=perspective_strength,

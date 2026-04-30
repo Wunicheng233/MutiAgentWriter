@@ -3,6 +3,10 @@ import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { AppLayout } from './AppLayout'
 
+const mockRouterState = vi.hoisted(() => ({
+  pathname: '/',
+}))
+
 // Mock all dependencies
 vi.mock('../../store/useProjectStore', () => ({
   useProjectStore: vi.fn(),
@@ -38,7 +42,7 @@ vi.mock('react-router-dom', async () => {
   return {
     ...actual,
     Outlet: () => <div data-testid="outlet">Outlet Content</div>,
-    useLocation: () => ({ pathname: '/' }),
+    useLocation: () => ({ pathname: mockRouterState.pathname }),
   }
 })
 
@@ -77,6 +81,7 @@ vi.mock('./ProjectHeader', () => ({
 describe('AppLayout', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockRouterState.pathname = '/'
   })
 
   const renderWithRouter = (component: React.ReactElement) => {
@@ -91,6 +96,7 @@ describe('AppLayout', () => {
       rightPanelWidth: 400,
       focusMode: false,
       setRightPanelWidth: vi.fn(),
+      setRightPanelOpen: vi.fn(),
       toggleNavCollapsed: vi.fn(),
       ...overrides,
     })
@@ -121,6 +127,7 @@ describe('AppLayout', () => {
   })
 
   it('renders ProjectHeader when isInProject is true', async () => {
+    mockRouterState.pathname = '/projects/test-id/overview'
     await mockLayoutStore()
     await mockProjectStore(true)
 
@@ -128,6 +135,28 @@ describe('AppLayout', () => {
 
     expect(screen.getByTestId('project-header')).toBeInTheDocument()
     expect(screen.queryByTestId('navbar')).not.toBeInTheDocument()
+  })
+
+  it('renders ProjectHeader on project routes even before the project store is hydrated', async () => {
+    mockRouterState.pathname = '/projects/42/overview'
+    await mockLayoutStore()
+    await mockProjectStore(false)
+
+    renderWithRouter(<AppLayout />)
+
+    expect(screen.getByTestId('project-header')).toBeInTheDocument()
+    expect(screen.queryByTestId('navbar')).not.toBeInTheDocument()
+  })
+
+  it('renders NavBar on non-project routes even if stale project state remains', async () => {
+    mockRouterState.pathname = '/dashboard'
+    await mockLayoutStore()
+    await mockProjectStore(true)
+
+    renderWithRouter(<AppLayout />)
+
+    expect(screen.getByTestId('navbar')).toBeInTheDocument()
+    expect(screen.queryByTestId('project-header')).not.toBeInTheDocument()
   })
 
   it('always renders NavRail', async () => {

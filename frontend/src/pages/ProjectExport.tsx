@@ -10,7 +10,6 @@ import {
   createShareLink,
   downloadExportFile,
   getProject,
-  getProjectArtifacts,
   getTaskStatus,
   listCollaborators,
   removeCollaborator,
@@ -18,10 +17,6 @@ import {
 } from '../utils/endpoints'
 import { useAuthStore } from '../store/useAuthStore'
 import { useToast } from '../components/toastContext'
-import {
-  getArtifactDisplayName,
-  getArtifactScopeLabel,
-} from '../utils/artifact'
 
 export const ProjectExport: React.FC = () => {
   const { id } = useParams<{ id: string }>()
@@ -50,16 +45,6 @@ export const ProjectExport: React.FC = () => {
     const progressPercent = data.status === 'completed' ? 100 : progress * 100
     setProjectStatus(data.status as ProjectStatus, progressPercent)
   }, [id, data, setCurrentProject, setProjectStatus])
-
-  const { data: recentArtifacts } = useQuery({
-    queryKey: ['project-artifacts', projectId, 'current'],
-    queryFn: () => getProjectArtifacts(projectId, {
-      limit: 10,
-      current_only: true,
-      include_content: false,
-    }),
-    enabled: isValidProjectId && !!data,
-  })
 
   const { data: collaborators = [] } = useQuery({
     queryKey: ['collaborators', projectId],
@@ -148,8 +133,12 @@ export const ProjectExport: React.FC = () => {
       setShareUrl(fullUrl)
       await navigator.clipboard.writeText(fullUrl)
       showToast('分享链接已创建并复制到剪贴板', 'success')
-    } catch {
-      showToast('创建失败', 'error')
+    } catch (error: unknown) {
+      console.error('Share link creation error:', error)
+      const message = error && typeof error === 'object' && 'response' in error
+        ? (error.response as { data?: { detail?: string } })?.data?.detail || '创建失败'
+        : '创建失败'
+      showToast(message, 'error')
     } finally {
       setCreatingShare(false)
     }
@@ -200,7 +189,7 @@ export const ProjectExport: React.FC = () => {
   }
 
   const isOwner = !!data && !!user && data.user_id === user.id
-  const completedChapters = data.chapters?.length ?? 0
+  const canExport = data.status === 'completed'
 
   return (
     <div className="mx-auto max-w-content space-y-8">
@@ -218,45 +207,21 @@ export const ProjectExport: React.FC = () => {
       )}
 
       <Card className="p-6">
-        <p className="font-medium text-xs uppercase tracking-[0.24em] text-[var(--text-secondary)]">Quality</p>
-        <h2 className="mt-2 text-2xl font-medium">质量与交付</h2>
-
-        <div className="mt-6 space-y-4">
-          {data.overall_quality_score > 0 ? (
-            <div>
-              <p className="text-sm text-[var(--text-secondary)] mb-2">总体评分 {data.overall_quality_score.toFixed(1)}/10</p>
-              <Progress value={data.overall_quality_score * 10} />
-            </div>
-          ) : (
-            <div className="rounded-standard border border-dashed border-[var(--border-default)] p-4 text-center text-[var(--text-secondary)]">
-              尚无评分数据
-            </div>
-          )}
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-3">
-              <p className="text-sm text-[var(--text-secondary)]">已完成章节</p>
-              <p className="mt-1 font-medium">{completedChapters}</p>
-            </div>
-            <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-3">
-              <p className="text-sm text-[var(--text-secondary)]">分享状态</p>
-              <p className="mt-1 font-medium">{shareUrl ? '已生成链接' : '待创建'}</p>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-3">
-            <Link to={`/projects/${projectId}/analytics`}>
-              <Button variant="secondary" size="sm">质量分析</Button>
-            </Link>
-          </div>
-        </div>
-      </Card>
-
-      <Card className="p-6">
         <p className="font-medium text-xs uppercase tracking-[0.24em] text-[var(--text-secondary)]">Delivery</p>
         <h2 className="mt-2 text-2xl font-medium">导出分享</h2>
 
-        {data.status === 'completed' ? (
+        <div className="mt-5 grid gap-3 md:grid-cols-2">
+          <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-3">
+            <p className="text-sm text-[var(--text-secondary)]">导出状态</p>
+            <p className="mt-1 font-medium">{canExport ? '可导出' : '等待项目完成'}</p>
+          </div>
+          <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-3">
+            <p className="text-sm text-[var(--text-secondary)]">链接状态</p>
+            <p className="mt-1 font-medium">{shareUrl ? '已生成' : '未创建'}</p>
+          </div>
+        </div>
+
+        {canExport ? (
           <div className="mt-5 space-y-4">
             <div className="flex flex-wrap gap-3">
               <Button variant="secondary" size="sm" onClick={() => handleTriggerExport('epub')} disabled={!!exportPollingId}>
@@ -280,49 +245,9 @@ export const ProjectExport: React.FC = () => {
           </div>
         ) : (
           <div className="mt-5 rounded-standard border border-dashed border-[var(--border-default)] p-4 text-center text-[var(--text-secondary)]">
-            项目完成后可用
+            项目完成后可用导出和分享
           </div>
         )}
-      </Card>
-
-      <Card className="p-6">
-        <p className="font-medium text-xs uppercase tracking-[0.24em] text-[var(--text-secondary)]">Current Artifacts</p>
-        <h2 className="mt-2 text-2xl font-medium">关键产物</h2>
-
-        <div className="mt-5 space-y-3">
-          {recentArtifacts?.items.map(artifact => (
-            <div key={artifact.id} className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-3">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-medium">{getArtifactDisplayName(artifact.artifact_type)}</span>
-                    <Badge variant="secondary">{artifact.scope}</Badge>
-                    {artifact.is_current && <Badge variant="success">current</Badge>}
-                  </div>
-                  <div className="mt-2 text-sm text-[var(--text-secondary)]">
-                    v{artifact.version_number} · {getArtifactScopeLabel(artifact)} · {artifact.source}
-                  </div>
-                </div>
-                <div className="flex flex-wrap justify-end gap-2">
-                  <Link to={`/projects/${projectId}/artifacts/${artifact.id}`}>
-                    <Button variant="tertiary" size="sm">详情</Button>
-                  </Link>
-                  {artifact.workflow_run_id && (
-                    <Link to={`/projects/${projectId}/workflows/${artifact.workflow_run_id}`}>
-                      <Button variant="tertiary" size="sm">Run</Button>
-                    </Link>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
-
-          {!recentArtifacts?.items.length && (
-            <div className="rounded-standard border border-dashed border-[var(--border-default)] p-4 text-center text-[var(--text-secondary)]">
-              暂无
-            </div>
-          )}
-        </div>
       </Card>
 
       {isOwner && (

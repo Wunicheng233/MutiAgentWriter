@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useParams } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ToastProvider } from './components/v2'
 import ProtectedRoute from './components/ProtectedRoute'
@@ -47,6 +47,14 @@ function RouteLoader() {
   )
 }
 
+function LegacyWriteRedirect() {
+  const { id, chapterIndex } = useParams<{ id: string; chapterIndex?: string }>()
+  const parsedChapter = chapterIndex ? parseInt(chapterIndex, 10) : 1
+  const targetChapter = Number.isNaN(parsedChapter) || parsedChapter < 1 ? 1 : parsedChapter
+
+  return <Navigate to={`/projects/${id}/editor/${targetChapter}`} replace />
+}
+
 // Wrapper for protected routes with app layout
 function ProtectedLayout() {
   return (
@@ -80,8 +88,11 @@ export function AppRoutes() {
             <Route path="chapters" element={<ChapterList />} />
             <Route path="workflows/:runId" element={<WorkflowRunDetail />} />
             <Route path="artifacts/:artifactId" element={<ArtifactDetail />} />
+            <Route path="editor" element={<Navigate to="1" replace />} />
             <Route path="editor/:chapterIndex" element={<Editor />} />
-            <Route path="write/:chapterIndex" element={<Editor />} />
+            <Route path="write" element={<LegacyWriteRedirect />} />
+            <Route path="write/:chapterIndex" element={<LegacyWriteRedirect />} />
+            <Route path="read" element={<Navigate to="1" replace />} />
             <Route path="read/:chapterIndex" element={<Reader />} />
             <Route path="analytics" element={<QualityDashboard />} />
             <Route path="outline" element={<ProjectOutline />} />

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react'
+import React, { useEffect, useState, useMemo, useRef } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
 
@@ -7,7 +7,6 @@ import { useLayoutStore } from '../store/useLayoutStore'
 import { useProjectStore, type ProjectStatus } from '../store/useProjectStore'
 import {
   getProject,
-  getProjectTokenStats,
   listSkills,
   updateProject,
 } from '../utils/endpoints'
@@ -41,12 +40,6 @@ export const ProjectOutline: React.FC = () => {
     setProjectStatus(data.status as ProjectStatus, progressPercent)
   }, [id, data, setCurrentProject, setProjectStatus])
 
-  const { data: tokenStats } = useQuery({
-    queryKey: ['project-token-stats', projectId],
-    queryFn: () => getProjectTokenStats(projectId),
-    enabled: isValidProjectId && !!data,
-  })
-
   const { data: skillsData } = useQuery({
     queryKey: ['skills'],
     queryFn: () => listSkills(),
@@ -73,6 +66,8 @@ export const ProjectOutline: React.FC = () => {
     end_chapter: 10,
   })
 
+  const initializedRef = useRef(false)
+
   const updateConfigMutation = useMutation({
     mutationFn: () => updateProject(projectId, {
       config: {
@@ -93,7 +88,8 @@ export const ProjectOutline: React.FC = () => {
   })
 
   useEffect(() => {
-    if (!data?.config) return
+    if (!data?.config || editingConfig || initializedRef.current) return
+    initializedRef.current = true
 
     const newConfig = {
       skip_plan_confirmation: data.config.skip_plan_confirmation ?? false,
@@ -104,18 +100,11 @@ export const ProjectOutline: React.FC = () => {
       end_chapter: data.config.end_chapter ?? 10,
     }
 
-    // Only update if values actually changed to avoid cascading renders
-    const hasChanges = Object.entries(newConfig).some(
-      ([key, value]) => configForm[key as keyof typeof configForm] !== value
-    )
-
-    if (hasChanges) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- guarded by hasChanges check to avoid cascading renders
-      setConfigForm(newConfig)
-    }
+    // 只在非编辑状态下同步值，避免编辑时用户输入被重置
+    setConfigForm(newConfig)
   }, [
     data?.config,
-    configForm,
+    editingConfig,  // editingConfig = true 时停止同步
   ])
 
   const { autoExpandHeaderInProject, setHeaderCollapsed } = useLayoutStore()
@@ -207,17 +196,6 @@ export const ProjectOutline: React.FC = () => {
               <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-4">
                 <p className="text-[var(--text-secondary)]">章节范围</p>
                 <p className="mt-1 text-body">{targetStart} - {targetEnd}</p>
-              </div>
-              <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-4">
-                <p className="text-[var(--text-secondary)]">Token 消耗</p>
-                <p className="mt-1 text-body">
-                  {tokenStats && tokenStats.total_tokens > 0
-                    ? `${tokenStats.total_tokens.toLocaleString()} tokens`
-                    : '尚无消耗记录'}
-                </p>
-                {tokenStats && tokenStats.total_tokens > 0 && (
-                  <p className="mt-1 text-xs text-[var(--text-secondary)]">约 ${tokenStats.estimated_cost_usd.toFixed(4)}</p>
-                )}
               </div>
             </div>
 

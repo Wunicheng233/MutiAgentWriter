@@ -64,6 +64,7 @@ export const AIChatPanel: React.FC = () => {
 
       addMessage(assistantMessage)
     } catch (error) {
+      console.error('AI chat error:', error)
       const errorMessage: ChatMessageType = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',

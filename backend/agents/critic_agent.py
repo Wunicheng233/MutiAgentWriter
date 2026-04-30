@@ -11,7 +11,6 @@ from typing import Tuple, List, Dict, Optional
 from backend.utils.volc_engine import call_volc_api
 from backend.utils.logger import logger
 from backend.core.config import settings
-from backend.utils.file_utils import load_prompt
 from backend.utils.json_utils import parse_json_result
 
 CRITIC_V2_DIMENSIONS = (
@@ -65,22 +64,14 @@ def critic_chapter(
         "novel_state_snapshot": novel_state_snapshot or "（无状态快照）",
     }
 
-    # 使用统一的 load_prompt 加载提示词（支持 Skill 注入）
-    template = load_prompt(
-        "critic",
-        content_type=content_type,
-        context=context,
-        perspective=perspective,
-        perspective_strength=perspective_strength,
-        project_config=project_config,
-    )
-
     logger.info("🔍 Critic Agent正在评审章节，等待结果...")
     temperature = settings.get_temperature_for_agent("critic")
     result = call_volc_api(
         "critic",
-        template,
+        "请根据系统提示和输入上下文评审章节，只输出严格 JSON。",
         temperature=temperature,
+        content_type=content_type,
+        context=context,
         client=client,
         perspective=perspective,
         perspective_strength=perspective_strength,

@@ -1,6 +1,6 @@
-import { render, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { MemoryRouter, Routes, Route } from 'react-router-dom'
+import { MemoryRouter, Routes, Route, useLocation } from 'react-router-dom'
 import { expect, describe, test, vi, beforeEach } from 'vitest'
 import React from 'react'
 import { ToastContext } from '../components/toastContext'
@@ -58,11 +58,42 @@ vi.mock('../utils/endpoints', () => ({
   }),
   getChapter: vi.fn().mockResolvedValue({
     id: 1,
+    project_id: 1,
     chapter_index: 1,
     title: 'Chapter 1',
     content: '<p>Test content</p>',
+    word_count: 12,
+    quality_score: 0,
     status: 'draft',
+    created_at: '2026-04-25T00:00:00',
+    updated_at: '2026-04-25T00:00:00',
   }),
+  listChapters: vi.fn().mockResolvedValue([
+    {
+      id: 1,
+      project_id: 1,
+      chapter_index: 1,
+      title: 'Chapter 1',
+      content: '<p>Test content</p>',
+      word_count: 12,
+      quality_score: 0,
+      status: 'draft',
+      created_at: '2026-04-25T00:00:00',
+      updated_at: '2026-04-25T00:00:00',
+    },
+    {
+      id: 2,
+      project_id: 1,
+      chapter_index: 2,
+      title: 'Chapter 2',
+      content: '<p>More content</p>',
+      word_count: 12,
+      quality_score: 0,
+      status: 'draft',
+      created_at: '2026-04-25T00:00:00',
+      updated_at: '2026-04-25T00:00:00',
+    },
+  ]),
   updateChapter: vi.fn().mockResolvedValue({}),
   getTaskStatus: vi.fn().mockResolvedValue({}),
   confirmTask: vi.fn().mockResolvedValue({}),
@@ -74,16 +105,27 @@ vi.mock('../utils/endpoints', () => ({
 vi.mock('../components/AgentCard', () => ({ default: () => <div data-testid="agent-card" /> }))
 
 import Editor from './Editor'
+import { getChapter, getProject, listChapters } from '../utils/endpoints'
 
-const queryClient = new QueryClient({
-  defaultOptions: { queries: { retry: false } },
-})
+const mockGetProject = vi.mocked(getProject)
+const mockGetChapter = vi.mocked(getChapter)
+const mockListChapters = vi.mocked(listChapters)
+
+function LocationProbe() {
+  const location = useLocation()
+  return <div data-testid="location">{location.pathname}</div>
+}
 
 function renderWithProviders(ui: React.ReactElement) {
+  const testQueryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  })
+
   return render(
     <ToastContext.Provider value={{ showToast: vi.fn() }}>
-      <QueryClientProvider client={queryClient}>
+      <QueryClientProvider client={testQueryClient}>
         <MemoryRouter initialEntries={['/projects/1/write/1']}>
+          <LocationProbe />
           <Routes>
             <Route path="/projects/:id/write/:chapterIndex" element={ui} />
           </Routes>
@@ -95,9 +137,51 @@ function renderWithProviders(ui: React.ReactElement) {
 
 describe('Editor - ProjectStore 初始化', () => {
   beforeEach(() => {
-    mockSetCurrentProject.mockClear()
-    mockSetProjectStatus.mockClear()
     vi.clearAllMocks()
+    mockGetProject.mockResolvedValue({
+      id: 1,
+      name: 'Test Project',
+      status: 'draft',
+      config: {},
+    })
+    mockGetChapter.mockResolvedValue({
+      id: 1,
+      project_id: 1,
+      chapter_index: 1,
+      title: 'Chapter 1',
+      content: '<p>Test content</p>',
+      word_count: 12,
+      quality_score: 0,
+      status: 'draft',
+      created_at: '2026-04-25T00:00:00',
+      updated_at: '2026-04-25T00:00:00',
+    })
+    mockListChapters.mockResolvedValue([
+      {
+        id: 1,
+        project_id: 1,
+        chapter_index: 1,
+        title: 'Chapter 1',
+        content: '<p>Test content</p>',
+        word_count: 12,
+        quality_score: 0,
+        status: 'draft',
+        created_at: '2026-04-25T00:00:00',
+        updated_at: '2026-04-25T00:00:00',
+      },
+      {
+        id: 2,
+        project_id: 1,
+        chapter_index: 2,
+        title: 'Chapter 2',
+        content: '<p>More content</p>',
+        word_count: 12,
+        quality_score: 0,
+        status: 'draft',
+        created_at: '2026-04-25T00:00:00',
+        updated_at: '2026-04-25T00:00:00',
+      },
+    ])
   })
 
   test('当项目数据加载完成后，应该调用 setCurrentProject 传入正确的 id 和 name', async () => {
@@ -174,5 +258,41 @@ describe('Editor - ProjectStore 初始化', () => {
       expect(mockSetCurrentProject).toHaveBeenCalledWith('10', 'Project 10')
       expect(mockSetProjectStatus).toHaveBeenCalledWith('failed', 0)
     })
+  })
+
+  test('编辑器应该提供章节切换入口，并能跳转到所选章节', async () => {
+    renderWithProviders(<Editor />)
+
+    const chapterSelect = await screen.findByLabelText('切换章节')
+    expect(chapterSelect).toHaveValue('1')
+    expect(screen.getByRole('option', { name: '第 2 章 · Chapter 2' })).toBeInTheDocument()
+
+    fireEvent.change(chapterSelect, { target: { value: '2' } })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('location')).toHaveTextContent('/projects/1/editor/2')
+    })
+  })
+
+  test('第 0 章不是正文编辑目标，应重定向到第 1 章且不请求 chapter 0', async () => {
+    const queryClient2 = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <ToastContext.Provider value={{ showToast: vi.fn() }}>
+        <QueryClientProvider client={queryClient2}>
+          <MemoryRouter initialEntries={['/projects/1/editor/0']}>
+            <LocationProbe />
+            <Routes>
+              <Route path="/projects/:id/editor/:chapterIndex" element={<Editor />} />
+            </Routes>
+          </MemoryRouter>
+        </QueryClientProvider>
+      </ToastContext.Provider>
+    )
+
+    await waitFor(() => {
+      expect(screen.getByTestId('location')).toHaveTextContent('/projects/1/editor/1')
+    })
+
+    expect(mockGetChapter).not.toHaveBeenCalledWith(1, 0)
   })
 })

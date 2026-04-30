@@ -328,6 +328,94 @@ class WorkflowFoundationTests(BaseWorkflowTestCase):
         finally:
             db.close()
 
+    def test_rejected_plan_confirmation_restarts_from_configured_generation_range(self):
+        owner = self._create_user("plan_feedback_owner", "plan_feedback_owner@example.com")
+        project_dir = self.workspace / "plan-feedback-project"
+        project_dir.mkdir()
+        project = self._create_project(
+            owner,
+            name="Plan Feedback Novel",
+            file_path=str(project_dir),
+            config={
+                "novel_name": "Plan Feedback Novel",
+                "core_requirement": "一个少年踏上修仙路",
+                "chapter_word_count": 2000,
+                "start_chapter": 1,
+                "end_chapter": 4,
+            },
+        )
+        self._set_current_user(owner)
+
+        db = self.SessionLocal()
+        try:
+            task = GenerationTask(
+                project_id=project.id,
+                celery_task_id="celery-plan-feedback-1",
+                status="waiting_confirm",
+                progress=0.1,
+                current_chapter=0,
+            )
+            db.add(task)
+            db.commit()
+            db.refresh(task)
+
+            run = WorkflowRun(
+                project_id=project.id,
+                generation_task_id=task.id,
+                run_kind="generation",
+                status="waiting_confirm",
+                triggered_by_user_id=owner.id,
+            )
+            db.add(run)
+            db.commit()
+        finally:
+            db.close()
+
+        dispatched_args = []
+        original_apply_async = tasks_api.generate_novel_task.apply_async
+        try:
+            def fake_apply_async(args=None, task_id=None, **kwargs):
+                db = self.SessionLocal()
+                try:
+                    persisted_task = db.query(GenerationTask).filter(
+                        GenerationTask.celery_task_id == task_id
+                    ).one_or_none()
+                    self.assertIsNotNone(persisted_task)
+                    dispatched_args.append(args)
+                    return SimpleNamespace(id=task_id)
+                finally:
+                    db.close()
+
+            tasks_api.generate_novel_task.apply_async = fake_apply_async
+            response = self.client.post(
+                "/api/tasks/celery-plan-feedback-1/confirm",
+                json={"approved": False, "feedback": "请把主线目标改得更明确，再重新给我确认。"},
+            )
+        finally:
+            tasks_api.generate_novel_task.apply_async = original_apply_async
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(dispatched_args, [(str(project_dir), str(owner.id), 1, 4)])
+        self.assertEqual(
+            (project_dir / "feedback_plan.txt").read_text(encoding="utf-8"),
+            "请把主线目标改得更明确，再重新给我确认。",
+        )
+
+        db = self.SessionLocal()
+        try:
+            feedback = db.query(FeedbackItem).filter(FeedbackItem.project_id == project.id).one()
+            tasks = db.query(GenerationTask).filter(GenerationTask.project_id == project.id).order_by(GenerationTask.id).all()
+            old_task, new_task = tasks
+
+            self.assertEqual(feedback.feedback_scope, "plan")
+            self.assertEqual(feedback.chapter_index, 0)
+            self.assertEqual(feedback.action_type, "adjust_plan")
+            self.assertEqual(old_task.status, "success")
+            self.assertEqual(new_task.status, "pending")
+            self.assertEqual(new_task.current_chapter, 0)
+        finally:
+            db.close()
+
     def test_create_feedback_item_supersedes_previous_open_feedback_for_same_target(self):
         owner = self._create_user("supersede_owner", "supersede_owner@example.com")
         project = self._create_project_full(owner, name="Supersede Novel")
@@ -549,10 +637,14 @@ class WorkflowFoundationTests(BaseWorkflowTestCase):
 
         class FakeOrchestrator:
             def __init__(self, project_dir, progress_callback, user_api_key, cancellation_checker=None, writer_perspective=None, perspective_strength=0.7, use_perspective_critic=True):
+                self.project_dir = Path(project_dir)
                 self.progress_callback = progress_callback
 
             def run_full_novel(self):
                 self.progress_callback(35, "正在生成第 2 章...")
+                chapters_dir = self.project_dir / "chapters"
+                chapters_dir.mkdir(parents=True, exist_ok=True)
+                (chapters_dir / "chapter_2.txt").write_text("第2章 待确认标题\n\n待审阅章节正文", encoding="utf-8")
                 raise writing_tasks.WaitingForConfirmationError(2, "待审阅章节")
 
         original_session_local = writing_tasks.SessionLocal
@@ -579,6 +671,19 @@ class WorkflowFoundationTests(BaseWorkflowTestCase):
             self.assertEqual(run.current_step_key, "waiting_confirm")
             self.assertEqual(run.current_chapter, 2)
             self.assertTrue(run.run_metadata["waiting_confirmation"])
+            chapter = db.query(Chapter).filter(
+                Chapter.project_id == project.id,
+                Chapter.chapter_index == 2,
+            ).one()
+            self.assertEqual(chapter.title, "第2章 待确认标题")
+            self.assertIn("待审阅章节正文", chapter.content)
+            chapter_artifact = db.query(Artifact).filter(
+                Artifact.project_id == project.id,
+                Artifact.artifact_type == "chapter_draft",
+                Artifact.chapter_index == 2,
+                Artifact.is_current.is_(True),
+            ).one()
+            self.assertEqual(chapter_artifact.workflow_run_id, run.id)
             step_keys = [
                 (step.step_key, step.status, step.chapter_index)
                 for step in db.query(WorkflowStepRun)

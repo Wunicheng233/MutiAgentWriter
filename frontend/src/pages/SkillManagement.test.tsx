@@ -1,14 +1,31 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { beforeEach, expect, describe, test, vi } from 'vitest'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { beforeEach, describe, expect, test, vi } from 'vitest'
 import React from 'react'
-import SkillSelector from './SkillSelector'
+import SkillManagement from './SkillManagement'
 
 const mocks = vi.hoisted(() => ({
   updateProjectSkills: vi.fn().mockResolvedValue({}),
 }))
 
 vi.mock('../utils/endpoints', () => ({
+  getProject: vi.fn().mockResolvedValue({
+    id: 1,
+    name: '风格测试项目',
+    status: 'draft',
+    config: {
+      skills: {
+        enabled: [
+          {
+            skill_id: 'liu-cixin-perspective',
+            applies_to_override: ['planner', 'writer', 'revise'],
+            config: { strength: 0.7, mode: 'style_only' },
+          },
+        ],
+      },
+    },
+  }),
   listSkills: vi.fn().mockResolvedValue({
     skills: [
       {
@@ -18,24 +35,11 @@ vi.mock('../utils/endpoints', () => ({
         version: '1.0',
         author: 'external-skill',
         applies_to: ['planner', 'writer', 'revise'],
-        priority: 100,
+        priority: 50,
         tags: ['perspective', 'author-style'],
         config_schema: {
           strength: { type: 'float', default: 0.7, min: 0, max: 1 },
         },
-        safety_tags: ['safe_for_all'],
-        dependencies: [],
-      },
-      {
-        id: 'consistency-checker',
-        name: '连续性助手',
-        description: '维护时间线和设定一致性',
-        version: '1.0',
-        author: 'StoryForge',
-        applies_to: ['planner', 'writer', 'revise'],
-        priority: 40,
-        tags: ['quality'],
-        config_schema: {},
         safety_tags: ['safe_for_all'],
         dependencies: [],
       },
@@ -59,56 +63,32 @@ vi.mock('../utils/endpoints', () => ({
   updateProjectSkills: mocks.updateProjectSkills,
 }))
 
-vi.mock('./toastContext', () => ({
+vi.mock('../components/toastContext', () => ({
   useToast: () => ({ showToast: vi.fn() }),
 }))
 
-function renderWithProviders(ui: React.ReactElement) {
+function renderWithProviders() {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   })
-  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={['/projects/1/skills']}>
+        <Routes>
+          <Route path="/projects/:id/skills" element={<SkillManagement />} />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>
+  )
 }
 
-describe('SkillSelector', () => {
+describe('SkillManagement', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  test('lists installed skills and saves selected skill config', async () => {
-    renderWithProviders(<SkillSelector projectId={1} enabledSkills={[]} />)
-
-    expect(await screen.findByText('刘慈欣｜Liu Cixin')).toBeInTheDocument()
-    expect(screen.getByText('连续性助手｜连续性助手')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByLabelText('启用 刘慈欣 风格'))
-
-    await waitFor(() => {
-      expect(mocks.updateProjectSkills).toHaveBeenCalledWith(1, {
-        enabled: [
-          {
-            skill_id: 'liu-cixin-perspective',
-            applies_to_override: ['planner', 'writer', 'revise'],
-            config: { strength: 0.7, mode: 'style_only' },
-          },
-        ],
-      })
-    })
-  })
-
-  test('selecting a second author style replaces the existing author style', async () => {
-    renderWithProviders(
-      <SkillSelector
-        projectId={1}
-        enabledSkills={[
-          {
-            skill_id: 'liu-cixin-perspective',
-            applies_to_override: ['planner', 'writer', 'revise'],
-            config: { strength: 0.7, mode: 'style_only' },
-          },
-        ]}
-      />
-    )
+  test('selecting a different author style replaces the current one', async () => {
+    renderWithProviders()
 
     fireEvent.click(await screen.findByLabelText('启用 余华 风格'))
 

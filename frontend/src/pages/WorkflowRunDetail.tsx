@@ -326,7 +326,7 @@ export const WorkflowRunDetail: React.FC = () => {
 
             {run.current_chapter ? (
               <div className="mt-5">
-                <Link to={`/projects/${projectId}/write/${run.current_chapter}`}>
+                <Link to={`/projects/${projectId}/editor/${run.current_chapter}`}>
                   <Button variant="secondary" size="sm">打开相关章节</Button>
                 </Link>
               </div>
@@ -431,14 +431,14 @@ export const WorkflowRunDetail: React.FC = () => {
 
           <div className="mt-5 flex flex-wrap gap-3">
             {run.status === 'waiting_confirm' && hasRelatedChapter && (
-              <Link to={`/projects/${projectId}/write/${run.current_chapter}`}>
+              <Link to={`/projects/${projectId}/editor/${run.current_chapter}`}>
                 <Button variant="primary">处理确认</Button>
               </Link>
             )}
 
             {run.status === 'waiting_confirm' && run.current_chapter === 0 && (
-              <Link to={`/projects/${projectId}/overview`}>
-                <Button variant="primary">返回概览</Button>
+              <Link to={`/projects/${projectId}/overview?confirm-plan=true`}>
+                <Button variant="primary">处理策划确认</Button>
               </Link>
             )}
 
@@ -569,7 +569,7 @@ export const WorkflowRunDetail: React.FC = () => {
                     </div>
 
                     {chapterNumber ? (
-                      <Link to={`/projects/${projectId}/write/${chapterNumber}`}>
+                      <Link to={`/projects/${projectId}/editor/${chapterNumber}`}>
                         <Button variant="tertiary" size="sm">打开章节</Button>
                       </Link>
                     ) : null}

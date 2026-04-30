@@ -180,15 +180,36 @@ def get_setting_collection():
     )
 
 
+def _is_missing_collection_error(error: Exception) -> bool:
+    return error.__class__.__name__ == "NotFoundError" or "does not exist" in str(error)
+
+
+def _delete_collection_if_exists(client: Any, name: str) -> bool:
+    try:
+        client.delete_collection(name=name)
+        return True
+    except Exception as error:
+        if _is_missing_collection_error(error):
+            logger.debug("向量数据库集合不存在，跳过删除: %s", name)
+            return False
+        raise
+
+
 def reset_current_db():
     """重置当前小说的向量数据库，新建小说时调用"""
     try:
         client = _get_client()
-        client.delete_collection(name=_get_current_chapter_collection_name())
-        client.delete_collection(name=_get_current_setting_collection_name())
-        logger.info("✅ 当前小说向量数据库已重置")
+        deleted_any = False
+        for collection_name in (
+            _get_current_chapter_collection_name(),
+            _get_current_setting_collection_name(),
+        ):
+            deleted_any = _delete_collection_if_exists(client, collection_name) or deleted_any
+        if deleted_any:
+            logger.info("✅ 当前小说向量数据库已重置")
+        else:
+            logger.info("当前小说向量数据库无需重置")
     except Exception as e:
-        # collection不存在，不用删
         logger.error(f"Vector DB 操作失败: {e}", exc_info=True)
 
 

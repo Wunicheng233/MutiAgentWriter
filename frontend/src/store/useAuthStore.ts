@@ -39,7 +39,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       const user = await getMe()
       set({ user, initialized: true, initializing: false })
-      console.log('[Auth] Session restored successfully')
     } catch (error) {
       console.error('[Auth] Failed to restore session:', error)
       localStorage.removeItem('access_token')

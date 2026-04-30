@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { renderHook, act, fireEvent } from '@testing-library/react'
+import { renderHook, act } from '@testing-library/react'
 import { useKeyboardNavigation } from './useKeyboardNavigation'
+
+type KeyboardEventMock = Partial<React.KeyboardEvent<HTMLElement>>
 
 describe('useKeyboardNavigation', () => {
   let container: HTMLDivElement
@@ -37,7 +39,7 @@ describe('useKeyboardNavigation', () => {
     )
 
     act(() => {
-      result.current.handleKeyDown({ key: 'Escape', preventDefault: vi.fn() } as any)
+      result.current.handleKeyDown({ key: 'Escape', preventDefault: vi.fn() } as KeyboardEventMock)
     })
 
     expect(setIsOpen).toHaveBeenCalledWith(false)
@@ -65,7 +67,7 @@ describe('useKeyboardNavigation', () => {
     )
 
     act(() => {
-      result.current.handleKeyDown({ key: 'Enter', preventDefault } as any)
+      result.current.handleKeyDown({ key: 'Enter', preventDefault } as KeyboardEventMock)
     })
 
     expect(onSelect).toHaveBeenCalledWith('test-value')
@@ -85,7 +87,7 @@ describe('useKeyboardNavigation', () => {
     )
 
     act(() => {
-      result.current.handleKeyDown({ key: 'Enter', preventDefault: vi.fn() } as any)
+      result.current.handleKeyDown({ key: 'Enter', preventDefault: vi.fn() } as KeyboardEventMock)
     })
 
     expect(setIsOpen).not.toHaveBeenCalled()
@@ -114,7 +116,7 @@ describe('useKeyboardNavigation', () => {
     )
 
     act(() => {
-      result.current.handleKeyDown({ key: 'Enter', preventDefault } as any)
+      result.current.handleKeyDown({ key: 'Enter', preventDefault } as KeyboardEventMock)
     })
 
     expect(onSelect).not.toHaveBeenCalled()
@@ -134,7 +136,7 @@ describe('useKeyboardNavigation', () => {
     )
 
     act(() => {
-      result.current.handleKeyDown({ key: 'ArrowDown', preventDefault } as any)
+      result.current.handleKeyDown({ key: 'ArrowDown', preventDefault } as KeyboardEventMock)
     })
 
     expect(preventDefault).toHaveBeenCalled()
@@ -166,7 +168,7 @@ describe('useKeyboardNavigation', () => {
     )
 
     act(() => {
-      result.current.handleKeyDown({ key: 'ArrowDown', preventDefault } as any)
+      result.current.handleKeyDown({ key: 'ArrowDown', preventDefault } as KeyboardEventMock)
     })
 
     expect(focusSpy).toHaveBeenCalled()
@@ -198,7 +200,7 @@ describe('useKeyboardNavigation', () => {
     )
 
     act(() => {
-      result.current.handleKeyDown({ key: 'ArrowDown', preventDefault } as any)
+      result.current.handleKeyDown({ key: 'ArrowDown', preventDefault } as KeyboardEventMock)
     })
 
     expect(focusSpy).toHaveBeenCalled()
@@ -217,7 +219,7 @@ describe('useKeyboardNavigation', () => {
     )
 
     act(() => {
-      result.current.handleKeyDown({ key: 'ArrowUp', preventDefault } as any)
+      result.current.handleKeyDown({ key: 'ArrowUp', preventDefault } as KeyboardEventMock)
     })
 
     expect(preventDefault).toHaveBeenCalled()
@@ -249,7 +251,7 @@ describe('useKeyboardNavigation', () => {
     )
 
     act(() => {
-      result.current.handleKeyDown({ key: 'ArrowUp', preventDefault } as any)
+      result.current.handleKeyDown({ key: 'ArrowUp', preventDefault } as KeyboardEventMock)
     })
 
     expect(focusSpy).toHaveBeenCalled()
@@ -281,7 +283,7 @@ describe('useKeyboardNavigation', () => {
     )
 
     act(() => {
-      result.current.handleKeyDown({ key: 'ArrowUp', preventDefault } as any)
+      result.current.handleKeyDown({ key: 'ArrowUp', preventDefault } as KeyboardEventMock)
     })
 
     expect(focusSpy).toHaveBeenCalled()
@@ -318,7 +320,7 @@ describe('useKeyboardNavigation', () => {
     )
 
     act(() => {
-      result.current.handleKeyDown({ key: 'ArrowDown', preventDefault } as any)
+      result.current.handleKeyDown({ key: 'ArrowDown', preventDefault } as KeyboardEventMock)
     })
 
     // Should focus item3 directly, skipping the disabled item
@@ -347,7 +349,7 @@ describe('useKeyboardNavigation', () => {
     )
 
     act(() => {
-      result.current.handleKeyDown({ key: 'Enter', preventDefault } as any)
+      result.current.handleKeyDown({ key: 'Enter', preventDefault } as KeyboardEventMock)
     })
 
     expect(onSelect).toHaveBeenCalledWith('menu-value')

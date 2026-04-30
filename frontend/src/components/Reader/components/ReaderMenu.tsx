@@ -55,7 +55,7 @@ export const ReaderMenu: React.FC<ReaderMenuProps> = ({ projectId, chapterIndex,
   };
 
   const handleSwitchToEdit = () => {
-    navigate(`/projects/${projectId}/write/${chapterIndex}`);
+    navigate(`/projects/${projectId}/editor/${chapterIndex}`);
   };
 
   const isMobile = window.innerWidth < 768;

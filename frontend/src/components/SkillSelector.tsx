@@ -1,119 +1,21 @@
 import React from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Badge, Input } from './v2'
-import {
-  listSkills,
-  updateProjectSkills,
-} from '../utils/endpoints'
-import type { EnabledSkillConfig, SkillDefinition } from '../types/api'
+import { listSkills, updateProjectSkills } from '../utils/endpoints'
+import type { EnabledSkillConfig } from '../types/api'
 import { useToast } from './toastContext'
+import SkillPicker from './SkillPicker'
 
 interface SkillSelectorProps {
   projectId: number
   enabledSkills?: EnabledSkillConfig[]
 }
 
-const DEFAULT_APPLIES_TO = ['planner', 'writer', 'revise']
-
-function defaultConfig(skill: SkillDefinition): Record<string, string | number | boolean | null> {
-  const strengthSchema = skill.config_schema?.strength
-  const defaultStrength =
-    typeof strengthSchema === 'object' && strengthSchema && !Array.isArray(strengthSchema)
-      ? Number(strengthSchema.default ?? 0.7)
-      : 0.7
-  return {
-    strength: Number.isFinite(defaultStrength) ? defaultStrength : 0.7,
-    mode: 'style_only',
-  }
-}
-
-function normalizeEnabled(enabledSkills: EnabledSkillConfig[] = []): EnabledSkillConfig[] {
-  return enabledSkills.map(item => ({
-    skill_id: item.skill_id,
-    applies_to_override: item.applies_to_override ?? DEFAULT_APPLIES_TO,
-    config: item.config ?? {},
-  }))
-}
-
-interface AuthorNameParts {
-  chinese: string
-  english: string
-}
-
-function extractAuthorNameParts(name: string): AuthorNameParts {
-  // 处理中英文分隔："村上春树思维操作系统 | Haruki Murakami Perspective"
-  const parts = name.split(/\s*[|｜]\s*/)
-  const chinesePart = parts[0].trim()
-  const englishPart = parts[1] || ''
-
-  // 作家 slug 映射 (slug -> [中文名, 英文名])
-  const authorMap: Record<string, [string, string]> = {
-    'fenghuo': ['烽火戏诸侯', 'Fenghuo Xizhuhou'],
-    'fenghuoxizhuhou': ['烽火戏诸侯', 'Fenghuo Xizhuhou'],
-    'huwei': ['狐尾的笔', 'Huwei De Bi'],
-    'huweidebi': ['狐尾的笔', 'Huwei De Bi'],
-    'yuyuzhu': ['郁雨竹', 'Yu Yuzhu'],
-    'jinyong': ['金庸', 'Jin Yong'],
-    'liudanpashui': ['榴弹怕水', 'Liudan Pashui'],
-    'maopu': ['猫腻', 'Mao Ni'],
-    'wangzengqi': ['汪曾祺', 'Wang Zengqi'],
-    'zhangdada': ['张大大', 'Zhang Dada'],
-    'chenzhongshi': ['陈忠实', 'Chen Zhongshi'],
-    'luxun': ['鲁迅', 'Lu Xun'],
-    'murakami': ['村上春树', 'Haruki Murakami'],
-    'rowling': ['J.K.罗琳', 'J.K. Rowling'],
-    'jkrowling': ['J.K.罗琳', 'J.K. Rowling'],
-    'cixin': ['刘慈欣', 'Liu Cixin'],
-    'liucixin': ['刘慈欣', 'Liu Cixin'],
-    'tangjiashao': ['唐家三少', 'Tang Jia San Shao'],
-  }
-
-  // 处理 slug 格式：liudanpashui-perspective / jin-yong-perspective
-  if (name.includes('-perspective') || name.includes('_perspective')) {
-    const slug = name.toLowerCase().replace(/[-_](perspective|style)$/, '').replace(/[-_]/g, '')
-    if (authorMap[slug]) {
-      return { chinese: authorMap[slug][0], english: authorMap[slug][1] }
-    }
-    // 模糊匹配
-    for (const [key, [chinese, english]] of Object.entries(authorMap)) {
-      if (slug.includes(key)) return { chinese, english }
-    }
-  }
-
-  // 从中文部分提取作家名（移除后缀）
-  const chinese = chinesePart
-    .replace(/的?视角$/, '')
-    .replace(/的?思维操作系统$/, '')
-    .replace(/的?风格系统$/, '')
-    .replace(/的?创作思维$/, '')
-    .replace(/的?写作系统$/, '')
-    .replace(/的?文风系统$/, '')
-    .trim()
-
-  // 用中文名称在映射表中查找
-  for (const [, [mapChinese, mapEnglish]] of Object.entries(authorMap)) {
-    if (chinese === mapChinese || chinese.includes(mapChinese) || mapChinese.includes(chinese)) {
-      return { chinese: mapChinese, english: mapEnglish }
-    }
-  }
-
-  // 从英文部分提取作家名（移除 Perspective/Style 后缀）
-  const english = englishPart
-    .replace(/\s*(Perspective|Style|System)$/i, '')
-    .trim() || chinese
-
-  return { chinese, english }
-}
-
 export const SkillSelector: React.FC<SkillSelectorProps> = ({
   projectId,
   enabledSkills = [],
 }) => {
-  const [query, setQuery] = React.useState('')
   const { showToast } = useToast()
   const queryClient = useQueryClient()
-  const normalizedEnabled = React.useMemo(() => normalizeEnabled(enabledSkills), [enabledSkills])
-  const enabledIds = new Set(normalizedEnabled.map(item => item.skill_id))
 
   const { data, isLoading } = useQuery({
     queryKey: ['skills'],
@@ -132,89 +34,14 @@ export const SkillSelector: React.FC<SkillSelectorProps> = ({
     },
   })
 
-  const skills = data?.skills ?? []
-  const filteredSkills = skills.filter(skill => {
-    const text = `${skill.id} ${skill.name} ${skill.description} ${skill.tags.join(' ')}`.toLowerCase()
-    return text.includes(query.toLowerCase())
-  })
-
-  const toggleSkill = (skill: SkillDefinition) => {
-    const nextEnabled = enabledIds.has(skill.id)
-      ? normalizedEnabled.filter(item => item.skill_id !== skill.id)
-      : [
-          ...normalizedEnabled,
-          {
-            skill_id: skill.id,
-            applies_to_override: DEFAULT_APPLIES_TO,
-            config: defaultConfig(skill),
-          },
-        ]
-    mutation.mutate(nextEnabled)
-  }
-
-  if (isLoading) {
-    return <div className="text-sm text-[var(--text-secondary)]">正在加载 Skill...</div>
-  }
-
   return (
-    <div className="space-y-4">
-      <Input
-        placeholder="搜索 Skill..."
-        value={query}
-        onChange={event => setQuery(event.target.value)}
-      />
-
-      <div className="space-y-3">
-        {filteredSkills.map(skill => {
-          const checked = enabledIds.has(skill.id)
-          const { chinese, english } = extractAuthorNameParts(skill.name)
-
-          return (
-            <label
-              key={skill.id}
-              className={`block cursor-pointer rounded-[var(--radius-lg)] border p-4 transition-all ${
-                checked
-                  ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)] bg-opacity-8'
-                  : 'border-[var(--border-subtle)] hover:border-[var(--accent-primary)] hover:bg-[var(--bg-secondary)] bg-opacity-50'
-              }`}
-            >
-              <div className="flex items-start gap-3">
-                <input
-                  aria-label={`启用 ${chinese} 风格`}
-                  type="checkbox"
-                  checked={checked}
-                  onChange={() => toggleSkill(skill)}
-                  className="mt-1"
-                />
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-medium text-[var(--text-primary)]">{chinese}｜{english}</p>
-                    <Badge variant={checked ? 'primary' : 'secondary'}>priority {skill.priority}</Badge>
-                  </div>
-                  <p className="mt-1 text-sm text-[var(--text-secondary)]">{skill.description}</p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {skill.tags.slice(0, 4).map(tag => (
-                      <Badge key={tag} variant={checked ? 'primary' : 'secondary'}>
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
-                  <p className="mt-2 text-xs text-[var(--text-secondary)]">
-                    默认作用于：{(skill.applies_to || DEFAULT_APPLIES_TO).join(' / ')}
-                  </p>
-                </div>
-              </div>
-            </label>
-          )
-        })}
-      </div>
-
-      {filteredSkills.length === 0 && (
-        <div className="rounded-lg border border-dashed border-[var(--border-default)] p-4 text-sm text-[var(--text-secondary)]">
-          没有匹配的 Skill。
-        </div>
-      )}
-    </div>
+    <SkillPicker
+      skills={data?.skills ?? []}
+      enabledSkills={enabledSkills}
+      isLoading={isLoading}
+      showPriority
+      onChange={enabled => mutation.mutate(enabled)}
+    />
   )
 }
 

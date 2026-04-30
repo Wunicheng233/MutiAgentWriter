@@ -407,7 +407,7 @@ export const QualityDashboard: React.FC = () => {
                 title: '操作',
                 align: 'right',
                 render: (_: unknown, record: ChapterScore) => (
-                  <Link to={`/projects/${projectId}/write/${record.chapter_index}`}>
+                  <Link to={`/projects/${projectId}/editor/${record.chapter_index}`}>
                     <Button variant="tertiary" size="sm">编辑</Button>
                   </Link>
                 ),

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import sys
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -336,6 +337,36 @@ class ReviewFixRegressionTests(BaseWorkflowTestCase):
         self.assertEqual(len(setting_collection.calls), 1)
         self.assertEqual(setting_collection.calls[0]["ids"], ["core_setting_bible"])
 
+    def test_reset_current_db_ignores_missing_collections_and_continues(self):
+        class NotFoundError(Exception):
+            pass
+
+        class FakeClient:
+            def __init__(self):
+                self.deleted_names = []
+
+            def delete_collection(self, name):
+                self.deleted_names.append(name)
+                raise NotFoundError(f"Collection [{name}] does not exist")
+
+        fake_client = FakeClient()
+        project_dir = self.workspace / "missing-vector-collections"
+        project_dir.mkdir()
+
+        original_get_client = vector_db._get_client
+        try:
+            set_current_output_dir(project_dir)
+            vector_db._get_client = lambda: fake_client
+
+            vector_db.reset_current_db()
+        finally:
+            vector_db._get_client = original_get_client
+            set_current_output_dir(None)
+
+        self.assertEqual(len(fake_client.deleted_names), 2)
+        self.assertTrue(fake_client.deleted_names[0].startswith("chapters_"))
+        self.assertTrue(fake_client.deleted_names[1].startswith("settings_"))
+
     def test_init_reference_collection_uses_project_root_reference_dir(self):
         class FakeReferenceCollection:
             def __init__(self):
@@ -590,6 +621,205 @@ class ReviewFixRegressionTests(BaseWorkflowTestCase):
         self.assertEqual(synced_chapters, [(1, "第1章", "已存在章节内容")])
         self.assertEqual(result["generated_chapters"], 1)
 
+    def test_chapter_confirmation_pauses_before_following_chapters(self):
+        project_dir = self.workspace / "orchestrator-confirm-project"
+        chapters_dir = project_dir / "chapters"
+        chapters_dir.mkdir(parents=True)
+
+        orchestrator = NovelOrchestrator.__new__(NovelOrchestrator)
+        orchestrator.output_dir = project_dir
+        orchestrator.info_path = project_dir / "info.json"
+        orchestrator.start_chapter = 1
+        orchestrator.end_chapter = 4
+        orchestrator.chapter_word_count = "2000"
+        orchestrator.chapter_outlines = [
+            {"chapter_num": index, "title": f"第{index}章", "outline": f"剧情{index}", "target_word_count": 2000}
+            for index in range(1, 5)
+        ]
+        orchestrator.novel_name = "Test Novel"
+        orchestrator.plan = "plan"
+        orchestrator.setting_bible = "bible"
+        orchestrator.req = {"content_type": "novel"}
+        orchestrator.content_type = "novel"
+        orchestrator.dimension_scores = {"plot": [], "character": [], "hook": [], "writing": [], "setting": []}
+        orchestrator.allow_plot_adjustment = False
+        orchestrator.writer_perspective = None
+        orchestrator.perspective_strength = 0.7
+        orchestrator.use_perspective_critic = True
+        orchestrator.run_planner = lambda confirmation_handler=None: "bible"
+        progress_events = []
+        orchestrator._report_progress = lambda percent, message: progress_events.append((percent, message))
+        orchestrator._check_cancellation = lambda: None
+
+        generated_chapters = []
+
+        def pause_after_draft(chapter_index, prev_chapter_end=""):
+            generated_chapters.append(chapter_index)
+            (chapters_dir / f"chapter_{chapter_index}.txt").write_text(
+                f"第{chapter_index}章正文",
+                encoding="utf-8",
+            )
+            raise orchestrator_module.WaitingForConfirmationError(chapter_index, f"第{chapter_index}章正文")
+
+        orchestrator.run_chapter_generation = pause_after_draft
+
+        with self.assertRaises(orchestrator_module.WaitingForConfirmationError) as context:
+            orchestrator.run_full_novel()
+
+        self.assertEqual(context.exception.chapter_index, 1)
+        self.assertEqual(generated_chapters, [1])
+        self.assertTrue((chapters_dir / "chapter_1.txt").exists())
+        self.assertFalse((chapters_dir / "chapter_2.txt").exists())
+        self.assertFalse(any(percent == -1 for percent, _ in progress_events))
+
+    def test_skip_chapter_confirmation_generates_full_requested_range(self):
+        project_dir = self.workspace / "orchestrator-range-project"
+        chapters_dir = project_dir / "chapters"
+        chapters_dir.mkdir(parents=True)
+
+        orchestrator = NovelOrchestrator.__new__(NovelOrchestrator)
+        orchestrator.output_dir = project_dir
+        orchestrator.info_path = project_dir / "info.json"
+        orchestrator.start_chapter = 1
+        orchestrator.end_chapter = 4
+        orchestrator.chapter_word_count = "2000"
+        orchestrator.chapter_outlines = [
+            {"chapter_num": index, "title": f"第{index}章", "outline": f"剧情{index}", "target_word_count": 2000}
+            for index in range(1, 5)
+        ]
+        orchestrator.novel_name = "Test Novel"
+        orchestrator.plan = "plan"
+        orchestrator.setting_bible = "bible"
+        orchestrator.req = {"content_type": "novel"}
+        orchestrator.content_type = "novel"
+        orchestrator.dimension_scores = {"plot": [], "character": [], "hook": [], "writing": [], "setting": []}
+        orchestrator.allow_plot_adjustment = False
+        orchestrator.writer_perspective = None
+        orchestrator.perspective_strength = 0.7
+        orchestrator.use_perspective_critic = True
+        orchestrator.run_planner = lambda confirmation_handler=None: "bible"
+        orchestrator._report_progress = lambda *args, **kwargs: None
+        orchestrator._check_cancellation = lambda: None
+
+        generated_chapters = []
+
+        def generate_chapter(chapter_index, prev_chapter_end=""):
+            generated_chapters.append(chapter_index)
+            content = f"第{chapter_index}章正文"
+            (chapters_dir / f"chapter_{chapter_index}.txt").write_text(content, encoding="utf-8")
+            return content, 9, True, []
+
+        orchestrator.run_chapter_generation = generate_chapter
+
+        result = orchestrator.run_full_novel()
+
+        self.assertEqual(generated_chapters, [1, 2, 3, 4])
+        self.assertEqual(result["generated_chapters"], 4)
+        self.assertTrue((chapters_dir / "chapter_4.txt").exists())
+
+    def test_run_planner_normalizes_full_novel_content_type_for_agents(self):
+        project_dir = self.workspace / "orchestrator-content-type-project"
+        project_dir.mkdir(parents=True)
+        (project_dir / "user_requirements.yaml").write_text(
+            "\n".join([
+                "novel_name: 类型规范测试",
+                "core_requirement: 写一个悬疑故事",
+                "target_platform: 网络小说",
+                "chapter_word_count: 2000",
+                "start_chapter: 1",
+                "end_chapter: 1",
+                "skip_plan_confirmation: true",
+                "skip_chapter_confirmation: true",
+                "content_type: full_novel",
+            ]),
+            encoding="utf-8",
+        )
+
+        orchestrator = NovelOrchestrator.__new__(NovelOrchestrator)
+        orchestrator.output_dir = project_dir
+        orchestrator.project_dir = str(project_dir)
+        orchestrator.writer_perspective = None
+        orchestrator.perspective_strength = 0.7
+        orchestrator.project_config = {}
+        orchestrator._check_cancellation = lambda: None
+        orchestrator._report_progress = lambda *args, **kwargs: None
+
+        captured_content_types = []
+
+        class FakePlanner:
+            def generate_plan(self, *args, **kwargs):
+                captured_content_types.append(args[3])
+                return (
+                    "# 《测试》设定与大纲\n\n"
+                    "## 四、分章大纲\n\n"
+                    "| 章节 | 本章目标（情节推进） | 核心冲突/爽点 | 结尾钩子 |\n"
+                    "| :--- | :--- | :--- | :--- |\n"
+                    "| 第1章 | 开始 | 冲突 | 钩子 |"
+                )
+
+        orchestrator.planner = FakePlanner()
+
+        orchestrator.run_planner()
+
+        self.assertEqual(captured_content_types, ["novel"])
+        self.assertEqual(orchestrator.content_type, "novel")
+        self.assertEqual(orchestrator.req["content_type"], "novel")
+
+    def test_run_planner_reconfirms_revised_plan_after_plan_feedback(self):
+        project_dir = self.workspace / "orchestrator-plan-feedback-project"
+        project_dir.mkdir(parents=True)
+        (project_dir / "user_requirements.yaml").write_text(
+            "\n".join([
+                "novel_name: 策划反馈测试",
+                "core_requirement: 写一个悬疑故事",
+                "target_platform: 网络小说",
+                "chapter_word_count: 2000",
+                "start_chapter: 1",
+                "end_chapter: 4",
+                "skip_plan_confirmation: false",
+                "skip_chapter_confirmation: true",
+                "content_type: novel",
+            ]),
+            encoding="utf-8",
+        )
+        (project_dir / "novel_plan.md").write_text("旧策划", encoding="utf-8")
+        (project_dir / "setting_bible.md").write_text("旧设定", encoding="utf-8")
+        (project_dir / "feedback_plan.txt").write_text("请增强核心悬念", encoding="utf-8")
+
+        orchestrator = NovelOrchestrator.__new__(NovelOrchestrator)
+        orchestrator.output_dir = project_dir
+        orchestrator.project_dir = str(project_dir)
+        orchestrator.writer_perspective = None
+        orchestrator.perspective_strength = 0.7
+        orchestrator.project_config = {}
+        orchestrator._check_cancellation = lambda: None
+        orchestrator._report_progress = lambda *args, **kwargs: None
+
+        class FakePlanner:
+            def revise_plan(self, plan, feedback, original_requirement, perspective=None, perspective_strength=0.7):
+                self.call = (plan, feedback, original_requirement, perspective, perspective_strength)
+                return "修订后的策划\n\n| 章节 | 本章目标（情节推进） | 核心冲突/爽点 | 结尾钩子 |\n| :--- | :--- | :--- | :--- |\n| 第1章 | 开始 | 冲突 | 钩子 |"
+
+        fake_planner = FakePlanner()
+        orchestrator.planner = fake_planner
+
+        original_stdin = sys.stdin
+        original_reset_current_db = orchestrator_module.reset_current_db
+        try:
+            sys.stdin = SimpleNamespace(isatty=lambda: False)
+            orchestrator_module.reset_current_db = lambda: None
+            with self.assertRaises(orchestrator_module.WaitingForConfirmationError) as context:
+                orchestrator.run_planner()
+        finally:
+            sys.stdin = original_stdin
+            orchestrator_module.reset_current_db = original_reset_current_db
+
+        self.assertEqual(context.exception.chapter_index, 0)
+        self.assertFalse((project_dir / "feedback_plan.txt").exists())
+        self.assertIn("修订后的策划", (project_dir / "novel_plan.md").read_text(encoding="utf-8"))
+        self.assertEqual(fake_planner.call[0], "旧策划")
+        self.assertEqual(fake_planner.call[1], "请增强核心悬念")
+
     def test_export_download_requires_authenticated_access(self):
         owner = self._create_user("owner5", "owner5@example.com")
         project = self._create_project(owner, name="Export Novel")
@@ -646,6 +876,11 @@ class ReviewFixRegressionTests(BaseWorkflowTestCase):
         # 安全的空值处理：三元运算符而非非空断言
         self.assertIn("id ? parseInt(id)", editor_source)  # 确认安全的路由参数提取
         self.assertIn("Number.isNaN", editor_source)  # 确认有 NaN 检查
+
+    def test_workflow_detail_routes_plan_confirmation_to_overview_confirm_modal(self):
+        source = Path("/Users/nobody1/Desktop/project/writer/frontend/src/pages/WorkflowRunDetail.tsx").read_text(encoding="utf-8")
+
+        self.assertIn("overview?confirm-plan=true", source)
 
     def test_collaborator_cannot_create_public_share_link(self):
         owner = self._create_user("share_owner", "share_owner@example.com")

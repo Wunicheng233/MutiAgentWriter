@@ -122,7 +122,7 @@ export const ArtifactDetail: React.FC = () => {
                   </Link>
                 )}
                 {artifact.chapter_index !== undefined && artifact.chapter_index >= 0 && (
-                  <Link to={`/projects/${projectId}/write/${artifact.chapter_index}`}>
+                  <Link to={`/projects/${projectId}/editor/${artifact.chapter_index}`}>
                     <Button variant="secondary" size="sm">相关章节</Button>
                   </Link>
                 )}

@@ -57,13 +57,6 @@ vi.mock('../utils/endpoints', () => ({
     config: {},
     chapters: [{ id: 1 }, { id: 2 }],
   }),
-  getProjectArtifacts: vi.fn().mockResolvedValue({
-    total: 2,
-    items: [
-      { id: 1, artifact_type: 'outline', version_number: 1, scope: 'project', source: 'planner', is_current: true },
-      { id: 2, artifact_type: 'chapter', version_number: 1, scope: 'chapter:1', source: 'writer', is_current: true },
-    ],
-  }),
   listCollaborators: vi.fn().mockResolvedValue([
     { id: 1, username: 'collab1', email: 'collab1@test.com', role: 'editor' },
   ]),
@@ -132,20 +125,22 @@ describe('ProjectExport - 导出分享页面', () => {
     })
   })
 
-  test('应该显示质量评分', async () => {
+  test('不应该混入质量中心内容', async () => {
     renderWithProviders(<ProjectExport />)
 
     await waitFor(() => {
-      expect(screen.getByText(/总体评分/i)).toBeInTheDocument()
-      expect(screen.getByText(/8.5/i)).toBeInTheDocument()
+      expect(screen.queryByText(/质量与交付/i)).not.toBeInTheDocument()
+      expect(screen.queryByText(/总体评分/i)).not.toBeInTheDocument()
+      expect(screen.queryByText(/质量分析/i)).not.toBeInTheDocument()
     })
   })
 
-  test('应该显示 Artifacts 列表', async () => {
+  test('不应该混入关键产物列表', async () => {
     renderWithProviders(<ProjectExport />)
 
     await waitFor(() => {
-      expect(screen.getByText(/关键产物/i)).toBeInTheDocument()
+      expect(screen.queryByText(/关键产物/i)).not.toBeInTheDocument()
+      expect(screen.queryByText(/Current Artifacts/i)).not.toBeInTheDocument()
     })
   })
 
@@ -159,12 +154,12 @@ describe('ProjectExport - 导出分享页面', () => {
     })
   })
 
-  test('应该显示已完成章节数量', async () => {
+  test('应该显示交付状态而不是章节质量统计', async () => {
     renderWithProviders(<ProjectExport />)
 
     await waitFor(() => {
-      expect(screen.getByText(/已完成章节/i)).toBeInTheDocument()
-      expect(screen.getByText('2')).toBeInTheDocument()
+      expect(screen.getByText(/可导出/i)).toBeInTheDocument()
+      expect(screen.getByText(/分享链接/i)).toBeInTheDocument()
     })
   })
 })

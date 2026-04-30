@@ -16,10 +16,12 @@ import { ProjectHeader } from './ProjectHeader'
 import { getProject } from '../../utils/endpoints'
 
 export const AppLayout = () => {
-  useLocation()
+  const location = useLocation()
   const { id: projectId } = useParams<{ id: string }>()
   const { showToast } = useToast()
   const notifiedStatusRef = useRef<string | null>(null)
+  const routeProjectId = location.pathname.match(/^\/projects\/(?!new(?:\/|$))([^/]+)/)?.[1] ?? projectId ?? null
+  const isProjectRoute = !!routeProjectId
 
   const {
     navCollapsed,
@@ -27,6 +29,7 @@ export const AppLayout = () => {
     rightPanelWidth,
     focusMode,
     setRightPanelWidth,
+    setRightPanelOpen,
     toggleNavCollapsed,
   } = useLayoutStore(
     useShallow((state) => ({
@@ -35,13 +38,13 @@ export const AppLayout = () => {
       rightPanelWidth: state.rightPanelWidth,
       focusMode: state.focusMode,
       setRightPanelWidth: state.setRightPanelWidth,
+      setRightPanelOpen: state.setRightPanelOpen,
       toggleNavCollapsed: state.toggleNavCollapsed,
     }))
   )
 
-  const { isInProject, setProjectStatus } = useProjectStore(
+  const { setProjectStatus } = useProjectStore(
     useShallow((state) => ({
-      isInProject: state.isInProject,
       setProjectStatus: state.setProjectStatus,
     }))
   )
@@ -57,24 +60,25 @@ export const AppLayout = () => {
   }, [focusMode])
 
   // 全局项目状态轮询 - 当在项目内时每3秒检查一次状态
-  const parsedProjectId = projectId ? parseInt(projectId, 10) : 0
+  const parsedProjectId = routeProjectId ? parseInt(routeProjectId, 10) : 0
   const isValidProjectId = !Number.isNaN(parsedProjectId) && parsedProjectId > 0
 
   useQuery({
     queryKey: ['project-global-status', parsedProjectId],
     queryFn: async () => {
       const project = await getProject(parsedProjectId)
+      const task = project.current_generation_task
 
       // 更新 ProjectStore 中的状态
-      const progress = project.current_generation_task?.progress ?? 0
+      const progress = task?.progress ?? 0
       const progressPercent = project.status === 'completed' ? 100 : progress * 100
       setProjectStatus(project.status as ProjectStatus, progressPercent)
 
-      // 当状态变为 waiting_confirm 时显示通知（只通知一次）
-      if (project.status === 'waiting_confirm' && notifiedStatusRef.current !== 'waiting_confirm') {
+      // 任务级别的 waiting_confirm 状态通知（只通知一次）
+      if (task?.status === 'waiting_confirm' && notifiedStatusRef.current !== 'waiting_confirm') {
         notifiedStatusRef.current = 'waiting_confirm'
         showToast('项目等待人工确认，请前往概览页面处理', 'info')
-      } else if (project.status !== 'waiting_confirm' && notifiedStatusRef.current === 'waiting_confirm') {
+      } else if (task?.status !== 'waiting_confirm' && notifiedStatusRef.current === 'waiting_confirm') {
         // 状态改变后重置通知标记
         notifiedStatusRef.current = null
       }
@@ -90,7 +94,7 @@ export const AppLayout = () => {
 
       return project
     },
-    enabled: isInProject && isValidProjectId,
+    enabled: isProjectRoute && isValidProjectId,
     refetchInterval: 3000,
     staleTime: 3000,
   })
@@ -107,7 +111,7 @@ export const AppLayout = () => {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         {/* Top Header - ProjectHeader or NavBar */}
-        {isInProject ? <ProjectHeader /> : <NavBar />}
+        {isProjectRoute ? <ProjectHeader /> : <NavBar />}
 
         {/* Center Canvas Content - takes remaining space and scrolls */}
         <div className="flex-1 overflow-auto">
@@ -131,7 +135,7 @@ export const AppLayout = () => {
             open={rightPanelOpen}
             width={rightPanelWidth}
             onResize={setRightPanelWidth}
-            onClose={() => useLayoutStore.getState().setRightPanelOpen(false)}
+            onClose={() => setRightPanelOpen(false)}
           >
             <AIChatPanel />
           </RightPanel>

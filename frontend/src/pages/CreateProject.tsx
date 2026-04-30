@@ -1,20 +1,23 @@
 import React, { useState } from 'react'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
 
 import { Card, Input, Textarea, Button, Progress, Divider, Alert, Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/v2'
-import { createProject } from '../utils/endpoints'
+import SkillPicker from '../components/SkillPicker'
+import { createProject, listSkills } from '../utils/endpoints'
+import { extractAuthorNameParts } from '../utils/skillDisplay'
 import { useToast } from '../components/toastContext'
 import { getErrorMessage } from '../utils/errorMessage'
-import type { ProjectCreate } from '../types/api'
+import type { EnabledSkillConfig, ProjectCreate } from '../types/api'
 
 type ContentType = NonNullable<ProjectCreate['content_type']>
 
 const steps = [
   { id: 1, title: '作品定位' },
   { id: 2, title: '创作 Brief' },
-  { id: 3, title: '协作方式' },
-  { id: 4, title: '确认创建' },
+  { id: 3, title: '作家风格' },
+  { id: 4, title: '协作方式' },
+  { id: 5, title: '确认创建' },
 ]
 
 const contentTypes = [
@@ -35,6 +38,46 @@ function getModeLabel(formData: ProjectCreate): string {
     return '逐章共创模式'
   }
   return '章节接管模式'
+}
+
+function isPositiveNumber(value: unknown): boolean {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0
+}
+
+function validateStep(stepId: number, formData: ProjectCreate): string {
+  if (stepId === 1 && !formData.name?.trim()) {
+    return '请输入项目名称'
+  }
+  if (stepId === 2) {
+    if (!formData.core_requirement?.trim()) {
+      return '请输入核心创作需求'
+    }
+    if (formData.total_words !== undefined && !isPositiveNumber(formData.total_words)) {
+      return '目标总字数必须大于 0'
+    }
+  }
+  if (stepId === 4) {
+    if (!isPositiveNumber(formData.chapter_word_count)) {
+      return '每章字数必须大于 0'
+    }
+    if (!isPositiveNumber(formData.start_chapter) || !isPositiveNumber(formData.end_chapter)) {
+      return '章节范围必须是正整数'
+    }
+    if ((formData.end_chapter ?? 1) < (formData.start_chapter ?? 1)) {
+      return '结束章节不能小于起始章节'
+    }
+  }
+  return ''
+}
+
+function getFirstInvalidStep(formData: ProjectCreate): { stepId: number; reason: string } | null {
+  for (const step of steps) {
+    const reason = validateStep(step.id, formData)
+    if (reason) {
+      return { stepId: step.id, reason }
+    }
+  }
+  return null
 }
 
 export const CreateProject: React.FC = () => {
@@ -58,12 +101,33 @@ export const CreateProject: React.FC = () => {
     end_chapter: 10,
     skip_plan_confirmation: false,
     skip_chapter_confirmation: false,
-    allow_plot_adjustment: false,
   })
 
   const updateForm = (partial: Partial<ProjectCreate>) => {
     setFormData(prev => ({ ...prev, ...partial }))
   }
+
+  const updateEnabledSkills = (enabled: EnabledSkillConfig[]) => {
+    setFormData(prev => {
+      const currentConfig = prev.config ?? {}
+      return {
+        ...prev,
+        config: {
+          ...currentConfig,
+          skills: {
+            ...(currentConfig.skills ?? {}),
+            enabled,
+          },
+        },
+      }
+    })
+  }
+
+  const { data: skillsData, isLoading: isSkillsLoading } = useQuery({
+    queryKey: ['skills'],
+    queryFn: listSkills,
+    staleTime: 1000 * 60 * 30,
+  })
 
   const { mutate, isPending } = useMutation({
     mutationFn: () => createProject(formData),
@@ -79,22 +143,27 @@ export const CreateProject: React.FC = () => {
   const progress = ((currentStep - 1) / (steps.length - 1)) * 100
   const currentStepMeta = steps[currentStep - 1]
   const selectedContentType = contentTypes.find(type => type.value === formData.content_type)
+  const skills = skillsData?.skills ?? []
+  const enabledSkills = formData.config?.skills?.enabled ?? []
+  const selectedSkillNames = enabledSkills.map(item => {
+    const skill = skills.find(candidate => candidate.id === item.skill_id)
+    if (!skill) return item.skill_id
+    const { chinese } = extractAuthorNameParts(skill.name)
+    return chinese
+  })
 
-  let stepBlockedReason = ''
-  if (currentStep === 1 && !formData.name?.trim()) {
-    stepBlockedReason = '请输入项目名称'
-  }
-  if (currentStep === 2 && !formData.core_requirement?.trim()) {
-    stepBlockedReason = '请输入核心创作需求'
-  }
-  if (currentStep === 3 && (formData.end_chapter ?? 1) < (formData.start_chapter ?? 1)) {
-    stepBlockedReason = '结束章节不能小于起始章节'
-  }
+  const firstInvalidStep = getFirstInvalidStep(formData)
+  const maxReachableStep = firstInvalidStep?.stepId ?? steps.length
+  const stepBlockedReason = validateStep(currentStep, formData)
 
   const nextStep = () => {
     if (currentStep < steps.length && !stepBlockedReason) {
       setCurrentStep(currentStep + 1)
     }
+  }
+
+  const goToStep = (stepId: number) => {
+    setCurrentStep(Math.min(stepId, maxReachableStep))
   }
 
   const prevStep = () => {
@@ -104,6 +173,11 @@ export const CreateProject: React.FC = () => {
   }
 
   const handleSubmit = () => {
+    const invalidStep = getFirstInvalidStep(formData)
+    if (invalidStep) {
+      setCurrentStep(invalidStep.stepId)
+      return
+    }
     mutate()
   }
 
@@ -144,11 +218,14 @@ export const CreateProject: React.FC = () => {
                 <button
                   key={step.id}
                   type="button"
-                  onClick={() => setCurrentStep(step.id)}
+                  onClick={() => goToStep(step.id)}
+                  disabled={isPending || step.id > maxReachableStep}
                   className={`rounded-pill px-4 py-2 text-sm transition-colors ${
                     currentStep === step.id
                       ? 'bg-sage text-parchment'
-                      : 'border border-border bg-parchment/60 text-[var(--text-secondary)] hover:border-sage/30 hover:text-inkwell'
+                      : step.id > maxReachableStep
+                        ? 'cursor-not-allowed border border-border bg-parchment/40 text-[var(--text-secondary)] opacity-50'
+                        : 'border border-border bg-parchment/60 text-[var(--text-secondary)] hover:border-sage/30 hover:text-inkwell'
                   }`}
                 >
                   {step.id}. {step.title}
@@ -249,6 +326,23 @@ export const CreateProject: React.FC = () => {
 
             {currentStep === 3 && (
               <div className="space-y-5">
+                <h2 className="text-2xl font-medium">作家风格</h2>
+
+                <SkillPicker
+                  skills={skills}
+                  enabledSkills={enabledSkills}
+                  isLoading={isSkillsLoading}
+                  searchPlaceholder="搜索作家风格..."
+                  loadingText="正在加载风格库..."
+                  emptyText="没有匹配的风格"
+                  itemClassName="p-4"
+                  onChange={updateEnabledSkills}
+                />
+              </div>
+            )}
+
+            {currentStep === 4 && (
+              <div className="space-y-5">
                 <h2 className="text-2xl font-medium">协作方式</h2>
 
                 {(formData.end_chapter ?? 1) < (formData.start_chapter ?? 1) && (
@@ -311,16 +405,6 @@ export const CreateProject: React.FC = () => {
                     />
                     <span>跳过章节级人工确认</span>
                   </label>
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      id="allow_plot_adjustment"
-                      checked={formData.allow_plot_adjustment}
-                      onChange={event => updateForm({ allow_plot_adjustment: event.target.checked })}
-                      className="rounded border-border text-sage focus:ring-sage"
-                    />
-                    <span>允许每章后调整下一章剧情</span>
-                  </label>
                 </div>
 
                 <div className="rounded-comfortable border border-sage/20 bg-sage/8 p-4">
@@ -330,7 +414,7 @@ export const CreateProject: React.FC = () => {
               </div>
             )}
 
-            {currentStep === 4 && (
+            {currentStep === 5 && (
               <div className="space-y-5">
                 <h2 className="text-2xl font-medium">确认创建</h2>
 
@@ -351,6 +435,10 @@ export const CreateProject: React.FC = () => {
                     <p className="text-sm text-[var(--text-secondary)]">协作模式</p>
                     <p className="mt-1 font-medium">{getModeLabel(formData)}</p>
                   </div>
+                  <div className="rounded-standard border border-border bg-parchment/60 p-4">
+                    <p className="text-sm text-[var(--text-secondary)]">创作风格</p>
+                    <p className="mt-1 font-medium">{selectedSkillNames.join('、') || '未选择'}</p>
+                  </div>
                 </div>
 
                 <div className="rounded-comfortable border border-border bg-white/70 p-4">
@@ -361,6 +449,7 @@ export const CreateProject: React.FC = () => {
                     <p><span className="text-[var(--text-secondary)]">核心钩子：</span>{formData.core_hook || '未填写'}</p>
                     <p><span className="text-[var(--text-secondary)]">目标总字数：</span>{formData.total_words || '未填写'}</p>
                     <p><span className="text-[var(--text-secondary)]">发布平台：</span>{formData.target_platform || '未填写'}</p>
+                    <p><span className="text-[var(--text-secondary)]">创作风格：</span>{selectedSkillNames.join('、') || '未选择'}</p>
                     {formData.core_requirement && (
                       <div>
                         <p className="text-[var(--text-secondary)]">创作需求：</p>
@@ -391,7 +480,7 @@ export const CreateProject: React.FC = () => {
                     下一步
                   </Button>
                 ) : (
-                  <Button variant="primary" onClick={handleSubmit} disabled={isPending}>
+                  <Button variant="primary" onClick={handleSubmit} disabled={isPending || !!firstInvalidStep}>
                     {isPending ? '创建中...' : '创建项目'}
                   </Button>
                 )}
@@ -420,6 +509,10 @@ export const CreateProject: React.FC = () => {
               <div className="rounded-standard border border-border bg-parchment/60 p-4">
                 <p className="text-sm text-[var(--text-secondary)]">协作模式</p>
                 <p className="mt-1 font-medium">{getModeLabel(formData)}</p>
+              </div>
+              <div className="rounded-standard border border-border bg-parchment/60 p-4">
+                <p className="text-sm text-[var(--text-secondary)]">创作风格</p>
+                <p className="mt-1 font-medium">{selectedSkillNames.join('、') || '未选择'}</p>
               </div>
             </div>
           </Card>

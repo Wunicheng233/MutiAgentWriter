@@ -11,6 +11,18 @@ class SkillValidationError(ValueError):
     """Raised when a skill directory is malformed."""
 
 
+AUTHOR_STYLE_TYPES = {"perspective", "person-perspective", "author-style"}
+
+
+def is_author_style_skill(skill: "Skill") -> bool:
+    tags = set(skill.tags or [])
+    return (
+        "author-style" in tags
+        or "perspective" in tags
+        or skill.id.endswith("-perspective")
+    )
+
+
 @dataclass(frozen=True)
 class Skill:
     id: str
@@ -123,11 +135,14 @@ class SkillRegistry:
 
     def _metadata_from_skill_md(self, skill_id: str, frontmatter: dict[str, Any]) -> dict[str, Any]:
         skill_type = str(frontmatter.get("type") or "general")
+        is_author_style = skill_type in AUTHOR_STYLE_TYPES or skill_id.endswith("-perspective")
         default_applies_to = ["planner", "writer", "revise"]
-        priority = 100 if skill_type == "perspective" else 80
-        tags = [skill_type]
-        if skill_type == "perspective":
-            tags.append("author-style")
+        priority = 50 if is_author_style else 80
+        tags = list(frontmatter.get("tags") or [skill_type])
+        if is_author_style:
+            for tag in ("perspective", "author-style"):
+                if tag not in tags:
+                    tags.append(tag)
 
         applies_to_value = frontmatter.get("applies_to") or default_applies_to
         if not isinstance(applies_to_value, (list, tuple)):
@@ -141,8 +156,8 @@ class SkillRegistry:
             "version": str(frontmatter.get("version") or "1.0"),
             "author": str(frontmatter.get("author") or "external-skill"),
             "applies_to": applies_to,
-            "priority": int(frontmatter.get("priority") or priority),
-            "tags": list(frontmatter.get("tags") or tags),
+            "priority": priority if is_author_style else int(frontmatter.get("priority") or priority),
+            "tags": tags,
             "config_schema": dict(frontmatter.get("config_schema") or self._default_config_schema()),
             "safety_tags": list(frontmatter.get("safety_tags") or ["safe_for_all"]),
             "dependencies": list(frontmatter.get("dependencies") or []),

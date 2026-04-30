@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
-import { MemoryRouter, Outlet } from 'react-router-dom'
+import { MemoryRouter, Outlet, useLocation } from 'react-router-dom'
 
 // Mock the auth store
 vi.mock('./store/useAuthStore', () => ({
@@ -83,6 +83,11 @@ vi.mock('./components/Toast', () => ({
 // Now import AppRoutes after all mocks
 import { AppRoutes } from './App'
 
+function LocationProbe() {
+  const location = useLocation()
+  return <div data-testid="location">{location.pathname}</div>
+}
+
 describe('App Routing', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -104,12 +109,52 @@ describe('App Routing', () => {
     it('redirects /projects/:id/write/:chapterIndex to /projects/:id/editor/:chapterIndex', async () => {
       render(
         <MemoryRouter initialEntries={['/projects/123/write/0']}>
+          <LocationProbe />
           <AppRoutes />
         </MemoryRouter>
       )
 
       await waitFor(() => {
         expect(screen.getByTestId('editor')).toBeInTheDocument()
+        expect(screen.getByTestId('location')).toHaveTextContent('/projects/123/editor/1')
+      }, { timeout: 2000 })
+    })
+
+    it('keeps valid legacy /write chapter numbers when redirecting to canonical editor routes', async () => {
+      render(
+        <MemoryRouter initialEntries={['/projects/123/write/2']}>
+          <LocationProbe />
+          <AppRoutes />
+        </MemoryRouter>
+      )
+
+      await waitFor(() => {
+        expect(screen.getByTestId('editor')).toBeInTheDocument()
+        expect(screen.getByTestId('location')).toHaveTextContent('/projects/123/editor/2')
+      }, { timeout: 2000 })
+    })
+
+    it('redirects /projects/:id/editor to the first chapter editor instead of rendering a blank outlet', async () => {
+      render(
+        <MemoryRouter initialEntries={['/projects/123/editor']}>
+          <AppRoutes />
+        </MemoryRouter>
+      )
+
+      await waitFor(() => {
+        expect(screen.getByTestId('editor')).toBeInTheDocument()
+      }, { timeout: 2000 })
+    })
+
+    it('redirects /projects/:id/read to the first chapter reader instead of rendering a blank outlet', async () => {
+      render(
+        <MemoryRouter initialEntries={['/projects/123/read']}>
+          <AppRoutes />
+        </MemoryRouter>
+      )
+
+      await waitFor(() => {
+        expect(screen.getByTestId('reader')).toBeInTheDocument()
       }, { timeout: 2000 })
     })
   })

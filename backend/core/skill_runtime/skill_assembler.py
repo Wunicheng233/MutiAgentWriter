@@ -5,7 +5,7 @@ from typing import Any
 
 from . import safety_filter
 from . import strength_trimmer
-from .skill_registry import Skill, SkillRegistry
+from .skill_registry import Skill, SkillRegistry, is_author_style_skill
 
 
 @dataclass(frozen=True)
@@ -19,6 +19,8 @@ class SkillAssembler:
     """Match enabled project skills to an agent and render their injection text."""
 
     AGENT_ALLOWLIST = {"planner", "writer", "revise", "critic", "revise_local_patch", "stitch"}
+    AUTHOR_STYLE_CHAR_BUDGET = 4200
+    HELPER_SKILL_CHAR_BUDGET = 2600
 
     def __init__(
         self,
@@ -37,16 +39,27 @@ class SkillAssembler:
 
         enabled = self._enabled_skill_entries(project_config)
         assembled: list[AssembledSkill] = []
+        selected_author_style = False
         for entry in enabled:
             skill_id = str(entry.get("skill_id") or "")
             skill = self.registry.load_skill(skill_id)
             if skill is None or not self._applies_to_agent(skill, agent_name, entry):
                 continue
+            if is_author_style_skill(skill):
+                if selected_author_style:
+                    continue
+                selected_author_style = True
 
             config = dict(entry.get("config") or {})
             strength = config.get("strength", self._default_strength(skill))
             raw_content = skill.injection_for(agent_name)
             trimmed = strength_trimmer.trim_by_strength(raw_content, strength=strength)
+            skill_is_author_style = is_author_style_skill(skill)
+            trimmed = self._trim_to_budget(
+                trimmed,
+                self.AUTHOR_STYLE_CHAR_BUDGET if skill_is_author_style else self.HELPER_SKILL_CHAR_BUDGET,
+                prefer_style_sections=skill_is_author_style,
+            )
             if not trimmed:
                 continue
             mode = str(config.get("mode") or "style_only")
@@ -54,7 +67,14 @@ class SkillAssembler:
             if rendered:
                 assembled.append(AssembledSkill(skill=skill, rendered_content=rendered, config=config))
 
-        return sorted(assembled, key=lambda item: (item.skill.priority, item.skill.id))
+        return sorted(
+            assembled,
+            key=lambda item: (
+                0 if is_author_style_skill(item.skill) else 1,
+                item.skill.priority,
+                item.skill.id,
+            ),
+        )
 
     def _enabled_skill_entries(self, project_config: dict[str, Any] | None) -> list[dict[str, Any]]:
         if not project_config:
@@ -94,3 +114,46 @@ class SkillAssembler:
         if isinstance(strength_schema, dict):
             return float(strength_schema.get("default", 0.7))
         return 0.7
+
+    def _trim_to_budget(self, content: str, max_chars: int, *, prefer_style_sections: bool = False) -> str:
+        text = content.strip()
+        if len(text) <= max_chars:
+            return text
+
+        sections = strength_trimmer._split_markdown_sections(text)
+        if len(sections) <= 1:
+            return text[:max_chars].rsplit("\n", 1)[0].strip() or text[:max_chars].strip()
+
+        if prefer_style_sections:
+            sections = self._prioritize_style_sections(sections)
+
+        kept: list[str] = []
+        total = 0
+        for section in sections:
+            projected = total + len(section) + (2 if kept else 0)
+            if projected > max_chars:
+                break
+            kept.append(section)
+            total = projected
+
+        if kept:
+            return "\n\n".join(kept).strip()
+        return sections[0][:max_chars].rsplit("\n", 1)[0].strip() or sections[0][:max_chars].strip()
+
+    def _prioritize_style_sections(self, sections: list[str]) -> list[str]:
+        primary_keywords = ("表达DNA", "风格DNA", "文风", "句式", "语言风格", "写作风格")
+        secondary_keywords = ("创作启发", "写作", "叙事", "心智模型", "方法论", "核心能力")
+
+        def rank(section: str) -> int:
+            heading = section.splitlines()[0] if section.splitlines() else section
+            if any(keyword in heading for keyword in primary_keywords):
+                return 0
+            if any(keyword in heading for keyword in secondary_keywords):
+                return 1
+            if any(keyword in section[:400] for keyword in primary_keywords):
+                return 2
+            if any(keyword in section[:400] for keyword in secondary_keywords):
+                return 3
+            return 4
+
+        return [section for _, section in sorted(enumerate(sections), key=lambda pair: (rank(pair[1]), pair[0]))]

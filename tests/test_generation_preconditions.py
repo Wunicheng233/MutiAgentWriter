@@ -71,37 +71,34 @@ class TestGenerationPreconditions(BaseWorkflowTestCase):
         # 应该返回 400 错误
         self.assertEqual(response.status_code, 400)
 
-    def test_config_has_any_fields_can_start(self):
-        """测试：config 有内容时可以开始生成"""
+    def test_cannot_start_generation_without_core_requirement(self):
+        """测试：只有名字但缺少核心需求时不能开始生成"""
         user = self._create_user("testuser", "test@example.com")
         self._set_current_user(user)
 
-        # 创建有基本配置的项目（即使只有一个字段也可以）
         project = self._create_project_with_exact_config(
             user=user,
             name="Test Project",
             config={
                 "novel_name": "Test Novel",
+                "chapter_word_count": 2000,
+                "start_chapter": 1,
+                "end_chapter": 3,
             },
         )
 
-        # 尝试开始生成
         response = self.client.post(
             f"/api/projects/{project.id}/generate",
         )
 
-        # 应该不因为配置问题失败（可能因为 Celery 未配置返回 501，但不会是 400 配置错误）
-        if response.status_code == 400:
-            detail = response.json().get("detail", "")
-            self.assertNotIn("配置", detail)
-            self.assertNotIn("config", detail)
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("核心创作需求", response.json()["detail"])
 
-    def test_plan_only_mode_no_config_check(self):
-        """测试：plan_only=True 时应该允许生成（因为就是要生成策划方案）"""
+    def test_plan_only_mode_still_requires_core_requirements(self):
+        """测试：plan_only 也不能用空配置启动，否则策划会没有输入依据"""
         user = self._create_user("testuser", "test@example.com")
         self._set_current_user(user)
 
-        # 创建一个完全没有配置的项目
         project = self._create_project_with_exact_config(
             user=user,
             name="Test Project",
@@ -113,8 +110,5 @@ class TestGenerationPreconditions(BaseWorkflowTestCase):
             f"/api/projects/{project.id}/generate?plan_only=true",
         )
 
-        # 应该允许，因为策划模式就是用来生成初始配置的
-        if response.status_code == 400:
-            detail = response.json().get("detail", "")
-            self.assertNotIn("配置", detail)
-            self.assertNotIn("config", detail)
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("配置", response.json()["detail"])

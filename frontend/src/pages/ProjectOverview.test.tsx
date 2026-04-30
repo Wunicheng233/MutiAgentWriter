@@ -60,6 +60,8 @@ vi.mock('../utils/endpoints', () => ({
   getProjectArtifacts: vi.fn().mockResolvedValue({ total: 0, items: [] }),
   listCollaborators: vi.fn().mockResolvedValue({ collaborators: [] }),
   getProjectTokenStats: vi.fn().mockResolvedValue({ total_tokens: 0, prompt_tokens: 0, completion_tokens: 0, total_cost: 0 }),
+  triggerGenerate: vi.fn().mockResolvedValue({}),
+  confirmTask: vi.fn().mockResolvedValue({ success: true, new_task_id: 'continue-1' }),
 }))
 
 // Mock SkillSelector since it has its own test
@@ -96,6 +98,51 @@ describe('ProjectOverview - UI 优化', () => {
 
     expect(outlineButton.closest('a')).toHaveAttribute('href', '/projects/1/outline')
     expect(exportButton.closest('a')).toHaveAttribute('href', '/projects/1/export')
+  })
+
+  test('策划确认状态应该留在概览页处理，而不是跳转到空的第1章编辑器', async () => {
+    const getProject = (await import('../utils/endpoints')).getProject as vi.Mock
+    getProject.mockResolvedValueOnce({
+      id: 1,
+      user_id: 1,
+      name: 'Plan Confirm Project',
+      description: 'Test',
+      content_type: 'full_novel',
+      status: 'generating',
+      overall_quality_score: 0,
+      created_at: '2026-04-25T00:00:00',
+      updated_at: '2026-04-25T00:00:00',
+      config: { start_chapter: 1, end_chapter: 4 },
+      current_generation_task: {
+        id: 11,
+        project_id: 1,
+        celery_task_id: 'task-plan-confirm',
+        status: 'waiting_confirm',
+        progress: 0.15,
+        current_chapter: 0,
+        started_at: '2026-04-25T00:00:00',
+      },
+      chapters: [],
+    })
+
+    const queryClient2 = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <ToastContext.Provider value={{ showToast: vi.fn() }}>
+        <QueryClientProvider client={queryClient2}>
+          <MemoryRouter initialEntries={['/projects/1/overview']}>
+            <Routes>
+              <Route path="/projects/:id/overview" element={<ProjectOverview />} />
+            </Routes>
+          </MemoryRouter>
+        </QueryClientProvider>
+      </ToastContext.Provider>
+    )
+
+    const confirmLinks = await screen.findAllByRole('link', { name: '处理策划确认' })
+    expect(confirmLinks.length).toBeGreaterThan(0)
+    confirmLinks.forEach(link => {
+      expect(link).toHaveAttribute('href', '/projects/1/overview?confirm-plan=true')
+    })
   })
 
 })

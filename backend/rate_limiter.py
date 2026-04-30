@@ -1,12 +1,16 @@
 """
 简单的内存速率限制器
-基于 IP 地址的请求频率限制
+支持基于 IP 地址或用户 ID 的请求频率限制
 """
 
 import time
 import threading
 from collections import defaultdict
-from fastapi import HTTPException, status, Request
+from typing import Callable
+from fastapi import HTTPException, status, Request, Depends
+
+from backend.models import User
+from backend.deps import get_current_user
 
 
 class RateLimiter:
@@ -27,7 +31,7 @@ class RateLimiter:
     def check(self, key: str, max_requests: int, window_seconds: int = 60) -> bool:
         """
         检查是否超过速率限制
-        :param key: 限制键（通常是 IP 地址）
+        :param key: 限制键（IP 地址或用户 ID 等）
         :param max_requests: 窗口内最大请求数
         :param window_seconds: 窗口大小（秒），默认 60 秒
         :return: True 表示允许，False 表示超过限制
@@ -38,6 +42,17 @@ class RateLimiter:
                 return False
             self._requests[key].append(time.time())
             return True
+
+    def reset(self, key: str | None = None):
+        """
+        重置限制器状态
+        :param key: 如果指定，只重置该键的记录；否则重置所有记录
+        """
+        with self._lock:
+            if key:
+                self._requests.pop(key, None)
+            else:
+                self._requests.clear()
 
 
 # 全局限流器实例
@@ -54,7 +69,7 @@ def get_ip_from_request(request: Request) -> str:
 
 def limit_requests(max_requests: int, window_seconds: int = 60):
     """
-    速率限制依赖函数
+    基于 IP 的速率限制依赖函数
     :param max_requests: 窗口内最大请求数
     :param window_seconds: 窗口大小（秒）
     """
@@ -62,6 +77,39 @@ def limit_requests(max_requests: int, window_seconds: int = 60):
     def dependency(request: Request):
         client_ip = get_ip_from_request(request)
         if not rate_limiter.check(client_ip, max_requests, window_seconds):
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=f"请求过于频繁，请稍后再试。限制：每{window_seconds}秒{max_requests}次"
+            )
+
+    return dependency
+
+
+def limit_requests_by_user(max_requests: int, window_seconds: int = 60, action_key: str = "default"):
+    """
+    基于用户 ID 的速率限制依赖函数工厂
+
+    每个用户有独立的限流计数，不受其他用户影响。
+    适用于需要登录的接口，防止单个用户滥用资源。
+
+    用法:
+        @router.post("/endpoint")
+        def endpoint(
+            current_user: User = Depends(get_current_user),
+            _: None = Depends(limit_requests_by_user(5, 60, "action"))
+        ):
+            ...
+
+    :param max_requests: 窗口内最大请求数
+    :param window_seconds: 窗口大小（秒）
+    :param action_key: 操作类型标识（如 "export"、"share_create" 等），用于区分不同接口的限流
+    :return: FastAPI 依赖函数
+    """
+
+    def dependency(current_user: User = Depends(get_current_user)):
+        """实际的限流依赖函数"""
+        rate_limit_key = f"user:{current_user.id}:{action_key}"
+        if not rate_limiter.check(rate_limit_key, max_requests, window_seconds):
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail=f"请求过于频繁，请稍后再试。限制：每{window_seconds}秒{max_requests}次"

@@ -159,6 +159,7 @@ class ProjectCreate(BaseModel):
     skip_plan_confirmation: Optional[bool] = False
     skip_chapter_confirmation: Optional[bool] = False
     allow_plot_adjustment: Optional[bool] = False
+    config: Optional[Dict] = None
 
 
 class ProjectUpdate(BaseModel):

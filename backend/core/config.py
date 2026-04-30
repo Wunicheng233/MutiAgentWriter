@@ -154,6 +154,8 @@ class Settings(BaseSettings):
             "writer": self.writer_api_key,
             "critic": self.critic_api_key,
             "revise": self.revise_api_key,
+            "revise_local_patch": self.revise_api_key,
+            "stitch": self.revise_api_key,
             "assistant": self.assistant_api_key,
             # 保留旧键用于兼容
             "guardian": self.guardian_api_key,
@@ -192,6 +194,8 @@ class Settings(BaseSettings):
             "writer": self.writer_model,
             "critic": self.critic_model,
             "revise": self.revise_model,
+            "revise_local_patch": self.revise_model,
+            "stitch": self.revise_model,
             "assistant": self.assistant_model,
             # 保留旧键用于兼容
             "guardian": self.guardian_model,
@@ -210,6 +214,8 @@ class Settings(BaseSettings):
             "writer": self.writer_temperature,
             "critic": self.critic_temperature,
             "revise": self.revise_temperature,
+            "revise_local_patch": self.revise_temperature,
+            "stitch": self.revise_temperature,
             "assistant": self.assistant_temperature,
             # 保留旧键用于兼容
             "guardian": self.guardian_temperature,

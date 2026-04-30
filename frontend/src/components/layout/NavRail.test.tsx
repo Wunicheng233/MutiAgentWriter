@@ -67,6 +67,19 @@ describe('NavRail', () => {
       const navItems = screen.getAllByTestId('nav-item')
       expect(navItems[0]).toHaveAttribute('aria-current', 'page')
     })
+
+    it('直接打开项目 URL 时，即使项目 store 尚未初始化，也应显示项目内导航', async () => {
+      renderWithRouter(
+        <NavRail collapsed={false} onToggleCollapse={mockToggleCollapse} />,
+        '/projects/42/overview'
+      )
+
+      const navItems = screen.getAllByTestId('nav-item')
+      expect(navItems).toHaveLength(7)
+
+      await fireEvent.click(navItems[3])
+      expect(mockNavigate).toHaveBeenCalledWith('/projects/42/read/1')
+    })
   })
 
   describe('项目内导航模式（在项目中）', () => {
@@ -81,10 +94,13 @@ describe('NavRail', () => {
     })
 
     it('显示项目内导航项（概览、大纲、章节等）', () => {
-      renderWithRouter(<NavRail collapsed={false} onToggleCollapse={mockToggleCollapse} />)
+      renderWithRouter(
+        <NavRail collapsed={false} onToggleCollapse={mockToggleCollapse} />,
+        `/projects/${testProjectId}/overview`
+      )
 
       const navItems = screen.getAllByTestId('nav-item')
-      expect(navItems).toHaveLength(6)
+      expect(navItems).toHaveLength(7)
     })
 
     it('点击"概览"导航项跳转到 /projects/${id}/overview', async () => {
@@ -99,14 +115,39 @@ describe('NavRail', () => {
       expect(mockNavigate).toHaveBeenCalledWith(`/projects/${testProjectId}/overview`)
     })
 
+    it('点击"阅读器"导航项跳转到默认第 1 章阅读页', async () => {
+      renderWithRouter(
+        <NavRail collapsed={false} onToggleCollapse={mockToggleCollapse} />,
+        `/projects/${testProjectId}/overview`
+      )
+
+      const navItems = screen.getAllByTestId('nav-item')
+      await fireEvent.click(navItems[3])
+
+      expect(mockNavigate).toHaveBeenCalledWith(`/projects/${testProjectId}/read/1`)
+    })
+
+    it('点击"编辑器"导航项跳转到默认第 1 章编辑页，而不是无章节号的空路由', async () => {
+      renderWithRouter(
+        <NavRail collapsed={false} onToggleCollapse={mockToggleCollapse} />,
+        `/projects/${testProjectId}/overview`
+      )
+
+      const navItems = screen.getAllByTestId('nav-item')
+      await fireEvent.click(navItems[4])
+
+      expect(mockNavigate).toHaveBeenCalledWith(`/projects/${testProjectId}/editor/1`)
+    })
+
     it('项目内各个导航项在对应路径下显示为激活状态', () => {
       const testCases = [
         { path: 'overview', index: 0 },
         { path: 'outline', index: 1 },
         { path: 'chapters', index: 2 },
-        { path: 'editor/0', index: 3 },
-        { path: 'analytics', index: 4 },
-        { path: 'export', index: 5 },
+        { path: 'read/1', index: 3 },
+        { path: 'editor/1', index: 4 },
+        { path: 'analytics', index: 5 },
+        { path: 'export', index: 6 },
       ]
 
       testCases.forEach(({ path, index }) => {

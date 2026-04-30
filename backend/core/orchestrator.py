@@ -48,6 +48,14 @@ from backend.utils.vector_db import (
 
 # Severity priority mapping: higher = more important
 SEVERITY_PRIORITY = {"high": 3, "medium": 2, "low": 1}
+CONTENT_TYPE_ALIASES = {
+    "full_novel": "novel",
+}
+
+
+def _normalize_content_type(content_type: str | None) -> str:
+    normalized = (content_type or "novel").strip()
+    return CONTENT_TYPE_ALIASES.get(normalized, normalized)
 
 
 def _merge_guardrail_issues_into_review(guardrail_result: GuardrailResult, issues: List[Dict], guardrail_context: Dict) -> bool:
@@ -382,11 +390,12 @@ class NovelOrchestrator:
         target_platform = self.req.get("target_platform", "").strip(' "\'') or "通用平台"
         self.chapter_word_count = str(self.req.get("chapter_word_count", 2000))
         self.start_chapter = self.req.get("start_chapter", 1)
-        self.end_chapter = self.req.get("end_chapter", 1)
+        self.end_chapter = self.req.get("end_chapter", 10)  # 默认生成10章，防止只生成1章
         self.skip_confirm = self.req.get("skip_plan_confirmation", False)
         self.skip_chapter_confirm = self.req.get("skip_chapter_confirmation", False)
         self.allow_plot_adjustment = self.req.get("allow_plot_adjustment", False)
-        self.content_type = self.req.get("content_type", "novel")
+        self.content_type = _normalize_content_type(self.req.get("content_type", "novel"))
+        self.req["content_type"] = self.content_type
         self.original_requirement = f"{core_requirement} | {target_platform} | {self.chapter_word_count}字/章"
 
         # 创建输出文件夹
@@ -405,6 +414,7 @@ class NovelOrchestrator:
             reset_current_db()
 
         use_user_plan = self.req.get("use_user_description_as_plan", False)
+        plan_feedback_applied = False
 
         if self.start_chapter == 1:
             self._check_cancellation()
@@ -449,6 +459,7 @@ class NovelOrchestrator:
                             self.setting_bible = self.plan
                             # 删除反馈文件，避免下次重复使用
                             feedback_plan_path.unlink()
+                            plan_feedback_applied = True
                             logger.info("已根据用户反馈重新优化策划方案")
                 else:
                     world_bible = ""
@@ -483,7 +494,7 @@ class NovelOrchestrator:
             # 如果策划文件已经存在，说明已经确认过了，直接继续
             plan_file = self.output_dir / "novel_plan.md"
             setting_file = self.output_dir / "setting_bible.md"
-            need_confirmation = not (plan_file.exists() and setting_file.exists())
+            need_confirmation = plan_feedback_applied or not (plan_file.exists() and setting_file.exists())
 
             if not self.skip_confirm and not use_user_plan and need_confirmation:
                 if confirmation_handler:
@@ -574,12 +585,40 @@ class NovelOrchestrator:
         # 解析分章大纲
         self.chapter_outlines = self.parse_outlines_from_setting_bible()
 
-        # 如果用户指定了end_chapter但解析出更多章节，以用户指定为准
-        if self.end_chapter > len(self.chapter_outlines):
-            logger.warning(f"用户指定结束章节{self.end_chapter}，但大纲只解析出{len(self.chapter_outlines)}章，将生成到{len(self.chapter_outlines)}章")
-            self.end_chapter = len(self.chapter_outlines)
+        # 确保至少有一个章节大纲
+        if not self.chapter_outlines:
+            logger.warning("未解析到任何章节大纲，创建默认大纲")
+            self.chapter_outlines = [{
+                "chapter_num": 1,
+                "title": "",
+                "outline": self.plan or "默认章节大纲",
+                "target_word_count": int(self.chapter_word_count)
+            }]
 
-        logger.info("Planner阶段完成，设定圣经已保存")
+        # 自动补充缺失的章节大纲（当解析失败时）
+        parsed_count = len(self.chapter_outlines)
+        if parsed_count == 1 and self.end_chapter > 1:
+            # 解析失败回退到1章时，自动补充章节到用户期望的数量（上限200章）
+            max_chapters = min(self.end_chapter, 200)
+            if max_chapters > 100:
+                logger.warning(f"章节数超过100章，将限制为200章，可能导致生成时间过长")
+            base_outline = self.chapter_outlines[0]["outline"]
+            base_word_count = self.chapter_outlines[0]["target_word_count"]
+            for chapter_num in range(2, max_chapters + 1):
+                self.chapter_outlines.append({
+                    "chapter_num": chapter_num,
+                    "title": f"第{chapter_num}章",
+                    "outline": base_outline,
+                    "target_word_count": base_word_count
+                })
+            logger.info(f"大纲解析不足，自动补充到 {max_chapters} 章（使用基础大纲）")
+
+        # 如果解析出的章节数超过用户期望，以用户指定为准
+        if len(self.chapter_outlines) > self.end_chapter:
+            logger.warning(f"大纲解析出{len(self.chapter_outlines)}章，但用户只生成到{self.end_chapter}章，将截断")
+            self.chapter_outlines = self.chapter_outlines[:self.end_chapter]
+
+        logger.info(f"Planner阶段完成，设定圣经已保存，最终生成章节数: {len(self.chapter_outlines)}")
         return self.setting_bible
 
     def get_chapter_outline(self, chapter_num: int) -> str:
@@ -1284,6 +1323,8 @@ class NovelOrchestrator:
                     issues = []
                     try:
                         current_content, score, passed, issues = self.run_chapter_generation(chapter_num, prev_chapter_end)
+                    except (WaitingForConfirmationError, GenerationCancelledError):
+                        raise
                     except Exception as e:
                         logger.error(f"第 {chapter_num} 章生成过程发生异常: {e}，尝试保存已有内容继续")
                         # 如果生成失败但已有部分内容，仍然继续处理
@@ -1407,6 +1448,8 @@ class NovelOrchestrator:
                 "output_dir": str(self.output_dir),
             }
 
+        except (WaitingForConfirmationError, GenerationCancelledError):
+            raise
         except Exception as e:
             logger.error(f"系统运行出错：{e}", exc_info=True)
             self._report_progress(-1, f"❌ 出错：{str(e)}")

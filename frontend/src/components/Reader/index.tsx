@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Layout } from '../../components/Layout';
@@ -129,6 +129,23 @@ const Reader: React.FC = () => {
     pagesRef.current = pages;
   };
 
+  const sortedChapters = useMemo(() => {
+    return [...chapters].sort((a, b) => a.chapter_index - b.chapter_index);
+  }, [chapters]);
+  const currentChapterPosition = sortedChapters.findIndex(
+    item => item.chapter_index === currentChapterIndex
+  );
+  const previousChapter = currentChapterPosition > 0
+    ? sortedChapters[currentChapterPosition - 1]
+    : null;
+  const nextChapter =
+    currentChapterPosition >= 0 && currentChapterPosition < sortedChapters.length - 1
+      ? sortedChapters[currentChapterPosition + 1]
+      : null;
+  const chapterProgressLabel = currentChapterPosition >= 0
+    ? `${currentChapterPosition + 1} / ${sortedChapters.length}`
+    : `${currentChapterIndex} / ${sortedChapters.length}`;
+
   if (isLoading || !project) {
     return (
       <Layout>
@@ -174,7 +191,7 @@ const Reader: React.FC = () => {
             </div>
             <div className="flex gap-2">
               {mode === 'read' && (
-                <Link to={`/projects/${id}/write/${chapterIndex}`}>
+                <Link to={`/projects/${id}/editor/${chapterIndex}`}>
                   <Button variant="secondary" size="sm">
                     编辑
                   </Button>
@@ -188,31 +205,51 @@ const Reader: React.FC = () => {
             </div>
           </div>
           {/* 上一章/下一章导航 */}
-          {chapters.length > 1 && (
+          {sortedChapters.length > 1 && (
             <div className="flex justify-center gap-4 pt-2 border-t border-[var(--reader-border)]/30">
-              <Link to={`/projects/${id}/read/${currentChapterIndex - 1}`}>
+              {previousChapter ? (
+                <Link to={`/projects/${id}/read/${previousChapter.chapter_index}`}>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="px-6"
+                  >
+                    上一章
+                  </Button>
+                </Link>
+              ) : (
                 <Button
                   variant="secondary"
                   size="sm"
-                  disabled={currentChapterIndex <= 1}
+                  disabled
                   className="px-6"
                 >
                   上一章
                 </Button>
-              </Link>
+              )}
               <span className="flex items-center text-sm text-[var(--reader-secondary)]">
-                {currentChapterIndex} / {chapters.length}
+                {chapterProgressLabel}
               </span>
-              <Link to={`/projects/${id}/read/${currentChapterIndex + 1}`}>
+              {nextChapter ? (
+                <Link to={`/projects/${id}/read/${nextChapter.chapter_index}`}>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="px-6"
+                  >
+                    下一章
+                  </Button>
+                </Link>
+              ) : (
                 <Button
                   variant="secondary"
                   size="sm"
-                  disabled={currentChapterIndex >= chapters.length}
+                  disabled
                   className="px-6"
                 >
                   下一章
                 </Button>
-              </Link>
+              )}
             </div>
           )}
         </div>
@@ -242,7 +279,7 @@ const Reader: React.FC = () => {
       {/* 浮动面板 */}
       <ReaderMenu projectId={projectId} chapterIndex={currentChapterIndex} />
       <ReaderSettings />
-      <TableOfContents projectId={projectId} chapters={chapters} />
+      <TableOfContents projectId={projectId} chapters={sortedChapters} />
       <BookmarkPanel
         projectId={projectId}
         chapterIndex={currentChapterIndex}

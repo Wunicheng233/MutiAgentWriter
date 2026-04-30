@@ -399,8 +399,19 @@ def generate_novel_task(
                 project_dir_path = Path(project_dir)
                 req_file = project_dir_path / "user_requirements.yaml"
                 # 从project.config构造user_requirements格式
-                effective_start_chapter = start_chapter or project.config.get("start_chapter", 1)
-                effective_end_chapter = end_chapter or project.config.get("end_chapter", 10)
+                # 注意：参数优先级：传入参数 > config中保存的值 > 默认值
+                default_start = project.config.get("start_chapter", 1) if project.config else 1
+                default_end = project.config.get("end_chapter", 10) if project.config else 10
+                effective_start_chapter = start_chapter if start_chapter is not None else default_start
+                effective_end_chapter = end_chapter if end_chapter is not None else default_end
+
+                # 确保 end_chapter 永远不小于 start_chapter
+                if effective_end_chapter < effective_start_chapter:
+                    effective_end_chapter = effective_start_chapter + 9  # 默认生成10章范围
+
+                default_skip_plan = project.config.get("skip_plan_confirmation", False) if project.config else False
+                default_skip_chapter = project.config.get("skip_chapter_confirmation", False) if project.config else False
+
                 user_requirements = {
                     "novel_name": project.config.get("novel_name", project.name),
                     "novel_description": project.config.get("novel_description", project.description or ""),
@@ -412,8 +423,8 @@ def generate_novel_task(
                     "chapter_word_count": project.config.get("chapter_word_count", 2000),
                     "start_chapter": effective_start_chapter,
                     "end_chapter": effective_end_chapter,
-                    "skip_plan_confirmation": project.config.get("skip_plan_confirmation", False),
-                    "skip_chapter_confirmation": project.config.get("skip_chapter_confirmation", False),
+                    "skip_plan_confirmation": default_skip_plan,
+                    "skip_chapter_confirmation": default_skip_chapter,
                     "allow_plot_adjustment": project.config.get("allow_plot_adjustment", False),
                     "content_type": project.content_type,
                 }
@@ -588,6 +599,34 @@ def generate_novel_task(
             # 需要等待用户人工确认
             logger.info(f"Chapter {e.chapter_index} generated, waiting for user confirmation...")
             if task_record is not None:
+                if e.chapter_index > 0 and task_record.project_id:
+                    try:
+                        project = db.query(Project).filter(Project.id == task_record.project_id).first()
+                        if project and project.file_path:
+                            project_dir = Path(project.file_path)
+                            chapter_file = project_dir / "chapters" / f"chapter_{e.chapter_index}.txt"
+                            synced_chapter = sync_chapter_file_to_db(
+                                db=db,
+                                project=project,
+                                chapter_index=e.chapter_index,
+                                chapter_file=chapter_file,
+                                status="generated",
+                            )
+                            if synced_chapter is not None:
+                                record_chapter_draft_artifact(
+                                    db=db,
+                                    project_id=project.id,
+                                    chapter=synced_chapter,
+                                    workflow_run_id=task_record.workflow_run.id if task_record.workflow_run else None,
+                                    content_text=chapter_file.read_text(encoding="utf-8"),
+                                    source="agent",
+                                )
+                    except Exception as sync_error:
+                        logger.warning(
+                            "Failed to sync chapter %s before waiting confirmation: %s",
+                            e.chapter_index,
+                            sync_error,
+                        )
                 task_record.status = "waiting_confirm"
                 task_record.current_step = f"第{e.chapter_index}章生成完成，等待你审阅确认"
                 task_record.current_chapter = e.chapter_index

@@ -136,9 +136,10 @@ def parse_outlines_from_setting_bible(
                 f"{json.dumps(anchor_block, ensure_ascii=False, indent=2)}"
             )
 
-    # 如果没有解析到结构化大纲，创建一个简单的大纲
+    # 如果没有解析到结构化大纲，创建占位大纲
+    # 注意：调用方需要根据用户设置的 end_chapter 生成足够的章节
     if not unique_outlines and plan:
-        # 回退：将整个plan作为唯一一章的大纲
+        # 回退：将整个plan作为第1章的大纲
         unique_outlines = [{
             "chapter_num": 1,
             "title": "",
