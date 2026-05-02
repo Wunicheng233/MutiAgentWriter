@@ -53,7 +53,10 @@ export const ReaderSettings: React.FC = () => {
                 onClick={() => setTheme(option.value)}
                 className={`
                   flex items-center gap-2 p-3 rounded-lg border-2 transition-all
-                  ${settings.theme === option.value ? 'border-sage' : 'border-border'}
+                  ${settings.theme === option.value
+                    ? 'border-[var(--reader-accent)] ring-2 ring-[rgba(var(--reader-accent-rgb),0.24)]'
+                    : 'border-[var(--reader-border)]'
+                  }
                 `}
                 style={{
                   backgroundColor: option.bg,
@@ -78,8 +81,8 @@ export const ReaderSettings: React.FC = () => {
                 className={`
                   px-3 py-2 rounded border text-center transition-colors
                   ${settings.font === option.value
-                    ? 'bg-sage/10 border-sage text-inkwell'
-                    : 'border-border text-body hover:border-sage/30'
+                    ? 'bg-[rgba(var(--reader-accent-rgb),0.12)] border-[var(--reader-accent)] text-[var(--reader-text)]'
+                    : 'border-[var(--reader-border)] text-[var(--reader-secondary)] hover:border-[rgba(var(--reader-accent-rgb),0.38)]'
                   }
                 `}
               >
@@ -104,8 +107,8 @@ export const ReaderSettings: React.FC = () => {
                   className={`
                     px-2 py-2 rounded border text-center text-sm transition-colors
                     ${settings.fontSize === num
-                      ? 'bg-sage/10 border-sage text-inkwell'
-                      : 'border-border text-body hover:border-sage/30'
+                      ? 'bg-[rgba(var(--reader-accent-rgb),0.12)] border-[var(--reader-accent)] text-[var(--reader-text)]'
+                      : 'border-[var(--reader-border)] text-[var(--reader-secondary)] hover:border-[rgba(var(--reader-accent-rgb),0.38)]'
                     }
                   `}
                 >
@@ -131,8 +134,8 @@ export const ReaderSettings: React.FC = () => {
                   className={`
                     px-2 py-2 rounded border text-center text-sm transition-colors
                     ${settings.lineHeight === num
-                      ? 'bg-sage/10 border-sage text-inkwell'
-                      : 'border-border text-body hover:border-sage/30'
+                      ? 'bg-[rgba(var(--reader-accent-rgb),0.12)] border-[var(--reader-accent)] text-[var(--reader-text)]'
+                      : 'border-[var(--reader-border)] text-[var(--reader-secondary)] hover:border-[rgba(var(--reader-accent-rgb),0.38)]'
                     }
                   `}
                 >
@@ -158,8 +161,8 @@ export const ReaderSettings: React.FC = () => {
                   className={`
                     px-2 py-2 rounded border text-center text-sm transition-colors
                     ${settings.margin === num
-                      ? 'bg-sage/10 border-sage text-inkwell'
-                      : 'border-border text-body hover:border-sage/30'
+                      ? 'bg-[rgba(var(--reader-accent-rgb),0.12)] border-[var(--reader-accent)] text-[var(--reader-text)]'
+                      : 'border-[var(--reader-border)] text-[var(--reader-secondary)] hover:border-[rgba(var(--reader-accent-rgb),0.38)]'
                     }
                   `}
                 >
@@ -181,8 +184,8 @@ export const ReaderSettings: React.FC = () => {
                 className={`
                   px-3 py-2 rounded border text-center transition-colors
                   ${settings.displayMode === option.value
-                    ? 'bg-sage/10 border-sage text-inkwell'
-                    : 'border-border text-body hover:border-sage/30'
+                    ? 'bg-[rgba(var(--reader-accent-rgb),0.12)] border-[var(--reader-accent)] text-[var(--reader-text)]'
+                    : 'border-[var(--reader-border)] text-[var(--reader-secondary)] hover:border-[rgba(var(--reader-accent-rgb),0.38)]'
                   }
                 `}
               >
@@ -192,7 +195,7 @@ export const ReaderSettings: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex justify-end pt-4 border-t border-border">
+        <div className="flex justify-end pt-4 border-t border-[var(--reader-border)]">
           <Button variant="primary" onClick={() => setSettingsVisible(false)}>
             确定
           </Button>

@@ -48,16 +48,36 @@ from backend.rate_limiter import limit_requests_by_user
 
 # 导入Celery任务（可选）
 try:
-    from backend.tasks.writing_tasks import generate_novel_task
+    from backend.tasks.writing_tasks import generate_novel_task, sync_project_quality_scores_from_info
     from celery_app import celery_app
     CELERY_AVAILABLE = True
 except ImportError:
+    sync_project_quality_scores_from_info = None
     CELERY_AVAILABLE = False
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
 # 项目文件根目录
 PROJECTS_ROOT = settings.root_dir / "data" / "projects"
+
+
+def _backfill_quality_scores_if_missing(db: Session, project: Project) -> None:
+    if sync_project_quality_scores_from_info is None:
+        return
+    if (project.overall_quality_score or 0) > 0 or not project.file_path:
+        return
+
+    try:
+        if sync_project_quality_scores_from_info(db=db, project=project):
+            db.commit()
+            db.refresh(project)
+    except Exception:
+        db.rollback()
+        logger.warning(
+            "Failed to backfill quality scores for project %s from info.json",
+            project.id,
+            exc_info=True,
+        )
 
 
 class EnabledSkillConfig(BaseModel):
@@ -149,7 +169,7 @@ def _validate_generation_config(config: dict | None, *, project_name: str | None
     if not novel_name:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="项目名称不能为空，请先完成作品定位",
+            detail="作品名称不能为空，请先完成作品定位",
         )
 
     if not _clean_text(config.get("core_requirement")):
@@ -191,14 +211,15 @@ def _validate_generation_config(config: dict | None, *, project_name: str | None
             )
 
 def _project_config_from_create(project_in: ProjectCreate) -> dict[str, Any]:
-    name = _clean_text(project_in.name)
+    novel_name = _clean_text(project_in.novel_name) or _clean_text(project_in.name)
+    name = _clean_text(project_in.name) or novel_name
+    novel_description = _clean_text(project_in.novel_description) or _clean_text(project_in.description)
     core_requirement = _clean_text(project_in.core_requirement)
     target_platform = _clean_text(project_in.target_platform) or "网络小说"
-    novel_name = _clean_text(project_in.novel_name) or name
 
     config = {
         "novel_name": novel_name,
-        "novel_description": _clean_text(project_in.novel_description),
+        "novel_description": novel_description,
         "core_requirement": core_requirement,
         "genre": _clean_text(project_in.genre),
         "total_words": project_in.total_words,
@@ -230,6 +251,8 @@ def list_projects(
     query = db.query(Project).filter(Project.user_id == current_user.id).order_by(desc(Project.created_at))
     total = query.count()
     projects = query.offset(skip).limit(limit).all()
+    for project in projects:
+        _backfill_quality_scores_if_missing(db, project)
     return {
         "total": total,
         "items": projects
@@ -243,14 +266,15 @@ def create_project(
     db: Session = Depends(get_db)
 ):
     """创建新项目，保存基础信息并创建文件目录"""
-    project_name = _clean_text(project_in.name)
+    project_name = _clean_text(project_in.name) or _clean_text(project_in.novel_name)
+    project_description = _clean_text(project_in.description) or _clean_text(project_in.novel_description)
     config = _project_config_from_create(project_in)
 
     # 创建项目记录
     project = Project(
         user_id=current_user.id,
         name=project_name,
-        description=_clean_text(project_in.description),
+        description=project_description,
         content_type=project_in.content_type or "full_novel",
         status="draft",
         config=config,
@@ -283,6 +307,7 @@ def get_project(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="项目不存在"
         )
+    _backfill_quality_scores_if_missing(db, project)
 
     # 查询当前是否有正在运行的任务，包括等待人工确认的任务。
     running_task = get_active_project_task(db, project_id)
@@ -628,6 +653,7 @@ def list_chapters(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="项目不存在"
         )
+    _backfill_quality_scores_if_missing(db, project)
 
     chapters = db.query(Chapter).filter(
         Chapter.project_id == project_id,
@@ -825,6 +851,7 @@ def get_analytics(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="项目不存在"
         )
+    _backfill_quality_scores_if_missing(db, project)
 
     chapters = db.query(Chapter).filter(
         Chapter.project_id == project_id,

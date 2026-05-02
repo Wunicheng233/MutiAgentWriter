@@ -59,7 +59,7 @@ export const ResizeHandle: React.FC<ResizeHandleProps> = React.memo(({
       aria-valuemax={maxWidth}
       aria-valuenow={currentWidth}
       tabIndex={0}
-      className={`absolute left-0 top-0 bottom-0 w-1 cursor-ew-resize transition-colors duration-150 hover:bg-[var(--accent-primary)] hover:bg-opacity-20 focus:outline-none focus:bg-[var(--accent-primary)] focus:bg-opacity-30`}
+      className="absolute left-0 top-0 bottom-0 w-1 cursor-ew-resize transition-colors duration-150 hover:bg-[rgba(var(--accent-primary-rgb),0.20)] focus:outline-none focus:bg-[rgba(var(--accent-primary-rgb),0.30)]"
       onMouseDown={handleMouseDown}
       style={{
         backgroundColor: isDragging ? 'var(--accent-primary)' : 'transparent',

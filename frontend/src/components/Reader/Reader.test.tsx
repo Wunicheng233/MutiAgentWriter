@@ -87,7 +87,7 @@ vi.mock('./components/SearchPanel', () => ({
 }))
 
 vi.mock('./hooks/useReaderSettings', () => ({
-  useReaderSettings: () => ({ applySettings: vi.fn() }),
+  useReaderSettings: () => ({ applySettings: vi.fn(), themeClass: 'theme-parchment' }),
 }))
 
 vi.mock('./hooks/useContentSync', () => ({

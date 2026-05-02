@@ -75,16 +75,55 @@ describe('CreateProject', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /5\. 确认创建/ }))
 
-    expect(screen.getByPlaceholderText('给你的作品起一个名字')).toBeInTheDocument()
-    expect(screen.getByText('请输入项目名称')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('给作品起一个正式标题')).toBeInTheDocument()
+    expect(screen.getByText('请输入作品名称')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '创建项目' })).not.toBeInTheDocument()
     expect(mocks.createProject).not.toHaveBeenCalled()
+  })
+
+  test('uses作品名称和作品简介自动填充项目元数据和小说元数据', async () => {
+    renderWithProviders()
+
+    expect(screen.queryByLabelText('项目名称')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('项目简介')).not.toBeInTheDocument()
+
+    fireEvent.change(screen.getByPlaceholderText('给作品起一个正式标题'), { target: { value: '时间余额不足' } })
+    fireEvent.change(screen.getByPlaceholderText('介绍故事背景、主要人物关系'), { target: { value: '一个关于时间债务的都市科幻故事' } })
+    fireEvent.click(screen.getByText('下一步'))
+
+    expect(screen.queryByLabelText('小说名称')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('小说简介')).not.toBeInTheDocument()
+
+    fireEvent.change(screen.getByPlaceholderText('详细描述你想要的故事'), { target: { value: '主角发现每次加班都在透支寿命。' } })
+    fireEvent.click(screen.getByText('下一步'))
+    fireEvent.click(await screen.findByText('下一步'))
+    fireEvent.click(screen.getByText('下一步'))
+    fireEvent.click(screen.getByText('创建项目'))
+
+    await waitFor(() => {
+      expect(mocks.createProject).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: '时间余额不足',
+          description: '一个关于时间债务的都市科幻故事',
+          novel_name: '时间余额不足',
+          novel_description: '一个关于时间债务的都市科幻故事',
+          core_requirement: '主角发现每次加班都在透支寿命。',
+        })
+      )
+    })
+  })
+
+  test('content type select shows the current selected type instead of placeholder', () => {
+    renderWithProviders()
+
+    expect(screen.getByRole('combobox')).toHaveTextContent('长篇小说')
+    expect(screen.getByRole('combobox')).not.toHaveTextContent('选择内容类型')
   })
 
   test('allows selecting an initial author style before project creation', async () => {
     renderWithProviders()
 
-    fireEvent.change(screen.getByPlaceholderText('给你的作品起一个名字'), { target: { value: '时间余韵不足' } })
+    fireEvent.change(screen.getByPlaceholderText('给作品起一个正式标题'), { target: { value: '时间余韵不足' } })
     fireEvent.click(screen.getByText('下一步'))
 
     fireEvent.change(screen.getByPlaceholderText('详细描述你想要的故事'), { target: { value: '写一个关于时间债务的故事' } })
@@ -100,6 +139,7 @@ describe('CreateProject', () => {
       expect(mocks.createProject).toHaveBeenCalledWith(
         expect.objectContaining({
           name: '时间余韵不足',
+          novel_name: '时间余韵不足',
           core_requirement: '写一个关于时间债务的故事',
           config: {
             skills: {

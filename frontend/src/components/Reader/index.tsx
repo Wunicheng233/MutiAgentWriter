@@ -35,7 +35,7 @@ const Reader: React.FC = () => {
   const mode = useReaderStore(state => state.mode);
   const setMode = useReaderStore(state => state.setMode);
   const setCurrentChapter = useReaderStore(state => state.setCurrentChapter);
-  const { applySettings } = useReaderSettings();
+  const { applySettings, themeClass } = useReaderSettings();
 
   // Fetch data - 仅在参数有效时查询
   const { data: project } = useQuery({
@@ -178,7 +178,7 @@ const Reader: React.FC = () => {
 
   return (
     <Layout>
-      <div className="!p-0">
+      <div className={`!p-0 min-h-screen ${themeClass} bg-[var(--reader-bg)] text-[var(--reader-text)]`}>
       {/* 顶部导航栏 */}
       <header className="sticky top-0 z-30 bg-[var(--reader-bg)]/80 backdrop-blur border-b border-[var(--reader-border)] py-4 px-6">
         <div className="max-w-[1200px] mx-auto">

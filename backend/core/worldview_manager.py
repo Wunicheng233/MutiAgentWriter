@@ -2,7 +2,7 @@ import copy
 import json
 from backend.utils.logger import logger
 from backend.utils.runtime_context import get_current_output_dir_optional
-import backend.config as config
+from backend.core.config import settings
 
 # ===================== 世界观管控核心类 =====================
 # 每本小说独立存储世界观状态，放在当前小说输出文件夹下
@@ -46,7 +46,7 @@ class WorldviewManager:
         current_output_dir = get_current_output_dir_optional()
         if current_output_dir is None:
             # 还没设置输出目录，先存在core临时位置
-            self.file_path = config.ROOT_DIR / "core" / "worldview_state.json"
+            self.file_path = settings.root_dir / "core" / "worldview_state.json"
         else:
             # 每本小说独立存储
             self.file_path = current_output_dir / "worldview_state.json"

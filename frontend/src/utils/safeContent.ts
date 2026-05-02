@@ -37,6 +37,8 @@ const SAFE_HTML_TAGS = new Set([
   'ul',
 ])
 const SAFE_HTML_ATTRS = new Set(['href', 'title', 'target', 'rel', 'class'])
+const AUTO_PARAGRAPH_MIN_LENGTH = 140
+const AUTO_PARAGRAPH_MAX_LENGTH = 220
 
 export function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, char => HTML_ESCAPE_MAP[char])
@@ -73,12 +75,57 @@ function renderInlineMarkdown(value: string): string {
 }
 
 export function plainTextToSafeHtml(text: string): string {
+  return splitNovelTextIntoParagraphs(text)
+    .filter(Boolean)
+    .map(paragraph => `<p>${escapeHtml(paragraph)}</p>`)
+    .join('')
+}
+
+function splitLongNovelParagraph(paragraph: string): string[] {
+  const trimmed = paragraph.trim()
+  if (trimmed.length <= AUTO_PARAGRAPH_MAX_LENGTH) return [trimmed]
+
+  const sentences = trimmed.match(/[^。！？!?；;]+[。！？!?；;”’」』）)]*|.+$/g) || [trimmed]
+  const paragraphs: string[] = []
+  let current = ''
+
+  for (const sentence of sentences) {
+    const next = sentence.trim()
+    if (!next) continue
+
+    if (current && current.length + next.length > AUTO_PARAGRAPH_MAX_LENGTH) {
+      paragraphs.push(current)
+      current = next
+      continue
+    }
+
+    current += next
+    if (current.length >= AUTO_PARAGRAPH_MIN_LENGTH) {
+      paragraphs.push(current)
+      current = ''
+    }
+  }
+
+  if (current) paragraphs.push(current)
+
+  return paragraphs.flatMap(item => {
+    if (item.length <= AUTO_PARAGRAPH_MAX_LENGTH) return [item]
+    const chunks: string[] = []
+    for (let index = 0; index < item.length; index += AUTO_PARAGRAPH_MAX_LENGTH) {
+      chunks.push(item.slice(index, index + AUTO_PARAGRAPH_MAX_LENGTH))
+    }
+    return chunks
+  })
+}
+
+function splitNovelTextIntoParagraphs(text: string): string[] {
   return text
-    .split('\n')
+    .replace(/\r\n/g, '\n')
+    .replace(/\u00a0/g, ' ')
+    .split(/\n+/)
     .map(line => line.trim())
     .filter(Boolean)
-    .map(line => `<p>${escapeHtml(line)}</p>`)
-    .join('')
+    .flatMap(splitLongNovelParagraph)
 }
 
 export function renderSafeMarkdown(text: string): string {
@@ -178,9 +225,24 @@ export function sanitizeHtml(content: string): string {
   return template.innerHTML
 }
 
+function countMeaningfulBlocks(html: string): number {
+  const matches = html.match(/<(p|div|blockquote|li|h[1-6])\b[^>]*>[\s\S]*?<\/\1>/gi) || []
+  return matches.filter(block => htmlToPlainText(block).trim()).length
+}
+
 export function chapterContentToEditorHtml(content: string): string {
   if (!content) return ''
-  return looksLikeHtml(content) ? sanitizeHtml(content) : plainTextToSafeHtml(content)
+  if (!looksLikeHtml(content)) {
+    return plainTextToSafeHtml(content)
+  }
+
+  const sanitized = sanitizeHtml(content)
+  const plainText = htmlToPlainText(sanitized)
+  const shouldReparagraph =
+    countMeaningfulBlocks(sanitized) <= 1
+    && (plainText.includes('\n') || plainText.length > AUTO_PARAGRAPH_MAX_LENGTH)
+
+  return shouldReparagraph ? plainTextToSafeHtml(plainText) : sanitized
 }
 
 export function htmlToPlainText(content: string): string {

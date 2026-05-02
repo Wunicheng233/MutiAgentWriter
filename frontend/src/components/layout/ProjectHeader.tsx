@@ -23,15 +23,16 @@ export const ProjectHeader: React.FC = () => {
     navigate('/dashboard')
   }
 
-  const handleDoubleClick = useCallback(() => {
-    toggleHeader()
-  }, [toggleHeader])
-
-  const handleClick = useCallback(() => {
+  const handleHeaderClick = useCallback(() => {
     if (headerCollapsed) {
       toggleHeader()
     }
   }, [headerCollapsed, toggleHeader])
+
+  const handleToggleHeader = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation()
+    toggleHeader()
+  }, [toggleHeader])
 
   const handleMouseEnter = useCallback(() => {
     if (headerCollapsed) {
@@ -45,22 +46,23 @@ export const ProjectHeader: React.FC = () => {
 
   const config = statusConfig[projectStatus]
   const showProgress = projectStatus === 'generating'
+  const displayedProgress = Math.round(Math.min(100, Math.max(0, progressPercent)))
 
-  // Calculate effective height: collapsed(4px) -> hoverPreview(20px) -> expanded(64px)
-  const effectiveHeight = headerCollapsed ? (isHoverPreview ? '20px' : '4px') : '64px'
+  // Calculate effective height: collapsed(6px) -> hoverPreview(14px) -> expanded(64px)
+  const effectiveHeight = headerCollapsed ? (isHoverPreview ? '14px' : '6px') : '64px'
 
   return (
     <header
       data-testid="project-header"
-      className={`flex items-center px-6 border-b border-[var(--border-default)] bg-[var(--bg-primary)] cursor-pointer
+      className={`flex items-center px-6 border-b border-[var(--border-default)] bg-[var(--bg-primary)]
         ${headerCollapsed ? 'header-collapsed' : 'header-expanded'}
-        transition-[height] ease-out`}
+        ${headerCollapsed ? 'cursor-pointer' : 'cursor-default'}
+        transition-[height,background-color,border-color] ease-out`}
       style={{
         height: effectiveHeight,
         transitionDuration: '200ms',
       }}
-      onDoubleClick={handleDoubleClick}
-      onClick={handleClick}
+      onClick={handleHeaderClick}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
@@ -92,20 +94,21 @@ export const ProjectHeader: React.FC = () => {
                 <div className="w-2 h-2 rounded-full bg-current animate-pulse" />
               )}
               {config.label}
-              {showProgress && <span>{progressPercent}%</span>}
+              {showProgress && <span>{displayedProgress}%</span>}
             </span>
           </Badge>
         </div>
 
         <div className="flex items-center gap-2">
           <button
-            onClick={(e) => e.stopPropagation()}
-            className="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] text-[var(--text-secondary)]"
+            type="button"
+            aria-label="收起顶栏"
+            title="收起顶栏"
+            onClick={handleToggleHeader}
+            className="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="12" cy="12" r="1" />
-              <circle cx="19" cy="12" r="1" />
-              <circle cx="5" cy="12" r="1" />
+              <path d="M6 15l6-6 6 6" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
         </div>

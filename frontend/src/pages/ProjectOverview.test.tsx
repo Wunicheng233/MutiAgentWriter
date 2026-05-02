@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { expect, describe, test, vi, beforeEach } from 'vitest'
@@ -59,6 +59,18 @@ vi.mock('../utils/endpoints', () => ({
   getProjectWorkflowRuns: vi.fn().mockResolvedValue({ total: 0, items: [] }),
   getProjectArtifacts: vi.fn().mockResolvedValue({ total: 0, items: [] }),
   listCollaborators: vi.fn().mockResolvedValue({ collaborators: [] }),
+  getChapter: vi.fn().mockResolvedValue({
+    id: 1,
+    project_id: 1,
+    chapter_index: 1,
+    title: '第一章',
+    content: '章节正文预览',
+    word_count: 6,
+    quality_score: 0,
+    status: 'draft',
+    created_at: '2026-04-25T00:00:00',
+    updated_at: '2026-04-25T00:00:00',
+  }),
   getProjectTokenStats: vi.fn().mockResolvedValue({ total_tokens: 0, prompt_tokens: 0, completion_tokens: 0, total_cost: 0 }),
   triggerGenerate: vi.fn().mockResolvedValue({}),
   confirmTask: vi.fn().mockResolvedValue({ success: true, new_task_id: 'continue-1' }),
@@ -100,7 +112,7 @@ describe('ProjectOverview - UI 优化', () => {
     expect(exportButton.closest('a')).toHaveAttribute('href', '/projects/1/export')
   })
 
-  test('策划确认状态应该留在概览页处理，而不是跳转到空的第1章编辑器', async () => {
+  test('策划确认状态应该留在概览页弹窗处理，而不是跳转到空的第1章编辑器', async () => {
     const getProject = (await import('../utils/endpoints')).getProject as vi.Mock
     getProject.mockResolvedValueOnce({
       id: 1,
@@ -138,11 +150,72 @@ describe('ProjectOverview - UI 优化', () => {
       </ToastContext.Provider>
     )
 
-    const confirmLinks = await screen.findAllByRole('link', { name: '处理策划确认' })
-    expect(confirmLinks.length).toBeGreaterThan(0)
-    confirmLinks.forEach(link => {
-      expect(link).toHaveAttribute('href', '/projects/1/overview?confirm-plan=true')
+    const confirmButtons = await screen.findAllByRole('button', { name: /处理策划确认|立即确认/ })
+    expect(confirmButtons.length).toBeGreaterThan(0)
+    expect(screen.queryByRole('link', { name: '处理策划确认' })).not.toBeInTheDocument()
+  })
+
+  test('章节确认状态应该留在概览页弹窗处理，而不是跳转到 editor', async () => {
+    const endpoints = await import('../utils/endpoints')
+    const getProject = endpoints.getProject as vi.Mock
+    const getChapter = endpoints.getChapter as vi.Mock
+
+    getProject.mockResolvedValueOnce({
+      id: 1,
+      user_id: 1,
+      name: 'Chapter Confirm Project',
+      description: 'Test',
+      content_type: 'full_novel',
+      status: 'generating',
+      overall_quality_score: 0,
+      created_at: '2026-04-25T00:00:00',
+      updated_at: '2026-04-25T00:00:00',
+      config: { start_chapter: 1, end_chapter: 4 },
+      current_generation_task: {
+        id: 12,
+        project_id: 1,
+        celery_task_id: 'task-chapter-confirm',
+        status: 'waiting_confirm',
+        progress: 0.35,
+        current_chapter: 2,
+        started_at: '2026-04-25T00:00:00',
+      },
+      chapters: [],
     })
+    getChapter.mockResolvedValueOnce({
+      id: 2,
+      project_id: 1,
+      chapter_index: 2,
+      title: '第二章',
+      content: '<p>第二章正文预览</p>',
+      word_count: 8,
+      quality_score: 0,
+      status: 'draft',
+      created_at: '2026-04-25T00:00:00',
+      updated_at: '2026-04-25T00:00:00',
+    })
+
+    const queryClient2 = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <ToastContext.Provider value={{ showToast: vi.fn() }}>
+        <QueryClientProvider client={queryClient2}>
+          <MemoryRouter initialEntries={['/projects/1/overview']}>
+            <Routes>
+              <Route path="/projects/:id/overview" element={<ProjectOverview />} />
+            </Routes>
+          </MemoryRouter>
+        </QueryClientProvider>
+      </ToastContext.Provider>
+    )
+
+    const confirmButtons = await screen.findAllByRole('button', { name: /处理当前章节|立即确认/ })
+    expect(confirmButtons.length).toBeGreaterThan(0)
+    expect(screen.queryByRole('link', { name: '处理当前章节' })).not.toBeInTheDocument()
+
+    fireEvent.click(confirmButtons[0])
+
+    expect(await screen.findByText('章节内容预览')).toBeInTheDocument()
+    expect(await screen.findByText('第二章正文预览')).toBeInTheDocument()
   })
 
 })

@@ -10,13 +10,13 @@ describe('Badge', () => {
 
   it('applies variant correctly', () => {
     const { rerender } = render(<Badge variant="primary">Primary</Badge>)
-    expect(screen.getByText(/primary/i)).toHaveClass(/accent-primary/)
+    expect(screen.getByText(/primary/i)).toHaveClass(/badge-primary-bg/)
 
     rerender(<Badge variant="success">Success</Badge>)
-    expect(screen.getByText(/success/i)).toHaveClass(/bg-stone-100/)
+    expect(screen.getByText(/success/i)).toHaveClass(/badge-success-bg/)
 
     rerender(<Badge variant="error">Error</Badge>)
-    expect(screen.getByText(/error/i)).toHaveClass(/bg-rose-50/)
+    expect(screen.getByText(/error/i)).toHaveClass(/badge-error-bg/)
   })
 
   it('applies custom className correctly', () => {

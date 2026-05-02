@@ -15,6 +15,12 @@ import { NavBar } from '../NavBar'
 import { ProjectHeader } from './ProjectHeader'
 import { getProject } from '../../utils/endpoints'
 
+const NavExpandIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M9 18l6-6-6-6" />
+  </svg>
+)
+
 export const AppLayout = () => {
   const location = useLocation()
   const { id: projectId } = useParams<{ id: string }>()
@@ -106,7 +112,20 @@ export const AppLayout = () => {
       }`}
     >
       {/* Left Navigation Rail */}
-      <NavRail collapsed={navCollapsed} onToggleCollapse={toggleNavCollapsed} />
+      {!navCollapsed ? (
+        <NavRail collapsed={false} onToggleCollapse={toggleNavCollapsed} />
+      ) : (
+        <button
+          type="button"
+          onClick={toggleNavCollapsed}
+          className="fixed left-3 bottom-5 z-50 h-10 w-10 flex items-center justify-center rounded-full bg-[var(--bg-secondary)] text-[var(--text-secondary)] border border-[var(--border-default)] shadow-[var(--shadow-default)] transition-all duration-150 hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)] focus:ring-opacity-50"
+          title="展开侧边栏"
+          aria-label="展开侧边栏"
+          data-testid="nav-rail-reopen"
+        >
+          <NavExpandIcon />
+        </button>
+      )}
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col h-full overflow-hidden">

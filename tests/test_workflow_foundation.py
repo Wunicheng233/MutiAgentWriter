@@ -416,6 +416,173 @@ class WorkflowFoundationTests(BaseWorkflowTestCase):
         finally:
             db.close()
 
+    def test_approved_final_chapter_confirmation_completes_without_dispatch(self):
+        owner = self._create_user("final_confirm_owner", "final_confirm_owner@example.com")
+        project_dir = self.workspace / "final-confirm-project"
+        project_dir.mkdir()
+        project = self._create_project(
+            owner,
+            name="Final Confirm Novel",
+            file_path=str(project_dir),
+            config={
+                "novel_name": "Final Confirm Novel",
+                "core_requirement": "一个少年踏上修仙路",
+                "chapter_word_count": 2000,
+                "start_chapter": 1,
+                "end_chapter": 4,
+            },
+        )
+        (project_dir / "info.json").write_text(
+            json.dumps(
+                {
+                    "overall_quality_score": 8.6,
+                    "dimension_average_scores": {"plot": 8.5, "writing": 8.7},
+                    "chapter_scores": [{"chapter": 4, "score": 8.6}],
+                }
+            ),
+            encoding="utf-8",
+        )
+        self._set_current_user(owner)
+
+        db = self.SessionLocal()
+        try:
+            db.add(
+                Chapter(
+                    project_id=project.id,
+                    chapter_index=4,
+                    title="第4章",
+                    content="<p>最终章内容</p>",
+                    word_count=5,
+                    quality_score=0,
+                    status="generated",
+                )
+            )
+            task = GenerationTask(
+                project_id=project.id,
+                celery_task_id="celery-final-confirm-1",
+                status="waiting_confirm",
+                progress=0.95,
+                current_chapter=4,
+            )
+            db.add(task)
+            db.commit()
+            db.refresh(task)
+
+            run = WorkflowRun(
+                project_id=project.id,
+                generation_task_id=task.id,
+                run_kind="generation",
+                status="waiting_confirm",
+                current_chapter=4,
+                triggered_by_user_id=owner.id,
+            )
+            db.add(run)
+            db.commit()
+        finally:
+            db.close()
+
+        dispatched_args = []
+        original_apply_async = tasks_api.generate_novel_task.apply_async
+        try:
+            def fake_apply_async(args=None, task_id=None, **kwargs):
+                dispatched_args.append(args)
+                return SimpleNamespace(id=task_id)
+
+            tasks_api.generate_novel_task.apply_async = fake_apply_async
+            response = self.client.post(
+                "/api/tasks/celery-final-confirm-1/confirm",
+                json={"approved": True, "feedback": ""},
+            )
+        finally:
+            tasks_api.generate_novel_task.apply_async = original_apply_async
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(dispatched_args, [])
+        self.assertTrue(response.json()["completed"])
+
+        db = self.SessionLocal()
+        try:
+            tasks = db.query(GenerationTask).filter(GenerationTask.project_id == project.id).all()
+            self.assertEqual(len(tasks), 1)
+            completed_task = tasks[0]
+            db_project = db.query(Project).filter(Project.id == project.id).one()
+            db_run = db.query(WorkflowRun).filter(WorkflowRun.generation_task_id == completed_task.id).one()
+
+            self.assertEqual(completed_task.status, "success")
+            self.assertEqual(completed_task.progress, 1.0)
+            self.assertEqual(db_project.status, "completed")
+            self.assertEqual(db_project.overall_quality_score, 8.6)
+            self.assertEqual(db_project.dimension_average_scores["plot"], 8.5)
+            db_chapter = db.query(Chapter).filter(
+                Chapter.project_id == project.id,
+                Chapter.chapter_index == 4,
+            ).one()
+            self.assertEqual(db_chapter.quality_score, 8.6)
+            self.assertEqual(db_run.status, "completed")
+            self.assertTrue(db_run.run_metadata["completed_generation_range"])
+            active_tasks = db.query(GenerationTask).filter(
+                GenerationTask.project_id == project.id,
+                GenerationTask.status.in_(ACTIVE_TASK_STATUSES),
+            ).all()
+            self.assertEqual(active_tasks, [])
+        finally:
+            db.close()
+
+    def test_project_list_backfills_quality_score_from_info_json(self):
+        owner = self._create_user("quality_backfill_owner", "quality_backfill_owner@example.com")
+        project_dir = self.workspace / "quality-backfill-project"
+        project_dir.mkdir()
+        project = self._create_project_full(owner, name="Quality Backfill Novel", file_path=str(project_dir))
+        (project_dir / "info.json").write_text(
+            json.dumps(
+                {
+                    "overall_quality_score": 8.2,
+                    "dimension_average_scores": {"plot": 8.1},
+                    "chapter_scores": [{"chapter": 1, "score": 8.2}],
+                }
+            ),
+            encoding="utf-8",
+        )
+        self._set_current_user(owner)
+
+        response = self.client.get("/api/projects")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["items"][0]["overall_quality_score"], 8.2)
+
+        db = self.SessionLocal()
+        try:
+            db_project = db.query(Project).filter(Project.id == project.id).one()
+            self.assertEqual(db_project.overall_quality_score, 8.2)
+            self.assertEqual(db_project.dimension_average_scores["plot"], 8.1)
+        finally:
+            db.close()
+
+    def test_create_project_accepts_novel_name_without_separate_project_name(self):
+        owner = self._create_user("novel_only_owner", "novel_only_owner@example.com")
+        self._set_current_user(owner)
+
+        response = self.client.post(
+            "/api/projects",
+            json={
+                "novel_name": "时间余额不足",
+                "novel_description": "一个关于时间债务的故事",
+                "core_requirement": "主角发现每一次加班都在扣除寿命。",
+                "content_type": "full_novel",
+                "chapter_word_count": 2000,
+                "start_chapter": 1,
+                "end_chapter": 3,
+            },
+        )
+
+        self.assertEqual(response.status_code, 201)
+        payload = response.json()
+        self.assertEqual(payload["name"], "时间余额不足")
+        self.assertEqual(payload["description"], "一个关于时间债务的故事")
+        self.assertEqual(payload["config"]["novel_name"], "时间余额不足")
+        self.assertEqual(payload["config"]["novel_description"], "一个关于时间债务的故事")
+
     def test_create_feedback_item_supersedes_previous_open_feedback_for_same_target(self):
         owner = self._create_user("supersede_owner", "supersede_owner@example.com")
         project = self._create_project_full(owner, name="Supersede Novel")
@@ -471,7 +638,7 @@ class WorkflowFoundationTests(BaseWorkflowTestCase):
 
         title, html_content, word_count = parse_chapter_file_content(chapter_file.read_text(encoding="utf-8"))
         self.assertEqual(title, "第1章 初见")
-        self.assertEqual(html_content, "<p>山雨欲来。\n主角登场。</p>")
+        self.assertEqual(html_content, "<p>山雨欲来。</p>\n<p>主角登场。</p>")
         self.assertEqual(word_count, 8)
 
         db = self.SessionLocal()
@@ -491,7 +658,7 @@ class WorkflowFoundationTests(BaseWorkflowTestCase):
                 Chapter.chapter_index == 1,
             ).one()
             self.assertEqual(db_chapter.title, "第1章 初见")
-            self.assertEqual(db_chapter.content, "<p>山雨欲来。\n主角登场。</p>")
+            self.assertEqual(db_chapter.content, "<p>山雨欲来。</p>\n<p>主角登场。</p>")
             self.assertEqual(db_chapter.word_count, 8)
             self.assertEqual(db_chapter.status, "generated")
         finally:
@@ -860,6 +1027,84 @@ class WorkflowFoundationTests(BaseWorkflowTestCase):
                 WorkflowStepRun.chapter_index == 1,
             ).one()
             self.assertEqual(generating_step.output_artifact_id, chapter_artifact.id)
+        finally:
+            db.close()
+
+    def test_generate_novel_task_empty_range_completes_without_orchestrator(self):
+        owner = self._create_user("empty_range_owner", "empty_range_owner@example.com")
+        project_dir = self.workspace / "empty-range-project"
+        project_dir.mkdir()
+        project = self._create_project(
+            owner,
+            name="Empty Range Novel",
+            file_path=str(project_dir),
+            config={
+                "novel_name": "Empty Range Novel",
+                "core_requirement": "一个少年踏上修仙路",
+                "chapter_word_count": 2000,
+                "start_chapter": 1,
+                "end_chapter": 4,
+            },
+        )
+
+        db = self.SessionLocal()
+        try:
+            task = GenerationTask(
+                project_id=project.id,
+                celery_task_id="celery-empty-range-1",
+                status="pending",
+                progress=0.0,
+                current_chapter=5,
+            )
+            db.add(task)
+            db.commit()
+            db.refresh(task)
+            create_generation_workflow_run(
+                db=db,
+                project=project,
+                generation_task=task,
+                triggered_by_user_id=owner.id,
+            )
+            db.commit()
+        finally:
+            db.close()
+
+        class ExplodingOrchestrator:
+            def __init__(self, *args, **kwargs):
+                raise AssertionError("orchestrator should not run for an empty chapter range")
+
+        original_session_local = writing_tasks.SessionLocal
+        original_orchestrator = writing_tasks.NovelOrchestrator
+        try:
+            writing_tasks.SessionLocal = self.SessionLocal
+            writing_tasks.NovelOrchestrator = ExplodingOrchestrator
+            writing_tasks.generate_novel_task.push_request(id="celery-empty-range-1", retries=0)
+            result = writing_tasks.generate_novel_task.run(
+                project_dir=str(project_dir),
+                user_id=str(owner.id),
+                start_chapter=5,
+                end_chapter=4,
+            )
+        finally:
+            writing_tasks.generate_novel_task.pop_request()
+            writing_tasks.SessionLocal = original_session_local
+            writing_tasks.NovelOrchestrator = original_orchestrator
+
+        self.assertTrue(result["success"])
+        self.assertTrue(result["completed"])
+        self.assertTrue(result["no_remaining_chapters"])
+
+        db = self.SessionLocal()
+        try:
+            task = db.query(GenerationTask).filter(GenerationTask.celery_task_id == "celery-empty-range-1").one()
+            run = db.query(WorkflowRun).filter(WorkflowRun.generation_task_id == task.id).one()
+            db_project = db.query(Project).filter(Project.id == project.id).one()
+
+            self.assertEqual(task.status, "success")
+            self.assertEqual(task.progress, 1.0)
+            self.assertEqual(db_project.status, "completed")
+            self.assertEqual(run.status, "completed")
+            self.assertTrue(run.run_metadata["no_remaining_chapters"])
         finally:
             db.close()
 

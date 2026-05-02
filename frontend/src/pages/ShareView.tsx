@@ -17,7 +17,7 @@ export const ShareView: React.FC = () => {
   const { token } = useParams<{ token: string }>();
   const currentChapterIndex = useReaderStore((state) => state.currentChapterIndex);
   const setCurrentChapter = useReaderStore((state) => state.setCurrentChapter);
-  const { settings, applySettings } = useReaderSettings();
+  const { applySettings, themeClass } = useReaderSettings();
 
   const { data: project, isLoading, error } = useQuery({
     queryKey: ['shared-project', token],
@@ -41,18 +41,18 @@ export const ShareView: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-parchment flex items-center justify-center">
-        <p className="text-secondary">加载中...</p>
+      <div className={`min-h-screen ${themeClass} bg-[var(--reader-bg)] flex items-center justify-center`}>
+        <p className="text-[var(--reader-secondary)]">加载中...</p>
       </div>
     );
   }
 
   if (error || !project) {
     return (
-      <div className="min-h-screen bg-parchment flex items-center justify-center">
+      <div className={`min-h-screen ${themeClass} bg-[var(--reader-bg)] flex items-center justify-center`}>
         <div className="text-center">
-          <h1 className="text-3xl text-inkwell mb-4">分享链接不存在</h1>
-          <p className="text-secondary">该分享链接可能已过期或被删除</p>
+          <h1 className="text-3xl text-[var(--reader-text)] mb-4">分享链接不存在</h1>
+          <p className="text-[var(--reader-secondary)]">该分享链接可能已过期或被删除</p>
         </div>
       </div>
     );
@@ -84,16 +84,9 @@ export const ShareView: React.FC = () => {
   };
 
   return (
-    <div className={`min-h-screen ${settings.theme} bg-[var(--reader-bg)]`}
-      style={{
-        '--reader-bg': 'var(--reader-bg)',
-        '--reader-text': 'var(--reader-text)',
-        '--reader-border': 'var(--reader-border)',
-        '--reader-secondary': 'var(--reader-secondary)',
-      } as React.CSSProperties}
-    >
+    <div className={`min-h-screen ${themeClass} bg-[var(--reader-bg)] text-[var(--reader-text)]`}>
       {/* 顶部标题栏 */}
-      <header className="border-b border-[var(--reader-border)] py-6 px-4 bg-white/60 backdrop-blur sticky top-0 z-10">
+      <header className="border-b border-[var(--reader-border)] py-6 px-4 bg-[var(--reader-surface)] backdrop-blur sticky top-0 z-10">
         <div className="max-w-5xl mx-auto">
           <h1 className="font-serif text-3xl text-[var(--reader-text)] text-center">{project.title}</h1>
           {project.description && (

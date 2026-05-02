@@ -1,6 +1,8 @@
 import yaml
-from backend.config import USER_REQUIREMENTS_FILE
+from backend.core.config import settings
 from backend.utils.logger import logger
+
+USER_REQUIREMENTS_FILE = settings.user_requirements_file
 
 def load_user_requirements() -> dict:
     """

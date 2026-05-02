@@ -12,9 +12,9 @@ export interface AlertProps {
 }
 
 const variantClasses: Record<AlertVariant, string> = {
-  success: 'border-l-[var(--accent-primary)] bg-[var(--accent-primary)] bg-opacity-5',
-  warning: 'border-l-[var(--accent-gold)] bg-[var(--accent-gold)] bg-opacity-5',
-  error: 'border-l-[var(--accent-warm)] bg-[var(--accent-warm)] bg-opacity-5',
+  success: 'border-l-[var(--accent-primary)] bg-[rgba(var(--accent-primary-rgb),0.08)]',
+  warning: 'border-l-[var(--accent-gold)] bg-[rgba(var(--accent-gold-rgb),0.10)]',
+  error: 'border-l-[var(--accent-warm)] bg-[rgba(var(--accent-warm-rgb),0.10)]',
   info: 'border-l-[var(--accent-primary)] bg-[var(--bg-tertiary)]',
 }
 

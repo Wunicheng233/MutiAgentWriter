@@ -1,9 +1,12 @@
 import os
 import tempfile
 from pathlib import Path
-from backend.config import PROMPTS_DIR, OUTPUTS_ROOT
+from backend.core.config import settings
 from backend.utils.logger import logger
 from backend.utils.runtime_context import get_current_output_dir, set_current_output_dir
+
+PROMPTS_DIR = settings.prompts_dir
+OUTPUTS_ROOT = settings.outputs_root
 
 
 def write_file_atomic(path: Path, content: str, encoding: str = "utf-8") -> None:

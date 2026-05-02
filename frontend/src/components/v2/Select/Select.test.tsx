@@ -55,6 +55,27 @@ describe('Select', () => {
     expect(onValueChange).toHaveBeenCalledWith('option1')
   })
 
+  it('uses a translucent selected option background with readable text', async () => {
+    render(
+      <Select value="option1">
+        <SelectTrigger>
+          <SelectValue>Option 1</SelectValue>
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="option1">Option 1</SelectItem>
+          <SelectItem value="option2">Option 2</SelectItem>
+        </SelectContent>
+      </Select>
+    )
+
+    await fireEvent.click(screen.getByRole('combobox'))
+    const selectedOption = screen.getByRole('option', { selected: true })
+
+    expect(selectedOption).toHaveClass('bg-[rgba(var(--accent-primary-rgb),0.10)]')
+    expect(selectedOption).toHaveClass('text-[var(--text-primary)]')
+    expect(selectedOption.className).not.toContain('bg-opacity-10')
+  })
+
   it('does not trigger disabled items', async () => {
     const onValueChange = vi.fn()
     render(

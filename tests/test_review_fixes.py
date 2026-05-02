@@ -301,6 +301,45 @@ class ReviewFixRegressionTests(BaseWorkflowTestCase):
         self.assertTrue(fake_session.rolled_back)
         self.assertTrue(fake_session.closed)
 
+    def test_volc_skips_token_recording_when_provider_omits_usage(self):
+        class FakeMessage:
+            content = "成功"
+
+        class FakeChoice:
+            message = FakeMessage()
+
+        class FakeResponse:
+            choices = [FakeChoice()]
+            usage = None
+
+        class FakeCompletions:
+            def create(self, **kwargs):
+                return FakeResponse()
+
+        class FakeClient:
+            def __init__(self):
+                self.chat = SimpleNamespace(completions=FakeCompletions())
+
+        original_load_prompt = volc_engine.load_prompt
+        original_warning = volc_engine.logger.warning
+        warnings = []
+        try:
+            volc_engine.load_prompt = lambda *args, **kwargs: "system"
+            volc_engine.logger.warning = lambda message, *args, **kwargs: warnings.append(str(message))
+            result = volc_engine.call_volc_api(
+                agent_role="writer",
+                user_input="input",
+                client=FakeClient(),
+                user_id=1,
+                project_id=1,
+            )
+        finally:
+            volc_engine.load_prompt = original_load_prompt
+            volc_engine.logger.warning = original_warning
+
+        self.assertEqual(result, "成功")
+        self.assertFalse(any("Failed to record token usage" in warning for warning in warnings))
+
     def test_vector_db_writes_use_upsert_for_chapter_and_setting(self):
         class FakeCollection:
             def __init__(self):
@@ -386,14 +425,14 @@ class ReviewFixRegressionTests(BaseWorkflowTestCase):
         references_dir.mkdir()
         (references_dir / "sample.txt").write_text("参考文风内容", encoding="utf-8")
 
-        original_root_dir = config.ROOT_DIR
+        original_root_dir = vector_db.settings.root_dir
         original_reference_collection = vector_db.get_reference_collection
         try:
-            config.ROOT_DIR = self.workspace
+            vector_db.settings.root_dir = self.workspace
             vector_db.get_reference_collection = lambda: fake_collection
             vector_db.init_reference_collection()
         finally:
-            config.ROOT_DIR = original_root_dir
+            vector_db.settings.root_dir = original_root_dir
             vector_db.get_reference_collection = original_reference_collection
 
         self.assertEqual(len(fake_collection.items), 1)
@@ -671,6 +710,80 @@ class ReviewFixRegressionTests(BaseWorkflowTestCase):
         self.assertTrue((chapters_dir / "chapter_1.txt").exists())
         self.assertFalse((chapters_dir / "chapter_2.txt").exists())
         self.assertFalse(any(percent == -1 for percent, _ in progress_events))
+
+    def test_chapter_confirmation_persists_quality_summary_before_pause(self):
+        project_dir = self.workspace / "orchestrator-confirm-quality-project"
+        (project_dir / "chapters").mkdir(parents=True)
+
+        orchestrator = NovelOrchestrator.__new__(NovelOrchestrator)
+        orchestrator.output_dir = project_dir
+        orchestrator.info_path = project_dir / "info.json"
+        orchestrator.plan = "plan"
+        orchestrator.setting_bible = "bible"
+        orchestrator.novel_name = "Test Novel"
+        orchestrator.req = {"content_type": "novel"}
+        orchestrator.content_type = "novel"
+        orchestrator.dimension_scores = {"plot": [], "character": [], "hook": [], "writing": [], "setting": []}
+        orchestrator.chapter_scores = []
+        orchestrator.evaluation_reports = []
+        orchestrator.scene_anchor_plans = []
+        orchestrator.repair_traces = []
+        orchestrator.stitching_reports = []
+        orchestrator.novel_state_snapshots = []
+        orchestrator.skip_chapter_confirm = False
+        orchestrator.writer_perspective = None
+        orchestrator.perspective_strength = 0.7
+        orchestrator.use_perspective_critic = True
+        orchestrator._check_cancellation = lambda: None
+        orchestrator.get_chapter_outline = lambda chapter_index: "剧情"
+        orchestrator.get_target_word_count = lambda chapter_index: 1000
+        orchestrator.build_chapter_context = lambda *args, **kwargs: ("", [])
+        orchestrator._run_critic_harness = lambda **kwargs: (
+            True,
+            8.4,
+            {"plot": 8.0, "character": 8.2, "hook": 8.5, "writing": 8.7, "setting": 8.6},
+            [],
+        )
+
+        class FakeWriter:
+            def generate_chapter(self, *args, **kwargs):
+                return "第一段。\n\n第二段。"
+
+        orchestrator.writer = FakeWriter()
+
+        original_search_chapter = orchestrator_module.search_related_chapter_content
+        original_search_setting = orchestrator_module.search_core_setting
+        original_guardrails = orchestrator_module.run_system_guardrails
+        original_add_chapter_to_db = orchestrator_module.add_chapter_to_db
+        original_enable_validator = orchestrator_module.settings.enable_novel_state_validator
+        try:
+            orchestrator_module.search_related_chapter_content = lambda *args, **kwargs: ""
+            orchestrator_module.search_core_setting = lambda *args, **kwargs: ""
+            orchestrator_module.run_system_guardrails = lambda content, context: SimpleNamespace(
+                corrected_content=content,
+                passed=True,
+                warnings=[],
+                suggestions=[],
+                metrics={"word_count": 1000},
+                violations={},
+            )
+            orchestrator_module.add_chapter_to_db = lambda *args, **kwargs: None
+            orchestrator_module.settings.enable_novel_state_validator = False
+
+            with self.assertRaises(orchestrator_module.WaitingForConfirmationError):
+                orchestrator.run_chapter_generation(1)
+        finally:
+            orchestrator_module.search_related_chapter_content = original_search_chapter
+            orchestrator_module.search_core_setting = original_search_setting
+            orchestrator_module.run_system_guardrails = original_guardrails
+            orchestrator_module.add_chapter_to_db = original_add_chapter_to_db
+            orchestrator_module.settings.enable_novel_state_validator = original_enable_validator
+
+        info = json.loads((project_dir / "info.json").read_text(encoding="utf-8"))
+        self.assertEqual(info["overall_quality_score"], 8.4)
+        self.assertEqual(info["chapter_scores"][0]["chapter"], 1)
+        self.assertEqual(info["chapter_scores"][0]["score"], 8.4)
+        self.assertEqual(info["dimension_average_scores"]["writing"], 8.7)
 
     def test_skip_chapter_confirmation_generates_full_requested_range(self):
         project_dir = self.workspace / "orchestrator-range-project"

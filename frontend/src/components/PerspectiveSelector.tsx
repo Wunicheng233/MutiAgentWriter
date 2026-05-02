@@ -137,8 +137,8 @@ export const PerspectiveSelector: React.FC<PerspectiveSelectorProps> = ({
                   className={`
                     block p-4 rounded-lg border cursor-pointer transition-all
                     ${value === p.id
-                      ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)]/10 shadow-[var(--shadow-subtle)]'
-                      : 'border-[var(--border-default)] hover:border-[var(--accent-primary)] border-opacity-40 hover:bg-[var(--bg-secondary)] bg-opacity-50'
+                      ? 'border-[var(--accent-primary)] bg-[rgba(var(--accent-primary-rgb),0.10)] shadow-[var(--shadow-subtle)]'
+                      : 'border-[var(--border-default)] hover:border-[var(--accent-primary)] hover:bg-[var(--bg-secondary)]'
                     }
                   `}
                 >
@@ -152,8 +152,8 @@ export const PerspectiveSelector: React.FC<PerspectiveSelectorProps> = ({
                       className="mt-1"
                     />
                     <div className="flex-1 min-w-0">
-                      <p className={`font-medium ${value === p.id ? 'text-[var(--accent-primary)]' : ''}`}>{p.name}</p>
-                      <p className={`text-sm mt-1 ${value === p.id ? 'text-[var(--accent-primary)]/70' : 'text-[var(--text-secondary)]'}`}>{p.description}</p>
+                      <p className={`font-medium ${value === p.id ? 'text-[var(--text-primary)]' : ''}`}>{p.name}</p>
+                      <p className={`text-sm mt-1 ${value === p.id ? 'text-[var(--text-body)]' : 'text-[var(--text-secondary)]'}`}>{p.description}</p>
                       <div className="mt-2 flex flex-wrap gap-2">
                         {p.strengths.slice(0, 3).map((s) => (
                           <Badge key={s} variant="secondary">
@@ -171,7 +171,7 @@ export const PerspectiveSelector: React.FC<PerspectiveSelectorProps> = ({
       </div>
 
       {/* 不使用特定风格选项 */}
-      <label className="block p-4 rounded-lg border border-[var(--border-default)] cursor-pointer hover:bg-[var(--bg-secondary)] bg-opacity-50 transition-all">
+      <label className="block p-4 rounded-lg border border-[var(--border-default)] cursor-pointer hover:bg-[var(--bg-secondary)] transition-all">
         <div className="flex items-center gap-3">
           <input
             type="radio"

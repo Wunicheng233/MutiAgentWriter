@@ -253,7 +253,7 @@ export const WorkflowRunDetail: React.FC = () => {
   return (
     
       <div className="mx-auto max-w-content space-y-6">
-        <Card className="border-sage/20 bg-[linear-gradient(135deg,rgba(91,127,110,0.12),rgba(255,255,255,0.92),rgba(163,139,90,0.08))] p-6">
+        <Card className="border-[rgba(var(--accent-primary-rgb),0.20)] bg-[linear-gradient(135deg,rgba(var(--accent-primary-rgb),0.12),var(--bg-secondary),rgba(var(--accent-gold-rgb),0.08))] p-6">
           <div className="flex flex-col gap-6 xl:flex-row xl:items-center xl:justify-between">
             <div>
               <div className="mb-4 flex flex-wrap items-center gap-3">
@@ -272,19 +272,19 @@ export const WorkflowRunDetail: React.FC = () => {
             </div>
 
             <div className="grid w-full max-w-xl grid-cols-2 gap-3 md:grid-cols-4">
-              <div className="rounded-standard border border-border bg-parchment/70 p-3">
+              <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-3">
                 <p className="text-sm text-[var(--text-secondary)]">开始时间</p>
                 <p className="mt-1 font-medium">{formatDateTime(run.started_at)}</p>
               </div>
-              <div className="rounded-standard border border-border bg-parchment/70 p-3">
+              <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-3">
                 <p className="text-sm text-[var(--text-secondary)]">结束时间</p>
                 <p className="mt-1 font-medium">{formatDateTime(run.completed_at)}</p>
               </div>
-              <div className="rounded-standard border border-border bg-parchment/70 p-3">
+              <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-3">
                 <p className="text-sm text-[var(--text-secondary)]">步骤数</p>
                 <p className="mt-1 font-medium">{stepCount}</p>
               </div>
-              <div className="rounded-standard border border-border bg-parchment/70 p-3">
+              <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-3">
                 <p className="text-sm text-[var(--text-secondary)]">反馈项</p>
                 <p className="mt-1 font-medium">{feedbackCount}</p>
               </div>
@@ -298,27 +298,27 @@ export const WorkflowRunDetail: React.FC = () => {
             <h2 className="mt-2 text-2xl font-medium">运行摘要</h2>
 
             <div className="mt-5 grid gap-3 md:grid-cols-2">
-              <div className="rounded-standard border border-border bg-parchment/60 p-4">
+              <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-4">
                 <p className="text-sm text-[var(--text-secondary)]">Run 类型</p>
                 <p className="mt-1 font-medium">{getRunKindText(run.run_kind)}</p>
               </div>
-              <div className="rounded-standard border border-border bg-parchment/60 p-4">
+              <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-4">
                 <p className="text-sm text-[var(--text-secondary)]">触发来源</p>
                 <p className="mt-1 font-medium">{run.trigger_source}</p>
               </div>
-              <div className="rounded-standard border border-border bg-parchment/60 p-4">
+              <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-4">
                 <p className="text-sm text-[var(--text-secondary)]">当前节点</p>
                 <p className="mt-1 font-medium">{run.current_step_key || '-'}</p>
               </div>
-              <div className="rounded-standard border border-border bg-parchment/60 p-4">
+              <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-4">
                 <p className="text-sm text-[var(--text-secondary)]">当前章节</p>
                 <p className="mt-1 font-medium">{run.current_chapter ?? '项目级'}</p>
               </div>
-              <div className="rounded-standard border border-border bg-parchment/60 p-4">
+              <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-4">
                 <p className="text-sm text-[var(--text-secondary)]">Generation Task</p>
                 <p className="mt-1 font-medium">{run.generation_task_id ?? '-'}</p>
               </div>
-              <div className="rounded-standard border border-border bg-parchment/60 p-4">
+              <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-4">
                 <p className="text-sm text-[var(--text-secondary)]">父级 Run</p>
                 <p className="mt-1 font-medium">{run.parent_run_id ?? '-'}</p>
               </div>
@@ -340,14 +340,14 @@ export const WorkflowRunDetail: React.FC = () => {
             {metadataEntries.length > 0 ? (
               <div className="mt-5 space-y-3">
                 {metadataEntries.map(([key, value]) => (
-                  <div key={key} className="rounded-standard border border-border bg-parchment/60 p-4">
+                  <div key={key} className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-4">
                     <p className="font-medium text-xs uppercase tracking-[0.2em] text-[var(--text-secondary)]">{key}</p>
                     <p className="mt-2 break-words font-medium">{renderJsonValue(value)}</p>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="mt-5 rounded-standard border border-dashed border-border p-4 text-center text-[var(--text-secondary)]">
+              <div className="mt-5 rounded-standard border border-dashed border-[var(--border-default)] p-4 text-center text-[var(--text-secondary)]">
                 无
               </div>
             )}
@@ -360,7 +360,7 @@ export const WorkflowRunDetail: React.FC = () => {
 
           <div className="mt-5 space-y-3">
             {eventLog.slice().reverse().map((event, index) => (
-              <div key={`${event.at || index}-${event.message}`} className="rounded-comfortable border border-border bg-parchment/50 p-4">
+              <div key={`${event.at || index}-${event.message}`} className="rounded-comfortable border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-4">
                 <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                   <div>
                     <div className="flex flex-wrap items-center gap-3">
@@ -378,7 +378,7 @@ export const WorkflowRunDetail: React.FC = () => {
             ))}
 
             {!eventLog.length && (
-              <div className="rounded-standard border border-dashed border-border p-4 text-center text-[var(--text-secondary)]">
+              <div className="rounded-standard border border-dashed border-[var(--border-default)] p-4 text-center text-[var(--text-secondary)]">
                 无
               </div>
             )}
@@ -394,7 +394,7 @@ export const WorkflowRunDetail: React.FC = () => {
               const preview = getArtifactPreview(artifact, 360)
 
               return (
-                <div key={artifact.id} className="rounded-comfortable border border-border bg-parchment/50 p-4">
+                <div key={artifact.id} className="rounded-comfortable border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-4">
                   <div className="flex flex-wrap items-center gap-3">
                     <h3 className="text-lg font-medium">{getArtifactDisplayName(artifact.artifact_type)}</h3>
                     <Badge variant="secondary">{getArtifactScopeLabel(artifact)}</Badge>
@@ -404,7 +404,7 @@ export const WorkflowRunDetail: React.FC = () => {
                     #{artifact.id} · v{artifact.version_number} · {formatDateTime(artifact.created_at)}
                   </p>
                   {preview && (
-                    <pre className="mt-3 max-h-48 overflow-auto whitespace-pre-wrap rounded-standard border border-border bg-white/70 p-3 text-xs">
+                    <pre className="mt-3 max-h-48 overflow-auto whitespace-pre-wrap rounded-standard border border-[var(--border-default)] bg-[var(--bg-secondary)] p-3 text-xs">
                       {preview}
                     </pre>
                   )}
@@ -418,7 +418,7 @@ export const WorkflowRunDetail: React.FC = () => {
             })}
 
             {!workflowV2Artifacts.length && (
-              <div className="rounded-standard border border-dashed border-border p-4 text-center text-[var(--text-secondary)] lg:col-span-2">
+              <div className="rounded-standard border border-dashed border-[var(--border-default)] p-4 text-center text-[var(--text-secondary)] lg:col-span-2">
                 无
               </div>
             )}
@@ -431,8 +431,8 @@ export const WorkflowRunDetail: React.FC = () => {
 
           <div className="mt-5 flex flex-wrap gap-3">
             {run.status === 'waiting_confirm' && hasRelatedChapter && (
-              <Link to={`/projects/${projectId}/editor/${run.current_chapter}`}>
-                <Button variant="primary">处理确认</Button>
+              <Link to={`/projects/${projectId}/overview?confirm-chapter=true`}>
+                <Button variant="primary">处理章节确认</Button>
               </Link>
             )}
 
@@ -495,7 +495,7 @@ export const WorkflowRunDetail: React.FC = () => {
               const preview = getArtifactPreview(artifact)
 
               return (
-                <div key={artifact.id} className="rounded-comfortable border border-border bg-parchment/50 p-4">
+                <div key={artifact.id} className="rounded-comfortable border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-4">
                   <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                     <div>
                       <div className="flex flex-wrap items-center gap-3">
@@ -521,7 +521,7 @@ export const WorkflowRunDetail: React.FC = () => {
                   </div>
 
                   {preview && (
-                    <div className="mt-4 rounded-standard border border-border bg-white/70 p-3">
+                    <div className="mt-4 rounded-standard border border-[var(--border-default)] bg-[var(--bg-secondary)] p-3">
                       <p className="font-medium text-xs uppercase tracking-[0.2em] text-[var(--text-secondary)]">Preview</p>
                       <pre className="mt-2 overflow-x-auto whitespace-pre-wrap text-xs">{preview}</pre>
                     </div>
@@ -531,7 +531,7 @@ export const WorkflowRunDetail: React.FC = () => {
             })}
 
             {!runArtifacts?.items.length && (
-              <div className="rounded-standard border border-dashed border-border p-4 text-center text-[var(--text-secondary)]">
+              <div className="rounded-standard border border-dashed border-[var(--border-default)] p-4 text-center text-[var(--text-secondary)]">
                 无
               </div>
             )}
@@ -548,7 +548,7 @@ export const WorkflowRunDetail: React.FC = () => {
               const chapterNumber = step.chapter_index ?? run.current_chapter
 
               return (
-                <div key={step.id} className="rounded-comfortable border border-border bg-parchment/50 p-4">
+                <div key={step.id} className="rounded-comfortable border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-4">
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                     <div>
                       <div className="flex flex-wrap items-center gap-3">
@@ -577,7 +577,7 @@ export const WorkflowRunDetail: React.FC = () => {
 
                   {(step.input_artifact || step.output_artifact) && (
                     <div className="mt-4 grid gap-3 md:grid-cols-2">
-                      <div className="rounded-standard border border-border bg-white/70 p-3 text-sm">
+                      <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-secondary)] p-3 text-sm">
                         <p className="text-[var(--text-secondary)]">输入 Artifact</p>
                         {step.input_artifact ? (
                           <div className="mt-1">
@@ -592,7 +592,7 @@ export const WorkflowRunDetail: React.FC = () => {
                           <p className="mt-1 font-medium">-</p>
                         )}
                       </div>
-                      <div className="rounded-standard border border-border bg-white/70 p-3 text-sm">
+                      <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-secondary)] p-3 text-sm">
                         <p className="text-[var(--text-secondary)]">输出 Artifact</p>
                         {step.output_artifact ? (
                           <div className="mt-1">
@@ -611,7 +611,7 @@ export const WorkflowRunDetail: React.FC = () => {
                   )}
 
                   {contractSummary && typeof contractSummary === 'object' && !Array.isArray(contractSummary) && (
-                    <div className="mt-4 rounded-standard border border-sage/15 bg-sage/5 p-3">
+                    <div className="mt-4 rounded-standard border border-[rgba(var(--accent-primary-rgb),0.15)] bg-[rgba(var(--accent-primary-rgb),0.05)] p-3">
                       <p className="font-medium text-xs uppercase tracking-[0.2em] text-[var(--text-secondary)]">Agent Contract</p>
                       <div className="mt-2 grid gap-2 text-sm md:grid-cols-2">
                         {Object.entries(contractSummary).map(([key, value]) => (
@@ -628,7 +628,7 @@ export const WorkflowRunDetail: React.FC = () => {
             })}
 
             {!run.steps?.length && (
-              <div className="rounded-standard border border-dashed border-border p-4 text-center text-[var(--text-secondary)]">
+              <div className="rounded-standard border border-dashed border-[var(--border-default)] p-4 text-center text-[var(--text-secondary)]">
                 无
               </div>
             )}
@@ -641,7 +641,7 @@ export const WorkflowRunDetail: React.FC = () => {
 
           <div className="mt-5 space-y-4">
             {run.feedback_items?.map(item => (
-              <div key={item.id} className="rounded-comfortable border border-border bg-parchment/50 p-4">
+              <div key={item.id} className="rounded-comfortable border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-4">
                 <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                   <div>
                     <div className="flex flex-wrap items-center gap-3">
@@ -663,7 +663,7 @@ export const WorkflowRunDetail: React.FC = () => {
             ))}
 
             {!run.feedback_items?.length && (
-              <div className="rounded-standard border border-dashed border-border p-4 text-center text-[var(--text-secondary)]">
+              <div className="rounded-standard border border-dashed border-[var(--border-default)] p-4 text-center text-[var(--text-secondary)]">
                 无
               </div>
             )}

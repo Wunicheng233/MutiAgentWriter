@@ -154,10 +154,13 @@ def call_volc_api(
                     from backend.database import SessionLocal
                     from backend.models import TokenUsage
                     usage = getattr(response, 'usage', None)
-                    if usage is not None:
-                        prompt_tokens = usage.prompt_tokens
-                        completion_tokens = usage.completion_tokens
-                        total_tokens = usage.total_tokens
+                    if usage is None:
+                        logger.debug("Token usage omitted by provider for %s; skip usage recording", agent_role)
+                        return result
+
+                    prompt_tokens = getattr(usage, "prompt_tokens", 0) or 0
+                    completion_tokens = getattr(usage, "completion_tokens", 0) or 0
+                    total_tokens = getattr(usage, "total_tokens", prompt_tokens + completion_tokens) or 0
 
                     db = SessionLocal()
                     try:

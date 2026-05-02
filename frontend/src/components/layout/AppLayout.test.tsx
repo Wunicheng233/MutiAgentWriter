@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { AppLayout } from './AppLayout'
 
@@ -159,13 +159,29 @@ describe('AppLayout', () => {
     expect(screen.queryByTestId('project-header')).not.toBeInTheDocument()
   })
 
-  it('always renders NavRail', async () => {
+  it('renders NavRail when navigation is expanded', async () => {
     await mockLayoutStore()
     await mockProjectStore(false)
 
     renderWithRouter(<AppLayout />)
 
     expect(screen.getByTestId('nav-rail')).toBeInTheDocument()
+    expect(screen.queryByTestId('nav-rail-reopen')).not.toBeInTheDocument()
+  })
+
+  it('hides NavRail and shows a compact reopen button when navigation is collapsed', async () => {
+    const toggleNavCollapsed = vi.fn()
+    await mockLayoutStore({ navCollapsed: true, toggleNavCollapsed })
+    await mockProjectStore(false)
+
+    renderWithRouter(<AppLayout />)
+
+    expect(screen.queryByTestId('nav-rail')).not.toBeInTheDocument()
+    const reopenButton = screen.getByTestId('nav-rail-reopen')
+    expect(reopenButton).toHaveAttribute('aria-label', '展开侧边栏')
+
+    fireEvent.click(reopenButton)
+    expect(toggleNavCollapsed).toHaveBeenCalledTimes(1)
   })
 
   it('always renders Outlet', async () => {

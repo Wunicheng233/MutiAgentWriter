@@ -26,8 +26,10 @@ export const marginMap: Record<number, string> = {
   4: '12%',
 };
 
+export const defaultReaderFontFamily = 'Tinos, "LXGW WenKai", "Noto Serif SC", Georgia, serif';
+
 export const fontMap: Record<ReaderFont, string> = {
-  system: 'var(--reader-font-family)',
+  system: defaultReaderFontFamily,
   song: 'SimSun, "Songti SC", serif',
   yahei: 'Microsoft YaHei, "PingFang SC", sans-serif',
 };
@@ -55,12 +57,8 @@ export function useReaderSettings() {
   const actualFontFamily = fontMap[settings.font];
   const themeClass = themeClasses[settings.theme];
 
-  // 应用 CSS 变量到 document
+  // 仅同步跨主题不变的排版设置；颜色变量由 themeClass 提供，避免自引用变量失效。
   const applySettings = useCallback(() => {
-    document.documentElement.style.setProperty('--reader-bg', 'var(--reader-bg)');
-    document.documentElement.style.setProperty('--reader-text', 'var(--reader-text)');
-    document.documentElement.style.setProperty('--reader-border', 'var(--reader-border)');
-    document.documentElement.style.setProperty('--reader-secondary', 'var(--reader-secondary)');
     document.documentElement.style.setProperty('--reader-font-family', actualFontFamily);
   }, [actualFontFamily]);
 

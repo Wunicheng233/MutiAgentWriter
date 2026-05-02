@@ -179,11 +179,11 @@ export const ProjectOutline: React.FC = () => {
             <div className="grid gap-4 md:grid-cols-2">
               <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-4">
                 <p className="text-[var(--text-secondary)]">小说名称</p>
-                <p className="mt-1 text-body">{config?.novel_name || data.name}</p>
+                <p className="mt-1 text-[var(--text-body)]">{config?.novel_name || data.name}</p>
               </div>
               <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-4">
                 <p className="text-[var(--text-secondary)]">生成模式</p>
-                <p className="mt-1 text-body">
+                <p className="mt-1 text-[var(--text-body)]">
                   {config?.skip_plan_confirmation && config?.skip_chapter_confirmation
                     ? '全自动生成'
                     : !config?.skip_plan_confirmation && config?.skip_chapter_confirmation
@@ -195,7 +195,7 @@ export const ProjectOutline: React.FC = () => {
               </div>
               <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-4">
                 <p className="text-[var(--text-secondary)]">章节范围</p>
-                <p className="mt-1 text-body">{targetStart} - {targetEnd}</p>
+                <p className="mt-1 text-[var(--text-body)]">{targetStart} - {targetEnd}</p>
               </div>
             </div>
 
@@ -211,15 +211,15 @@ export const ProjectOutline: React.FC = () => {
             <div className="grid gap-4 md:grid-cols-3">
               <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-4">
                 <p className="text-[var(--text-secondary)]">跳过策划确认</p>
-                <p className="mt-1 text-body">{config?.skip_plan_confirmation ? '是' : '否'}</p>
+                <p className="mt-1 text-[var(--text-body)]">{config?.skip_plan_confirmation ? '是' : '否'}</p>
               </div>
               <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-4">
                 <p className="text-[var(--text-secondary)]">跳过章节确认</p>
-                <p className="mt-1 text-body">{config?.skip_chapter_confirmation ? '是' : '否'}</p>
+                <p className="mt-1 text-[var(--text-body)]">{config?.skip_chapter_confirmation ? '是' : '否'}</p>
               </div>
               <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-4">
                 <p className="text-[var(--text-secondary)]">允许剧情调整</p>
-                <p className="mt-1 text-body">{config?.allow_plot_adjustment ? '是' : '否'}</p>
+                <p className="mt-1 text-[var(--text-body)]">{config?.allow_plot_adjustment ? '是' : '否'}</p>
               </div>
             </div>
           </div>
@@ -258,7 +258,7 @@ export const ProjectOutline: React.FC = () => {
                   type="checkbox"
                   checked={configForm.skip_plan_confirmation}
                   onChange={(event: React.ChangeEvent<HTMLInputElement>) => setConfigForm(prev => ({ ...prev, skip_plan_confirmation: event.target.checked }))}
-                  className="rounded border-[var(--border-default)] text-sage focus:ring-sage"
+                  className="rounded border-[var(--border-default)] accent-[var(--accent-primary)] focus:ring-[var(--accent-primary)]"
                 />
                 <span>跳过策划方案人工确认</span>
               </label>
@@ -267,7 +267,7 @@ export const ProjectOutline: React.FC = () => {
                   type="checkbox"
                   checked={configForm.skip_chapter_confirmation}
                   onChange={(event: React.ChangeEvent<HTMLInputElement>) => setConfigForm(prev => ({ ...prev, skip_chapter_confirmation: event.target.checked }))}
-                  className="rounded border-[var(--border-default)] text-sage focus:ring-sage"
+                  className="rounded border-[var(--border-default)] accent-[var(--accent-primary)] focus:ring-[var(--accent-primary)]"
                 />
                 <span>跳过章节级人工确认</span>
               </label>
@@ -276,7 +276,7 @@ export const ProjectOutline: React.FC = () => {
                   type="checkbox"
                   checked={configForm.allow_plot_adjustment}
                   onChange={(event: React.ChangeEvent<HTMLInputElement>) => setConfigForm(prev => ({ ...prev, allow_plot_adjustment: event.target.checked }))}
-                  className="rounded border-[var(--border-default)] text-sage focus:ring-sage"
+                  className="rounded border-[var(--border-default)] accent-[var(--accent-primary)] focus:ring-[var(--accent-primary)]"
                 />
                 <span>允许每章后调整下一章剧情</span>
               </label>

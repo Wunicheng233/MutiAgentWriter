@@ -31,7 +31,7 @@ export const EditorCore: React.FC<EditorCoreProps> = ({
   onCancel,
   isSaving,
 }) => {
-  const { actualFontSize, actualLineHeight, actualMargin, themeClass } = useReaderSettings();
+  const { actualFontSize, actualLineHeight, actualMargin, actualFontFamily, themeClass } = useReaderSettings();
   const timeoutRef = useRef<number | null>(null);
 
   // 防抖自动保存
@@ -86,6 +86,7 @@ export const EditorCore: React.FC<EditorCoreProps> = ({
       style={{
         '--reader-font-size': `${actualFontSize}px`,
         '--reader-line-height': actualLineHeight,
+        fontFamily: actualFontFamily,
       } as React.CSSProperties}
     >
       <div className={`py-8 px-[${actualMargin}] mx-auto max-w-[720px]`}>
@@ -94,6 +95,7 @@ export const EditorCore: React.FC<EditorCoreProps> = ({
             <EditorContent
               editor={editor}
               className="prose-novel max-w-canvas mx-auto px-8 pt-0 pb-8 focus:outline-none text-[var(--reader-text)]"
+              style={{ fontFamily: actualFontFamily }}
             />
           )}
         </div>

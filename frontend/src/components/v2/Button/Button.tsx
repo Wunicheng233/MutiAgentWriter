@@ -36,11 +36,11 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     `
 
     const variantClasses: Record<ButtonVariant, string> = {
-      primary: 'bg-[var(--accent-primary)] text-white hover:opacity-90',
-      secondary: 'border border-[var(--border-default)] bg-white text-[var(--text-primary)] hover:border-[var(--accent-primary)]',
+      primary: 'bg-[var(--accent-primary)] text-[var(--on-accent)] hover:opacity-90',
+      secondary: 'border border-[var(--border-default)] bg-[var(--bg-secondary)] text-[var(--text-primary)] hover:border-[var(--accent-primary)]',
       tertiary: 'bg-transparent text-[var(--accent-primary)] hover:bg-[rgba(var(--accent-primary-rgb),0.08)]',
       ghost: 'bg-transparent text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)]',
-      danger: 'bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-100',
+      danger: 'bg-[var(--badge-error-bg)] text-[var(--badge-error-text)] hover:opacity-90 border border-[var(--badge-error-border)]',
     }
 
     const sizeClasses: Record<ButtonSize, string> = {

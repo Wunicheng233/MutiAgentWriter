@@ -131,7 +131,7 @@ export const ChapterList: React.FC = () => {
   return (
     
       <div className="mx-auto max-w-content space-y-6">
-        <Card className="border-[var(--border-default)] bg-[linear-gradient(135deg,rgba(91,127,110,0.08),rgba(255,255,255,0.95),rgba(163,139,90,0.05))]">
+        <Card className="border-[var(--border-default)] bg-[linear-gradient(135deg,rgba(var(--accent-primary-rgb),0.08),var(--bg-secondary),rgba(var(--accent-gold-rgb),0.05))]">
           <div className="flex flex-col gap-5">
             {/* 顶部标题栏 - 标题+状态在左，返回按钮在右 */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">

@@ -94,6 +94,70 @@ def _cancelled_result(task_id: str, message: str) -> Dict:
     }
 
 
+def sync_project_quality_scores_from_info(
+    db,
+    project: Project,
+    workflow_run_id: Optional[int] = None,
+    chapter_index: Optional[int] = None,
+) -> bool:
+    """Sync quality scores and evaluation artifacts from a project's info.json."""
+    if not project or not project.file_path:
+        return False
+
+    info_path = Path(project.file_path) / "info.json"
+    if not info_path.exists():
+        return False
+
+    with open(info_path, "r", encoding="utf-8") as f:
+        info = json.load(f)
+
+    project.overall_quality_score = info.get("overall_quality_score", 0) or 0
+    dimension_scores = info.get("dimension_average_scores")
+    project.dimension_average_scores = dimension_scores if isinstance(dimension_scores, dict) else {}
+
+    sync_evaluation_reports_to_artifacts(
+        db=db,
+        project=project,
+        workflow_run_id=workflow_run_id,
+        evaluation_reports=info.get("evaluation_reports"),
+    )
+    sync_workflow_optimization_artifacts_to_artifacts(
+        db=db,
+        project=project,
+        workflow_run_id=workflow_run_id,
+        info=info,
+    )
+
+    try:
+        target_chapter = int(chapter_index) if chapter_index is not None else None
+    except (TypeError, ValueError):
+        target_chapter = None
+    for chapter_score in info.get("chapter_scores") or []:
+        if not isinstance(chapter_score, dict):
+            continue
+        raw_chapter_index = chapter_score.get("chapter")
+        raw_score = chapter_score.get("score")
+        if raw_chapter_index is None or raw_score is None:
+            continue
+        try:
+            scored_chapter_index = int(raw_chapter_index)
+            score = float(raw_score)
+        except (TypeError, ValueError):
+            continue
+        if target_chapter is not None and scored_chapter_index != target_chapter:
+            continue
+
+        chapter_db = db.query(Chapter).filter(
+            Chapter.project_id == project.id,
+            Chapter.chapter_index == scored_chapter_index,
+        ).first()
+        if chapter_db:
+            chapter_db.quality_score = score
+
+    db.flush()
+    return True
+
+
 @celery_app.task(bind=True, name="generate_novel", base=GenerateNovelTask, max_retries=3)
 def generate_novel_task(
     self,
@@ -342,35 +406,12 @@ def generate_novel_task(
                             # 增量同步质量评分：从info.json读取当前章节的评分并更新
                             # 这样即使开启人机交互逐章确认，每章生成完成后评分也能及时保存
                             try:
-                                info_path = project_dir / "info.json"
-                                if info_path.exists():
-                                    with open(info_path, "r", encoding="utf-8") as f:
-                                        info = json.load(f)
-                                    # 更新项目总体评分
-                                    project.overall_quality_score = info.get("overall_quality_score", 0)
-                                    project.dimension_average_scores = info.get("dimension_average_scores", {})
-                                    sync_evaluation_reports_to_artifacts(
-                                        db=db,
-                                        project=project,
-                                        workflow_run_id=task_record.workflow_run.id if task_record.workflow_run else None,
-                                        evaluation_reports=info.get("evaluation_reports"),
-                                    )
-                                    sync_workflow_optimization_artifacts_to_artifacts(
-                                        db=db,
-                                        project=project,
-                                        workflow_run_id=task_record.workflow_run.id if task_record.workflow_run else None,
-                                        info=info,
-                                    )
-                                    # 更新当前章节的quality_score
-                                    if "chapter_scores" in info:
-                                        for cs in info["chapter_scores"]:
-                                            if cs["chapter"] == chapter_index:
-                                                chapter_db = db.query(Chapter).filter(
-                                                    Chapter.project_id == project.id,
-                                                    Chapter.chapter_index == chapter_index
-                                                ).first()
-                                                if chapter_db:
-                                                    chapter_db.quality_score = cs["score"]
+                                if sync_project_quality_scores_from_info(
+                                    db=db,
+                                    project=project,
+                                    workflow_run_id=task_record.workflow_run.id if task_record.workflow_run else None,
+                                    chapter_index=chapter_index,
+                                ):
                                     db.commit()
                                     logger.info(f"Incremental sync: updated quality scores for chapter {chapter_index}")
                             except Exception as e:
@@ -405,9 +446,41 @@ def generate_novel_task(
                 effective_start_chapter = start_chapter if start_chapter is not None else default_start
                 effective_end_chapter = end_chapter if end_chapter is not None else default_end
 
-                # 确保 end_chapter 永远不小于 start_chapter
                 if effective_end_chapter < effective_start_chapter:
-                    effective_end_chapter = effective_start_chapter + 9  # 默认生成10章范围
+                    logger.info(
+                        "Task %s has no remaining chapters: start_chapter=%s, end_chapter=%s",
+                        self.request.id,
+                        effective_start_chapter,
+                        effective_end_chapter,
+                    )
+                    if task_record is not None:
+                        task_record.status = "success"
+                        task_record.progress = 1.0
+                        task_record.current_step = "章节范围已全部完成"
+                        task_record.current_chapter = effective_start_chapter
+                        task_record.completed_at = datetime.utcnow()
+                        update_workflow_run_status(
+                            db=db,
+                            generation_task=task_record,
+                            task_status="success",
+                            current_step_key="completed",
+                            current_chapter=effective_start_chapter,
+                            metadata_updates={
+                                "completed": True,
+                                "no_remaining_chapters": True,
+                                "requested_start_chapter": effective_start_chapter,
+                                "requested_end_chapter": effective_end_chapter,
+                            },
+                        )
+                    project.status = "completed"
+                    db.commit()
+                    return {
+                        "success": True,
+                        "task_id": self.request.id,
+                        "completed": True,
+                        "no_remaining_chapters": True,
+                        "message": "章节范围已全部完成",
+                    }
 
                 default_skip_plan = project.config.get("skip_plan_confirmation", False) if project.config else False
                 default_skip_chapter = project.config.get("skip_chapter_confirmation", False) if project.config else False
@@ -549,40 +622,16 @@ def generate_novel_task(
                             logger.info("Final synchronization: all chapters to database")
 
                             # 从info.json读取质量评分，更新到project和chapters
-                            info_path = project_dir / "info.json"
-                            if info_path.exists():
-                                try:
-                                    with open(info_path, "r", encoding="utf-8") as f:
-                                        info = json.load(f)
-                                    # 更新项目总体评分
-                                    project.overall_quality_score = info.get("overall_quality_score", 0)
-                                    project.dimension_average_scores = info.get("dimension_average_scores", {})
-                                    sync_evaluation_reports_to_artifacts(
-                                        db=db,
-                                        project=project,
-                                        workflow_run_id=task_record.workflow_run.id if task_record.workflow_run else None,
-                                        evaluation_reports=info.get("evaluation_reports"),
-                                    )
-                                    sync_workflow_optimization_artifacts_to_artifacts(
-                                        db=db,
-                                        project=project,
-                                        workflow_run_id=task_record.workflow_run.id if task_record.workflow_run else None,
-                                        info=info,
-                                    )
-                                    # 更新每个章节的quality_score
-                                    if "chapter_scores" in info:
-                                        for cs in info["chapter_scores"]:
-                                            chapter_db = db.query(Chapter).filter(
-                                                Chapter.project_id == project.id,
-                                                Chapter.chapter_index == cs["chapter"]
-                                            ).first()
-                                            if chapter_db:
-                                                chapter_db.quality_score = cs["score"]
-                                                db.flush()
+                            try:
+                                if sync_project_quality_scores_from_info(
+                                    db=db,
+                                    project=project,
+                                    workflow_run_id=task_record.workflow_run.id if task_record.workflow_run else None,
+                                ):
                                     db.commit()
                                     logger.info(f"Quality scores updated to database: overall {project.overall_quality_score:.2f}")
-                                except Exception as e:
-                                    logger.warning(f"Failed to load quality scores from info.json: {e}")
+                            except Exception as e:
+                                logger.warning(f"Failed to load quality scores from info.json: {e}")
                         db.commit()
                 db.commit()
 
@@ -620,6 +669,12 @@ def generate_novel_task(
                                     workflow_run_id=task_record.workflow_run.id if task_record.workflow_run else None,
                                     content_text=chapter_file.read_text(encoding="utf-8"),
                                     source="agent",
+                                )
+                                sync_project_quality_scores_from_info(
+                                    db=db,
+                                    project=project,
+                                    workflow_run_id=task_record.workflow_run.id if task_record.workflow_run else None,
+                                    chapter_index=e.chapter_index,
                                 )
                     except Exception as sync_error:
                         logger.warning(

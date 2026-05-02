@@ -43,6 +43,20 @@ describe('ProjectHeader', () => {
     expect(screen.getByText('生成中')).toBeInTheDocument()
   })
 
+  it('生成进度只显示整数百分比', async () => {
+    const { useProjectStore } = await import('../../store/useProjectStore')
+    vi.mocked(useProjectStore).mockReturnValue({
+      currentProjectName: '测试项目',
+      projectStatus: 'generating',
+      progressPercent: 55.00000000000001,
+      clearCurrentProject: vi.fn(),
+    })
+
+    render(<ProjectHeader />)
+    expect(screen.getByText('55%')).toBeInTheDocument()
+    expect(screen.queryByText(/55\.000/)).not.toBeInTheDocument()
+  })
+
   it('shows back to shelf button', async () => {
     const { useProjectStore } = await import('../../store/useProjectStore')
     vi.mocked(useProjectStore).mockReturnValue({
@@ -112,7 +126,7 @@ describe('ProjectHeader', () => {
       expect(header).toHaveClass('header-expanded')
     })
 
-    it('双击顶栏调用 toggleHeader', async () => {
+    it('点击明确的收起按钮调用 toggleHeader', async () => {
       const { useLayoutStore } = await import('../../store/useLayoutStore')
       vi.mocked(useLayoutStore).mockReturnValue({
         headerCollapsed: false,
@@ -120,8 +134,7 @@ describe('ProjectHeader', () => {
       })
 
       render(<ProjectHeader />)
-      const header = screen.getByTestId('project-header')
-      await fireEvent.doubleClick(header)
+      await fireEvent.click(screen.getByRole('button', { name: '收起顶栏' }))
       expect(mockToggleHeader).toHaveBeenCalledTimes(1)
     })
 

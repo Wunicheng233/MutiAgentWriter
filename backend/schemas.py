@@ -142,7 +142,7 @@ class GenerationTaskResponse(BaseModel):
 # ========== Project ==========
 
 class ProjectCreate(BaseModel):
-    name: str
+    name: Optional[str] = None
     description: Optional[str] = None
     content_type: Optional[str] = "full_novel"
     # 创作需求

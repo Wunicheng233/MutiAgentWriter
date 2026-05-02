@@ -67,8 +67,8 @@ export const TableOfContents: React.FC<TableOfContentsProps> = ({ projectId, cha
               className={`
                 w-full text-left px-4 py-3 rounded-lg transition-colors border
                 ${currentChapterIndex === chap.chapter_index
-                  ? 'bg-sage/10 border-sage text-[var(--reader-text)]'
-                  : 'border-transparent text-[var(--reader-text)] hover:bg-sage/5 hover:border-sage/30'
+                  ? 'bg-[rgba(var(--reader-accent-rgb),0.12)] border-[var(--reader-accent)] text-[var(--reader-text)]'
+                  : 'border-transparent text-[var(--reader-text)] hover:bg-[rgba(var(--reader-accent-rgb),0.08)] hover:border-[rgba(var(--reader-accent-rgb),0.34)]'
                 }
               `}
             >

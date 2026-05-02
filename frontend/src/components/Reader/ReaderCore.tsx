@@ -8,13 +8,16 @@ import { PaginationControls } from './components/PaginationControls';
 // 去除 HTML 标签，将 HTML 转换回纯文本
 function stripHtml(html: string): string {
   return html
-    .replace(/<\/?p>/g, '')        // 移除 p 标签
-    .replace(/<\/?[^>]+(>|$)/g, '') // 移除所有其他 HTML 标签
-    .replace(/^\s+|\s+$/g, '')     // 修剪首尾空白
-    .replace(/\n\s*\n/g, '\n');    // 压缩空行
+    .replace(/<br\s*\/?>/gi, '\n')       // 保留显式换行
+    .replace(/<\/(p|div|li|h[1-6])>/gi, '\n') // 保留块级段落边界
+    .replace(/<[^>]+>/g, '')             // 移除其他 HTML 标签
+    .replace(/^\s+|\s+$/g, '')           // 修剪首尾空白
+    .replace(/\n\s*\n/g, '\n');          // 压缩空行
 }
 
 import type { PaginationResponse } from './types';
+
+const PAGINATION_CONTROLS_SAFE_PX = 84;
 
 interface ReaderCoreProps {
   content: string;
@@ -32,6 +35,7 @@ export const ReaderCore: React.FC<ReaderCoreProps> = ({
   onPagesChange,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const pageViewportRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   const { settings, actualFontSize, actualLineHeight, actualMargin, actualFontFamily, themeClass } = useReaderSettings();
   const currentPage = useReaderStore(state => state.currentPage);
@@ -48,14 +52,16 @@ export const ReaderCore: React.FC<ReaderCoreProps> = ({
     if (!containerRef.current) return;
 
     const updateSize = () => {
-      if (containerRef.current) {
-        const rect = containerRef.current.getBoundingClientRect();
-        // 计算可用内容尺寸（减去边距）
-        const marginPercent = parseFloat(actualMargin);
-        const marginPx = rect.width * (marginPercent / 100);
-        const width = rect.width - marginPx;
-        // 减去：提示文字(约50px) + 分页控件(约50px) + 一些边距
-        const height = rect.height - 120;
+      const measureTarget = settings.displayMode === 'pagination'
+        ? pageViewportRef.current
+        : containerRef.current;
+
+      if (measureTarget) {
+        const rect = measureTarget.getBoundingClientRect();
+        const width = rect.width;
+        const height = settings.displayMode === 'pagination'
+          ? Math.max(0, rect.height - PAGINATION_CONTROLS_SAFE_PX)
+          : rect.height;
         setContainerSize({ width, height });
       }
     };
@@ -70,7 +76,7 @@ export const ReaderCore: React.FC<ReaderCoreProps> = ({
 
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, [actualMargin]);
+  }, [actualMargin, settings.displayMode]);
 
   // 分页计算
   const { pages, totalPages, loading } = usePagination(
@@ -156,13 +162,21 @@ export const ReaderCore: React.FC<ReaderCoreProps> = ({
     if (!currentPageData) return null;
 
     // 分页模式下，按段落分组（空行分隔），每个段落添加首行缩进
-    const paragraphs = currentPageData.content.split('\n').filter(p => p.trim());
+    const lines = currentPageData.content.split('\n');
     return (
-      <div className="h-full space-y-[calc(var(--reader-font-size)*0.5)]">
-        {paragraphs.map((para, idx) => (
-          <p key={idx} className="text-[var(--reader-text)] leading-[var(--reader-line-height)] text-[calc(var(--reader-font-size))]">
-            &emsp;&emsp;{para.trim()}
-          </p>
+      <div
+        data-testid="reader-page-content"
+        className="overflow-hidden"
+        style={{ height: containerSize.height > 0 ? `${containerSize.height}px` : undefined }}
+      >
+        {lines.map((line, idx) => (
+          <div
+            key={idx}
+            data-testid="reader-page-line"
+            className="m-0 whitespace-pre text-[var(--reader-text)] leading-[var(--reader-line-height)] text-[calc(var(--reader-font-size))]"
+          >
+            {line}
+          </div>
         ))}
       </div>
     );
@@ -187,10 +201,12 @@ export const ReaderCore: React.FC<ReaderCoreProps> = ({
 
   return (
     <div
+      data-testid="reader-core-root"
       className={`min-h-screen ${themeClass} bg-[var(--reader-bg)] transition-colors duration-300`}
       style={{
         '--reader-font-size': `${actualFontSize}px`,
         '--reader-line-height': actualLineHeight,
+        fontFamily: actualFontFamily,
       } as React.CSSProperties}
     >
       <div
@@ -198,9 +214,9 @@ export const ReaderCore: React.FC<ReaderCoreProps> = ({
         onClick={handleContainerClick}
         onContextMenu={handleContextMenu}
         className={`
-          py-8 mx-auto
-          font-serif text-[var(--reader-text)]
-          ${isPagination ? 'h-[calc(100vh-160px)] overflow-hidden' : 'min-h-[calc(100vh-160px)]'}
+          relative py-8 mx-auto
+          text-[var(--reader-text)]
+          ${isPagination ? 'h-[calc(100vh-160px)] overflow-hidden flex flex-col' : 'min-h-[calc(100vh-160px)]'}
         `}
         style={{
           paddingLeft: actualMargin,
@@ -209,13 +225,18 @@ export const ReaderCore: React.FC<ReaderCoreProps> = ({
         }}
       >
         {/* 提示文字 */}
-        <div className="text-center mb-6">
+        <div className="text-center mb-6 shrink-0">
           <p className="text-xs text-[var(--reader-secondary)] opacity-70">
             右键唤醒阅读菜单
           </p>
         </div>
 
-        {isPagination ? renderPaginationContent() : renderScrollContent()}
+        <div
+          ref={pageViewportRef}
+          className={isPagination ? 'min-h-0 flex-1 overflow-hidden' : ''}
+        >
+          {isPagination ? renderPaginationContent() : renderScrollContent()}
+        </div>
 
         {isPagination && (
           <PaginationControls

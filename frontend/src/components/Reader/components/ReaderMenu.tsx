@@ -60,8 +60,8 @@ export const ReaderMenu: React.FC<ReaderMenuProps> = ({ projectId, chapterIndex,
 
   const isMobile = window.innerWidth < 768;
 
-  const menuItemClass = "flex items-center justify-center py-4 px-3 rounded-full border border-[#e8ddd0] bg-transparent text-[#3a2c1f] hover:bg-[rgba(91,127,110,0.05)] hover:border-[#5b7f6e] transition-colors cursor-pointer font-inter font-medium";
-  const primaryClass = "flex items-center justify-center py-4 px-3 rounded-full bg-[#5b7f6e] text-[#faf7f2] hover:bg-[#4a6b5c] transition-colors cursor-pointer font-inter font-medium";
+  const menuItemClass = "flex items-center justify-center py-4 px-3 rounded-full border border-[var(--reader-border)] bg-[var(--reader-surface)] text-[var(--reader-text)] hover:bg-[rgba(var(--reader-accent-rgb),0.10)] hover:border-[var(--reader-accent)] transition-colors cursor-pointer font-inter font-medium";
+  const primaryClass = "flex items-center justify-center py-4 px-3 rounded-full bg-[var(--reader-accent)] text-[var(--reader-on-accent)] hover:opacity-90 transition-colors cursor-pointer font-inter font-medium";
 
   return (
     <div
@@ -70,8 +70,8 @@ export const ReaderMenu: React.FC<ReaderMenuProps> = ({ projectId, chapterIndex,
     >
       {isMobile ? (
         // 移动端：底部抽屉
-        <Card className="absolute bottom-0 left-0 right-0 rounded-t-[24px] rounded-b-none p-6">
-          <h3 className="text-xl font-inter font-medium mb-5 text-[#3a2c1f]">阅读菜单</h3>
+        <Card className="absolute bottom-0 left-0 right-0 rounded-t-[24px] rounded-b-none p-6 bg-[var(--reader-surface)]">
+          <h3 className="text-xl font-inter font-medium mb-5 text-[var(--reader-text)]">阅读菜单</h3>
           <div className="grid grid-cols-2 gap-3">
             <button className={menuItemClass} onClick={handleOpenToc}>
               <span className="font-inter text-lg">目录</span>
@@ -94,8 +94,8 @@ export const ReaderMenu: React.FC<ReaderMenuProps> = ({ projectId, chapterIndex,
         </Card>
       ) : (
         // 桌面端：居中浮层
-        <Card className="w-full max-w-lg p-8">
-          <h3 className="text-3xl font-inter font-medium mb-8 text-center text-[#3a2c1f]">阅读菜单</h3>
+        <Card className="w-full max-w-lg p-8 bg-[var(--reader-surface)]">
+          <h3 className="text-3xl font-inter font-medium mb-8 text-center text-[var(--reader-text)]">阅读菜单</h3>
           <div className="grid grid-cols-2 gap-4 mb-6">
             <button className={`${menuItemClass} text-xl`} onClick={handleOpenToc}>
               <span className="font-inter">目录</span>

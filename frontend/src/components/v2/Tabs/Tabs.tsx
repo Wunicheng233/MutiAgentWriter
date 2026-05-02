@@ -92,7 +92,7 @@ const variantTriggerClasses: Record<TabsVariant, { active: string; inactive: str
     inactive: 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]',
   },
   pills: {
-    active: 'bg-white text-[var(--text-primary)] shadow-sm',
+    active: 'bg-[var(--bg-secondary)] text-[var(--text-primary)] shadow-sm',
     inactive: 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]',
   },
   outline: {

@@ -51,8 +51,7 @@ def parse_chapter_file_content(content: str) -> tuple[str | None, str, int]:
         if index == 0 and line.strip() and "第" in line and "章" in line:
             chapter_title = line.strip().lstrip("#").strip()
             continue
-        if line.strip():
-            body_lines.append(line)
+        body_lines.append(line)
 
     body = "\n".join(body_lines).strip()
     paragraphs = re.split(r"\n\s*\n", body) if body else []

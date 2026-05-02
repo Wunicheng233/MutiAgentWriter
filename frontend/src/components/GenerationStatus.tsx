@@ -78,7 +78,7 @@ export const GenerationStatus: React.FC<GenerationStatusProps> = ({
       </div>
 
       {currentTask?.current_chapter && (
-        <div className="mt-3 rounded-lg bg-[var(--accent-primary)] bg-opacity-10 px-3 py-2 text-sm text-[var(--accent-primary)]">
+        <div className="mt-3 rounded-lg bg-[rgba(var(--accent-primary-rgb),0.10)] px-3 py-2 text-sm text-[var(--text-primary)]">
           正在生成第 {currentTask.current_chapter} 章...
         </div>
       )}

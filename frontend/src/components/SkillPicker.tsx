@@ -66,7 +66,7 @@ export const SkillPicker: React.FC<SkillPickerProps> = ({
               key={skill.id}
               className={`block cursor-pointer rounded-[var(--radius-lg)] border transition-all ${
                 checked
-                  ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)] bg-opacity-8 shadow-sm'
+                  ? 'border-[var(--accent-primary)] bg-[rgba(var(--accent-primary-rgb),0.10)] shadow-sm'
                   : 'border-[var(--border-subtle)] bg-[var(--bg-tertiary)] hover:border-[var(--accent-primary)] hover:bg-[var(--bg-secondary)]'
               } ${itemClassName}`}
             >
@@ -88,7 +88,7 @@ export const SkillPicker: React.FC<SkillPickerProps> = ({
                       </Badge>
                     ))}
                   </div>
-                  <p className="mt-2 text-sm leading-relaxed text-[var(--text-secondary)]">{skill.description}</p>
+                  <p className={`mt-2 text-sm leading-relaxed ${checked ? 'text-[var(--text-body)]' : 'text-[var(--text-secondary)]'}`}>{skill.description}</p>
                   {showPriority && (
                     <p className="mt-2 text-xs text-[var(--text-secondary)]">
                       默认作用于：{(skill.applies_to || DEFAULT_SKILL_APPLIES_TO).join(' / ')}

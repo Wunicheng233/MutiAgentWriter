@@ -1,6 +1,10 @@
 import logging
 import sys
-from backend.config import LOG_FILE
+from datetime import datetime
+
+from backend.core.config import settings
+
+LOG_FILE = settings.logs_dir / f"novel_system_{datetime.now().strftime('%Y%m%d')}.log"
 
 def setup_logger(name: str = "novel_system") -> logging.Logger:
     """
@@ -29,6 +33,7 @@ def setup_logger(name: str = "novel_system") -> logging.Logger:
     logger.addHandler(console_handler)
 
     # 文件输出Handler（输出DEBUG及以上，按日期分割）
+    LOG_FILE.parent.mkdir(exist_ok=True, parents=True)
     file_handler = logging.FileHandler(LOG_FILE, encoding="utf-8")
     file_handler.setLevel(logging.DEBUG)
     file_handler.setFormatter(formatter)

@@ -67,14 +67,41 @@
   --accent-primary: #5b7f6e;
   --accent-primary-rgb: 91, 127, 110;
   --accent-warm: #c06b4e;
+  --accent-warm-rgb: 192, 107, 78;
   --accent-soft: #a8685c;
   --accent-gold: #a38b5a;
+  --accent-gold-rgb: 163, 139, 90;
+  --on-accent: #ffffff;
   --border-default: rgba(91, 127, 110, 0.12);
   --border-strong: rgba(91, 127, 110, 0.2);
   --border-subtle: #e8ddd0;
   --shadow-subtle: 0 2px 8px rgba(60, 40, 20, 0.04);
   --shadow-default: 0 4px 16px rgba(60, 40, 20, 0.06);
   --shadow-elevated: 0 8px 32px rgba(60, 40, 20, 0.1);
+  --badge-primary-bg: var(--accent-primary);
+  --badge-primary-text: var(--on-accent);
+  --badge-primary-border: transparent;
+  --badge-secondary-bg: var(--bg-tertiary);
+  --badge-secondary-text: var(--text-secondary);
+  --badge-secondary-border: var(--border-default);
+  --badge-success-bg: #eef7f1;
+  --badge-success-text: #2f6f4e;
+  --badge-success-border: #d8ebdd;
+  --badge-warning-bg: #fff3e8;
+  --badge-warning-text: #a84f2f;
+  --badge-warning-border: #f0d2bd;
+  --badge-error-bg: #fff1f3;
+  --badge-error-text: #b42345;
+  --badge-error-border: #f5c2cc;
+  --badge-agent-bg: #f4f0ff;
+  --badge-agent-text: #6d4aff;
+  --badge-agent-border: #ddd3ff;
+  --badge-status-bg: #eef6ff;
+  --badge-status-text: #2563a9;
+  --badge-status-border: #cfe7ff;
+  --badge-genre-bg: #edf8f3;
+  --badge-genre-text: #2d7051;
+  --badge-genre-border: #d4ece0;
 }
 
 /* Theme 2: Clean Light */
@@ -89,14 +116,41 @@
   --accent-primary: #4f76f3;
   --accent-primary-rgb: 79, 118, 243;
   --accent-warm: #e11d48;
+  --accent-warm-rgb: 225, 29, 72;
   --accent-soft: #f43f5e;
   --accent-gold: #f59e0b;
+  --accent-gold-rgb: 245, 158, 11;
+  --on-accent: #ffffff;
   --border-default: rgba(0, 0, 0, 0.06);
   --border-strong: rgba(0, 0, 0, 0.1);
   --border-subtle: #e5e7eb;
   --shadow-subtle: 0 1px 3px rgba(0, 0, 0, 0.04);
   --shadow-default: 0 2px 8px rgba(0, 0, 0, 0.06);
   --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.08);
+  --badge-primary-bg: var(--accent-primary);
+  --badge-primary-text: var(--on-accent);
+  --badge-primary-border: transparent;
+  --badge-secondary-bg: #f3f4f6;
+  --badge-secondary-text: #4b5563;
+  --badge-secondary-border: #e5e7eb;
+  --badge-success-bg: #ecfdf3;
+  --badge-success-text: #047857;
+  --badge-success-border: #bbf7d0;
+  --badge-warning-bg: #fff7ed;
+  --badge-warning-text: #c2410c;
+  --badge-warning-border: #fed7aa;
+  --badge-error-bg: #fff1f2;
+  --badge-error-text: #be123c;
+  --badge-error-border: #fecdd3;
+  --badge-agent-bg: #f5f3ff;
+  --badge-agent-text: #6d28d9;
+  --badge-agent-border: #ddd6fe;
+  --badge-status-bg: #eff6ff;
+  --badge-status-text: #1d4ed8;
+  --badge-status-border: #bfdbfe;
+  --badge-genre-bg: #ecfdf5;
+  --badge-genre-text: #047857;
+  --badge-genre-border: #bbf7d0;
 }
 
 /* Theme 3: Deep Dark */
@@ -111,14 +165,97 @@
   --accent-primary: #6494ed;
   --accent-primary-rgb: 100, 148, 237;
   --accent-warm: #f85149;
+  --accent-warm-rgb: 248, 81, 73;
   --accent-soft: #ff7b72;
   --accent-gold: #d29922;
+  --accent-gold-rgb: 210, 153, 34;
+  --on-accent: #ffffff;
   --border-default: rgba(100, 148, 237, 0.12);
   --border-strong: rgba(100, 148, 237, 0.2);
   --border-subtle: #444c56;
   --shadow-subtle: 0 1px 3px rgba(0, 0, 0, 0.2);
   --shadow-default: 0 2px 8px rgba(0, 0, 0, 0.3);
   --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --badge-primary-bg: var(--accent-primary);
+  --badge-primary-text: var(--on-accent);
+  --badge-primary-border: rgba(100, 148, 237, 0.36);
+  --badge-secondary-bg: #2d333b;
+  --badge-secondary-text: #adbac7;
+  --badge-secondary-border: #444c56;
+  --badge-success-bg: rgba(63, 185, 80, 0.16);
+  --badge-success-text: #7ee787;
+  --badge-success-border: rgba(63, 185, 80, 0.32);
+  --badge-warning-bg: rgba(210, 153, 34, 0.18);
+  --badge-warning-text: #f2cc60;
+  --badge-warning-border: rgba(210, 153, 34, 0.36);
+  --badge-error-bg: rgba(248, 81, 73, 0.16);
+  --badge-error-text: #ff938a;
+  --badge-error-border: rgba(248, 81, 73, 0.36);
+  --badge-agent-bg: rgba(163, 113, 247, 0.16);
+  --badge-agent-text: #d2a8ff;
+  --badge-agent-border: rgba(163, 113, 247, 0.34);
+  --badge-status-bg: rgba(100, 148, 237, 0.16);
+  --badge-status-text: #a5c8ff;
+  --badge-status-border: rgba(100, 148, 237, 0.34);
+  --badge-genre-bg: rgba(86, 211, 153, 0.14);
+  --badge-genre-text: #8ddbba;
+  --badge-genre-border: rgba(86, 211, 153, 0.3);
+}
+
+/* Reader Themes */
+:root {
+  --reader-bg: #faf7f2;
+  --reader-surface: rgba(255, 255, 255, 0.82);
+  --reader-text: #3a2c1f;
+  --reader-secondary: #7a6f62;
+  --reader-border: #e8ddd0;
+  --reader-accent: #5b7f6e;
+  --reader-accent-rgb: 91, 127, 110;
+  --reader-on-accent: #ffffff;
+}
+
+.theme-parchment {
+  --reader-bg: #faf7f2;
+  --reader-surface: rgba(255, 255, 255, 0.82);
+  --reader-text: #3a2c1f;
+  --reader-secondary: #7a6f62;
+  --reader-border: #e8ddd0;
+  --reader-accent: #5b7f6e;
+  --reader-accent-rgb: 91, 127, 110;
+  --reader-on-accent: #ffffff;
+}
+
+.theme-white {
+  --reader-bg: #ffffff;
+  --reader-surface: rgba(248, 249, 250, 0.9);
+  --reader-text: #1f2937;
+  --reader-secondary: #6b7280;
+  --reader-border: #e5e7eb;
+  --reader-accent: #4f76f3;
+  --reader-accent-rgb: 79, 118, 243;
+  --reader-on-accent: #ffffff;
+}
+
+.theme-dark {
+  --reader-bg: #151922;
+  --reader-surface: rgba(34, 39, 46, 0.92);
+  --reader-text: #e6edf3;
+  --reader-secondary: #9aa6b2;
+  --reader-border: #3a424d;
+  --reader-accent: #7aa2f7;
+  --reader-accent-rgb: 122, 162, 247;
+  --reader-on-accent: #111827;
+}
+
+.theme-green {
+  --reader-bg: #e8ede0;
+  --reader-surface: rgba(250, 252, 247, 0.86);
+  --reader-text: #304032;
+  --reader-secondary: #66715f;
+  --reader-border: #c7d1bd;
+  --reader-accent: #5b7f6e;
+  --reader-accent-rgb: 91, 127, 110;
+  --reader-on-accent: #ffffff;
 }
 
 /* Global Base Styles */
@@ -258,12 +395,12 @@
 }
 
 .prose-novel ::selection {
-  background-color: rgba(91, 127, 110, 0.2);
+  background-color: rgba(var(--accent-primary-rgb), 0.2);
   color: var(--text-primary);
 }
 
 .prose-novel ::-moz-selection {
-  background-color: rgba(91, 127, 110, 0.2);
+  background-color: rgba(var(--accent-primary-rgb), 0.2);
   color: var(--text-primary);
 }
 
@@ -287,7 +424,7 @@
 /* 编辑器聚焦时的边框高亮 */
 .editor-container:focus-within {
   border-color: var(--accent-primary) !important;
-  box-shadow: 0 0 0 3px rgba(91, 127, 110, 0.08), var(--shadow-default);
+  box-shadow: 0 0 0 3px rgba(var(--accent-primary-rgb), 0.08), var(--shadow-default);
   transition: all 200ms ease-out;
 }
 
@@ -336,7 +473,7 @@
 }
 
 .agent-status-indicator.running {
-  box-shadow: 0 0 0 3px rgba(91, 127, 110, 0.2);
+  box-shadow: 0 0 0 3px rgba(var(--accent-primary-rgb), 0.2);
   animation: agent-running 1.5s ease-in-out infinite;
 }
 
@@ -420,7 +557,7 @@
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(192, 107, 78, 0.1), transparent);
+  background: linear-gradient(90deg, transparent, rgba(var(--accent-warm-rgb), 0.1), transparent);
   animation: banner-shimmer 3s ease-in-out infinite;
 }
 

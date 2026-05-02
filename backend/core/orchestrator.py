@@ -344,6 +344,75 @@ class NovelOrchestrator:
         )
         return report.as_legacy_tuple()
 
+    def _record_chapter_quality_score(
+        self,
+        chapter_index: int,
+        score: float,
+        passed: bool,
+        issues: List[Dict],
+    ) -> None:
+        if not hasattr(self, "chapter_scores"):
+            self.chapter_scores = []
+
+        self.chapter_scores = [
+            chapter_score
+            for chapter_score in self.chapter_scores
+            if chapter_score.get("chapter") != chapter_index
+        ]
+        self.chapter_scores.append({
+            "chapter": chapter_index,
+            "score": score,
+            "passed": passed,
+            "issues": issues,
+        })
+
+    def _persist_quality_summary(self) -> Optional[float]:
+        if not getattr(self, "chapter_scores", None) or not self.info_path:
+            return None
+
+        if self.info_path.exists():
+            try:
+                with open(self.info_path, "r", encoding='utf-8') as f:
+                    info = json.load(f)
+            except Exception as exc:
+                logger.warning("读取 info.json 失败，将重建质量摘要: %s", exc)
+                info = {
+                    "name": self.novel_name,
+                    "created_at": str(datetime.now()),
+                }
+        else:
+            info = {
+                "name": self.novel_name,
+                "created_at": str(datetime.now()),
+            }
+
+        overall_score = sum(cs["score"] for cs in self.chapter_scores) / len(self.chapter_scores)
+        dimension_averages = {}
+        if hasattr(self, 'dimension_scores'):
+            for dim, scores in self.dimension_scores.items():
+                if scores:
+                    dimension_averages[dim] = round(sum(scores) / len(scores), 2)
+
+        evaluation_reports = getattr(self, "evaluation_reports", [])
+        info["chapter_scores"] = self.chapter_scores
+        info["overall_quality_score"] = round(overall_score, 2)
+        info["dimension_average_scores"] = dimension_averages
+        info["evaluation_harness_version"] = (
+            "chapter-evaluation-v2"
+            if any(report.get("harness_version") == "chapter-evaluation-v2" for report in evaluation_reports)
+            else "chapter-evaluation-v1"
+        )
+        info["evaluation_reports"] = evaluation_reports
+        info["workflow_optimization_version"] = "quality-workflow-v2"
+        info["scene_anchor_plans"] = getattr(self, "scene_anchor_plans", [])
+        info["repair_traces"] = getattr(self, "repair_traces", [])
+        info["stitching_reports"] = getattr(self, "stitching_reports", [])
+        info["novel_state_snapshots"] = getattr(self, "novel_state_snapshots", [])
+        info["architecture"] = "slim-v2"
+        info_content = json.dumps(info, ensure_ascii=False, indent=2)
+        write_file_atomic(self.info_path, info_content)
+        return round(overall_score, 2)
+
     def parse_outlines_from_setting_bible(self) -> List[Dict]:
         """
         从 Planner 输出的设定圣经中解析分章大纲。
@@ -1154,6 +1223,8 @@ class NovelOrchestrator:
                 # 将当前已编辑好的内容先保存下来供前端预览
                 self.save_chapter(chapter_index, current_content)
                 add_chapter_to_db(chapter_index, f"第{chapter_index}章", current_content)
+                self._record_chapter_quality_score(chapter_index, score, passed, issues)
+                self._persist_quality_summary()
                 # 抛异常告诉上层需要等待确认
                 raise WaitingForConfirmationError(chapter_index, current_content)
 
@@ -1345,12 +1416,7 @@ class NovelOrchestrator:
                         issues = [{"type": "合规拦截", "location": "全文", "fix": "生成结果为空，可能触发了内容安全风控"}]
 
                 # 记录评分
-                self.chapter_scores.append({
-                    "chapter": chapter_num,
-                    "score": score,
-                    "passed": passed,
-                    "issues": issues
-                })
+                self._record_chapter_quality_score(chapter_num, score, passed, issues)
 
                 chapter_file = self.output_dir / "chapters" / f"chapter_{chapter_num}.txt"
                 with open(chapter_file, "r", encoding="utf-8") as f:
@@ -1384,46 +1450,8 @@ class NovelOrchestrator:
                 prev_chapter_end = current_content[-500:] if len(current_content) > 500 else current_content
 
             # 统计并保存质量评分到info.json
-            if self.chapter_scores and self.info_path:
-                # 读取现有info
-                if self.info_path.exists():
-                    with open(self.info_path, "r", encoding='utf-8') as f:
-                        info = json.load(f)
-                else:
-                    info = {
-                        "name": self.novel_name,
-                        "created_at": str(datetime.now())
-                    }
-                # 添加质量评分信息
-                if self.chapter_scores:
-                    overall_score = sum(cs["score"] for cs in self.chapter_scores) / len(self.chapter_scores)
-                else:
-                    overall_score = 0
-                # 计算各维度平均分
-                dimension_averages = {}
-                if hasattr(self, 'dimension_scores'):
-                    for dim, scores in self.dimension_scores.items():
-                        if scores:
-                            dimension_averages[dim] = round(sum(scores) / len(scores), 2)
-                info["chapter_scores"] = self.chapter_scores
-                info["overall_quality_score"] = round(overall_score, 2)
-                info["dimension_average_scores"] = dimension_averages
-                evaluation_reports = getattr(self, "evaluation_reports", [])
-                info["evaluation_harness_version"] = (
-                    "chapter-evaluation-v2"
-                    if any(report.get("harness_version") == "chapter-evaluation-v2" for report in evaluation_reports)
-                    else "chapter-evaluation-v1"
-                )
-                info["evaluation_reports"] = evaluation_reports
-                info["workflow_optimization_version"] = "quality-workflow-v2"
-                info["scene_anchor_plans"] = getattr(self, "scene_anchor_plans", [])
-                info["repair_traces"] = getattr(self, "repair_traces", [])
-                info["stitching_reports"] = getattr(self, "stitching_reports", [])
-                info["novel_state_snapshots"] = getattr(self, "novel_state_snapshots", [])
-                info["architecture"] = "slim-v2"
-                # 保存回info.json
-                info_content = json.dumps(info, ensure_ascii=False, indent=2)
-                write_file_atomic(self.info_path, info_content)
+            overall_score = self._persist_quality_summary()
+            if overall_score is not None:
                 logger.info(f"📊 总体质量评分: {overall_score:.2f}/10")
 
             # 输出统计结果

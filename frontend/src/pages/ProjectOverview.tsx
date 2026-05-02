@@ -7,12 +7,13 @@ import { useLayoutStore } from '../store/useLayoutStore'
 import { useProjectStore, type ProjectStatus } from '../store/useProjectStore'
 import type { BadgeVariant } from '../components/v2'
 import {
+  getChapter,
   getProject,
   getProjectTokenStats,
   triggerGenerate,
   confirmTask,
 } from '../utils/endpoints'
-import { renderSafeMarkdown } from '../utils/safeContent'
+import { chapterContentToPreviewText, renderSafeMarkdown } from '../utils/safeContent'
 import type { GenerationTask, Project, WorkflowRun } from '../types/api'
 import { useToast } from '../components/toastContext'
 import { getErrorMessage } from '../utils/errorMessage'
@@ -165,7 +166,6 @@ function getRunSummary(project: Project): {
         headline: '策划方案正在等待人工确认',
         detail: '这一步最能体现人在环路。确认后系统会继续进入逐章生成。',
         ctaLabel: '处理策划确认',
-        ctaHref: `/projects/${project.id}/overview?confirm-plan=true`,
       }
     }
     const chapterForConfirmation = currentChapter ?? 1
@@ -173,7 +173,6 @@ function getRunSummary(project: Project): {
       headline: `第 ${chapterForConfirmation} 章正在等待人工确认`,
       detail: '当前章节已经过多 Agent 流程处理，现在需要作者决定继续通过还是给出修改意见。',
       ctaLabel: '处理当前章节',
-      ctaHref: `/projects/${project.id}/editor/${chapterForConfirmation}`,
     }
   }
 
@@ -282,6 +281,7 @@ export const ProjectOverview: React.FC = () => {
     data?.current_generation_task?.current_chapter ??
     null
   const isPlanWaitingConfirm = isWaitingConfirm && waitingConfirmChapter === 0
+  const isChapterWaitingConfirm = isWaitingConfirm && waitingConfirmChapter !== null && waitingConfirmChapter > 0
   const { data: planPreview } = useQuery({
     queryKey: ['plan-preview', projectId],
     queryFn: async () => {
@@ -290,6 +290,12 @@ export const ProjectOverview: React.FC = () => {
       return res.data
     },
     enabled: isValidProjectId && isPlanWaitingConfirm,
+  })
+  const { data: chapterPreview } = useQuery({
+    queryKey: ['chapter-preview', projectId, waitingConfirmChapter],
+    queryFn: () => getChapter(projectId, waitingConfirmChapter!),
+    enabled: isValidProjectId && isChapterWaitingConfirm,
+    retry: false,
   })
 
   useEffect(() => {
@@ -315,15 +321,15 @@ export const ProjectOverview: React.FC = () => {
   }, [data, refetch])
 
   useEffect(() => {
-    if (!isPlanWaitingConfirm) return
+    if (!isWaitingConfirm) return
 
     const params = new URLSearchParams(location.search)
-    if (params.get('confirm-plan') === 'true') {
+    if (params.get('confirm-plan') === 'true' || params.get('confirm-chapter') === 'true') {
       queueMicrotask(() => {
         setConfirmModalOpen(true)
       })
     }
-  }, [isPlanWaitingConfirm, location.search])
+  }, [isWaitingConfirm, location.search])
 
   const handleTriggerGenerate = async () => {
     try {
@@ -373,6 +379,14 @@ export const ProjectOverview: React.FC = () => {
   const workflowProgress = data.status === 'completed' ? 100 : data.current_generation_task ? Math.min(data.current_generation_task.progress * 100, 100) : completedChapterRatio
   const workflowMeta = renderWorkflowMeta(workflow)
   const agentStates = getAgentStates(data)
+  const chapterPreviewText = chapterPreview?.content
+    ? chapterContentToPreviewText(chapterPreview.content)
+    : ''
+  const confirmTitle = isPlanWaitingConfirm
+    ? '策划确认'
+    : waitingConfirmChapter
+      ? `第 ${waitingConfirmChapter} 章确认`
+      : '人工确认'
 
   return (
     <div className="mx-auto max-w-content space-y-6">
@@ -385,7 +399,7 @@ export const ProjectOverview: React.FC = () => {
               <p className="mt-1 text-[var(--text-secondary)]">{runSummary.detail}</p>
             </div>
             <div className="flex gap-2">
-              {isPlanWaitingConfirm && (
+              {isWaitingConfirm && (
                 <Button variant="primary" size="sm" onClick={() => setConfirmModalOpen(true)}>
                   立即确认
                 </Button>
@@ -440,10 +454,14 @@ export const ProjectOverview: React.FC = () => {
               </div>
               <Progress value={workflowProgress} />
               <div className="flex flex-wrap gap-2">
-                {runSummary.ctaHref ? (
-                  <Link to={runSummary.ctaHref}>
-                    <Button variant="primary" size="sm">{runSummary.ctaLabel}</Button>
-                  </Link>
+                {isWaitingConfirm ? (
+                  <Button variant="primary" size="sm" onClick={() => setConfirmModalOpen(true)}>
+                    {runSummary.ctaLabel}
+                  </Button>
+                ) : runSummary.ctaHref ? (
+                    <Link to={runSummary.ctaHref}>
+                      <Button variant="primary" size="sm">{runSummary.ctaLabel}</Button>
+                    </Link>
                 ) : (
                   <Button variant="primary" size="sm" onClick={handleTriggerGenerate}>
                     {runSummary.ctaLabel}
@@ -544,28 +562,36 @@ export const ProjectOverview: React.FC = () => {
       </Card>
 
       {/* 确认弹窗 */}
-      <Modal isOpen={confirmModalOpen} onClose={() => setConfirmModalOpen(false)}>
-        <ModalHeader>策划确认</ModalHeader>
+      <Modal isOpen={confirmModalOpen} onClose={() => setConfirmModalOpen(false)} size="xl">
+        <ModalHeader>{confirmTitle}</ModalHeader>
         <ModalContent>
           <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
             <p className="text-[var(--text-primary)]">{runSummary.detail}</p>
 
-            {/* 策划内容预览 */}
-            <div className="rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-4">
-              <h4 className="font-medium text-[var(--text-primary)] mb-3">策划内容预览</h4>
-              <div className="text-sm text-[var(--text-primary)] max-h-[300px] overflow-y-auto prose prose-sm">
-                {planPreview?.preview ? (
-                  <div dangerouslySetInnerHTML={{ __html: renderSafeMarkdown(
-                    planPreview.preview
-                      .replace(/^```markdown\s*/i, '')
-                      .replace(/^```\s*/i, '')
-                      .replace(/```\s*$/, '')
-                  )}} />
-                ) : (
-                  <p className="text-[var(--text-secondary)]">加载中...</p>
-                )}
+            {isPlanWaitingConfirm ? (
+              <div className="rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-4">
+                <h4 className="font-medium text-[var(--text-primary)] mb-3">策划内容预览</h4>
+                <div className="text-sm text-[var(--text-primary)] max-h-[300px] overflow-y-auto prose prose-sm">
+                  {planPreview?.preview ? (
+                    <div dangerouslySetInnerHTML={{ __html: renderSafeMarkdown(
+                      planPreview.preview
+                        .replace(/^```markdown\s*/i, '')
+                        .replace(/^```\s*/i, '')
+                        .replace(/```\s*$/, '')
+                    )}} />
+                  ) : (
+                    <p className="text-[var(--text-secondary)]">加载中...</p>
+                  )}
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-4">
+                <h4 className="font-medium text-[var(--text-primary)] mb-3">章节内容预览</h4>
+                <div className="max-h-[340px] overflow-y-auto whitespace-pre-wrap text-sm leading-relaxed text-[var(--text-primary)]">
+                  {chapterPreviewText || '加载中...'}
+                </div>
+              </div>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">

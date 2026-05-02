@@ -109,7 +109,7 @@ export const ArtifactDetail: React.FC = () => {
   return (
     
       <div className="mx-auto max-w-content space-y-6">
-        <Card className="border-sage/20 bg-[linear-gradient(135deg,rgba(91,127,110,0.12),rgba(255,255,255,0.94),rgba(163,139,90,0.08))] p-6">
+        <Card className="border-[rgba(var(--accent-primary-rgb),0.20)] bg-[linear-gradient(135deg,rgba(var(--accent-primary-rgb),0.12),var(--bg-secondary),rgba(var(--accent-gold-rgb),0.08))] p-6">
           <div className="flex flex-col gap-6 xl:flex-row xl:items-center xl:justify-between">
             <div>
               <div className="mb-4 flex flex-wrap items-center gap-3">
@@ -135,19 +135,19 @@ export const ArtifactDetail: React.FC = () => {
             </div>
 
             <div className="grid w-full max-w-2xl grid-cols-2 gap-3 md:grid-cols-4">
-              <div className="rounded-standard border border-border bg-parchment/70 p-3">
+              <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-3">
                 <p className="text-sm text-[var(--text-secondary)]">版本</p>
                 <p className="mt-1 font-medium">v{artifact.version_number}</p>
               </div>
-              <div className="rounded-standard border border-border bg-parchment/70 p-3">
+              <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-3">
                 <p className="text-sm text-[var(--text-secondary)]">范围</p>
                 <p className="mt-1 font-medium">{getArtifactScopeLabel(artifact)}</p>
               </div>
-              <div className="rounded-standard border border-border bg-parchment/70 p-3">
+              <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-3">
                 <p className="text-sm text-[var(--text-secondary)]">版本链</p>
                 <p className="mt-1 font-medium">{versions.length}</p>
               </div>
-              <div className="rounded-standard border border-border bg-parchment/70 p-3">
+              <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-3">
                 <p className="text-sm text-[var(--text-secondary)]">创建时间</p>
                 <p className="mt-1 font-medium">{formatDateTime(artifact.created_at)}</p>
               </div>
@@ -161,27 +161,27 @@ export const ArtifactDetail: React.FC = () => {
             <h2 className="mt-2 text-2xl font-medium">产物摘要</h2>
 
             <div className="mt-5 grid gap-3 md:grid-cols-2">
-              <div className="rounded-standard border border-border bg-parchment/60 p-4">
+              <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-4">
                 <p className="text-sm text-[var(--text-secondary)]">类型</p>
                 <p className="mt-1 font-medium">{artifact.artifact_type}</p>
               </div>
-              <div className="rounded-standard border border-border bg-parchment/60 p-4">
+              <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-4">
                 <p className="text-sm text-[var(--text-secondary)]">版本链键</p>
                 <p className="mt-1 break-words font-medium">{getArtifactVersionKey(artifact)}</p>
               </div>
-              <div className="rounded-standard border border-border bg-parchment/60 p-4">
+              <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-4">
                 <p className="text-sm text-[var(--text-secondary)]">来源</p>
                 <p className="mt-1 font-medium">{artifact.source}</p>
               </div>
-              <div className="rounded-standard border border-border bg-parchment/60 p-4">
+              <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-4">
                 <p className="text-sm text-[var(--text-secondary)]">所属 Run</p>
                 <p className="mt-1 font-medium">{artifact.workflow_run_id ?? '-'}</p>
               </div>
-              <div className="rounded-standard border border-border bg-parchment/60 p-4">
+              <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-4">
                 <p className="text-sm text-[var(--text-secondary)]">字符数</p>
                 <p className="mt-1 font-medium">{artifactStats.characters}</p>
               </div>
-              <div className="rounded-standard border border-border bg-parchment/60 p-4">
+              <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-4">
                 <p className="text-sm text-[var(--text-secondary)]">行数 / 段落</p>
                 <p className="mt-1 font-medium">
                   {artifactStats.lines} / {artifactStats.paragraphs}
@@ -203,13 +203,13 @@ export const ArtifactDetail: React.FC = () => {
                   <div
                     key={version.id}
                     className={`rounded-standard border p-4 ${
-                      isActive ? 'border-sage bg-sage/10' : 'border-border bg-parchment/50'
+                      isActive ? 'border-[var(--accent-primary)] bg-[rgba(var(--accent-primary-rgb),0.10)]' : 'border-[var(--border-default)] bg-[var(--bg-tertiary)]'
                     }`}
                   >
                     <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="font-medium text-inkwell">v{version.version_number}</span>
+                          <span className="font-medium text-[var(--text-primary)]">v{version.version_number}</span>
                           {version.is_current && <Badge variant="success">current</Badge>}
                           {isActive && <Badge variant="status">当前查看</Badge>}
                           {compareTarget && <Badge variant="secondary">对照版本</Badge>}
@@ -236,7 +236,7 @@ export const ArtifactDetail: React.FC = () => {
               })}
 
               {!versions.length && (
-                <div className="rounded-standard border border-dashed border-border p-4 text-center text-[var(--text-secondary)]">
+                <div className="rounded-standard border border-dashed border-[var(--border-default)] p-4 text-center text-[var(--text-secondary)]">
                   暂无
                 </div>
               )}
@@ -251,19 +251,19 @@ export const ArtifactDetail: React.FC = () => {
           {compareArtifact ? (
             <>
               <div className="mt-5 grid gap-3 md:grid-cols-4">
-                <div className="rounded-standard border border-border bg-parchment/60 p-4">
+                <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-4">
                   <p className="text-sm text-[var(--text-secondary)]">当前版本</p>
                   <p className="mt-1 font-medium">v{artifact.version_number}</p>
                 </div>
-                <div className="rounded-standard border border-border bg-parchment/60 p-4">
+                <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-4">
                   <p className="text-sm text-[var(--text-secondary)]">对照版本</p>
                   <p className="mt-1 font-medium">v{compareArtifact.version_number}</p>
                 </div>
-                <div className="rounded-standard border border-border bg-parchment/60 p-4">
+                <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-4">
                   <p className="text-sm text-[var(--text-secondary)]">改动行</p>
                   <p className="mt-1 font-medium">{compareSummary?.changedLines ?? 0}</p>
                 </div>
-                <div className="rounded-standard border border-border bg-parchment/60 p-4">
+                <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-4">
                   <p className="text-sm text-[var(--text-secondary)]">新增 / 删除</p>
                   <p className="mt-1 font-medium">
                     {compareSummary?.addedLines ?? 0} / {compareSummary?.removedLines ?? 0}
@@ -272,7 +272,7 @@ export const ArtifactDetail: React.FC = () => {
               </div>
 
               <div className="mt-5 grid gap-4 xl:grid-cols-2">
-                <div className="rounded-comfortable border border-border bg-parchment/50 p-4">
+                <div className="rounded-comfortable border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-4">
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="font-medium text-xs uppercase tracking-[0.2em] text-[var(--text-secondary)]">Current</p>
@@ -282,12 +282,12 @@ export const ArtifactDetail: React.FC = () => {
                       {artifactStats.characters} chars / {artifactStats.lines} lines
                     </p>
                   </div>
-                  <pre className="mt-4 max-h-[36rem] overflow-auto whitespace-pre-wrap rounded-standard border border-border bg-white/70 p-4 text-sm">
+                  <pre className="mt-4 max-h-[36rem] overflow-auto whitespace-pre-wrap rounded-standard border border-[var(--border-default)] bg-[var(--bg-secondary)] p-4 text-sm">
                     {artifactContent || '无内容'}
                   </pre>
                 </div>
 
-                <div className="rounded-comfortable border border-border bg-parchment/50 p-4">
+                <div className="rounded-comfortable border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-4">
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="font-medium text-xs uppercase tracking-[0.2em] text-[var(--text-secondary)]">Compared</p>
@@ -297,14 +297,14 @@ export const ArtifactDetail: React.FC = () => {
                       {compareStats?.characters ?? 0} chars / {compareStats?.lines ?? 0} lines
                     </p>
                   </div>
-                  <pre className="mt-4 max-h-[36rem] overflow-auto whitespace-pre-wrap rounded-standard border border-border bg-white/70 p-4 text-sm">
+                  <pre className="mt-4 max-h-[36rem] overflow-auto whitespace-pre-wrap rounded-standard border border-[var(--border-default)] bg-[var(--bg-secondary)] p-4 text-sm">
                     {compareContent || '无内容'}
                   </pre>
                 </div>
               </div>
             </>
           ) : (
-            <div className="mt-5 rounded-standard border border-dashed border-border p-4 text-center text-[var(--text-secondary)]">
+            <div className="mt-5 rounded-standard border border-dashed border-[var(--border-default)] p-4 text-center text-[var(--text-secondary)]">
               无对照版本
             </div>
           )}
@@ -314,7 +314,7 @@ export const ArtifactDetail: React.FC = () => {
           <p className="font-medium text-xs uppercase tracking-[0.24em] text-[var(--text-secondary)]">Artifact Content</p>
           <h2 className="mt-2 text-2xl font-medium">完整内容</h2>
 
-          <pre className="mt-5 max-h-[44rem] overflow-auto whitespace-pre-wrap rounded-comfortable border border-border bg-parchment/50 p-4 text-sm">
+          <pre className="mt-5 max-h-[44rem] overflow-auto whitespace-pre-wrap rounded-comfortable border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-4 text-sm">
             {artifactContent || '无内容'}
           </pre>
         </Card>

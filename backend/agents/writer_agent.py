@@ -3,7 +3,9 @@ import openai
 from backend.utils.volc_engine import call_volc_api
 from backend.utils.logger import logger
 from backend.utils.vector_db import search_reference_style, search_related_chapter_content, search_core_setting
-from backend.config import WRITER_MAX_TOKENS
+from backend.core.config import settings
+
+WRITER_MAX_TOKENS = settings.writer_max_tokens
 
 
 def _check_and_fix_title(result: str, chapter_num: int) -> str:

@@ -9,8 +9,7 @@ from __future__ import annotations
 import hashlib
 import re
 from pathlib import Path
-import backend.config as config
-from backend.config import VECTOR_CHUNK_SIZE
+from backend.core.config import settings
 from backend.utils.logger import logger
 from backend.utils.runtime_context import (
     get_current_output_dir,
@@ -20,8 +19,10 @@ from backend.utils.runtime_context import (
 from typing import Optional, Any
 
 # ===================== 全局配置（只存配置，不初始化） =====================
+VECTOR_CHUNK_SIZE = settings.vector_chunk_size
+
 # 向量库持久化路径
-CHROMA_DB_PATH = config.ROOT_DIR / "vector_db"
+CHROMA_DB_PATH = settings.root_dir / "vector_db"
 CHROMA_DB_PATH.mkdir(exist_ok=True, parents=True)
 
 # 嵌入模型配置
@@ -358,7 +359,7 @@ def search_core_setting(query: str, top_k: int = 3) -> str:
 def init_reference_collection():
     """初始化文风参考集合，加载references目录下的所有txt文件"""
     reference_collection = get_reference_collection()
-    REF_DIR = config.ROOT_DIR / "references"
+    REF_DIR = settings.root_dir / "references"
     REF_DIR.mkdir(exist_ok=True)
 
     # 检查是否已经有数据

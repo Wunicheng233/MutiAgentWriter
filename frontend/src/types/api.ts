@@ -207,7 +207,7 @@ export interface ArtifactListResponse {
 }
 
 export interface ProjectCreate {
-  name: string
+  name?: string
   description?: string
   content_type?: string
   novel_name?: string

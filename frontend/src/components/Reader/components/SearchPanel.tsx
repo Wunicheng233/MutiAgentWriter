@@ -75,7 +75,7 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ content, onJump }) => 
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="输入关键词搜索..."
-          className="w-full px-3 py-2 border border-[var(--reader-border)] rounded-standard bg-[var(--reader-bg)] text-[var(--reader-text)] focus:outline-none focus:ring-2 focus:ring-sage/50"
+          className="w-full px-3 py-2 border border-[var(--reader-border)] rounded-standard bg-[var(--reader-bg)] text-[var(--reader-text)] focus:outline-none focus:ring-2 focus:ring-[rgba(var(--reader-accent-rgb),0.45)]"
           autoFocus
         />
       </div>
@@ -94,7 +94,7 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ content, onJump }) => 
               <button
                 key={match.index}
                 onClick={() => handleJump(match.position)}
-                className="w-full text-left p-3 border border-[var(--reader-border)] rounded-standard hover:bg-sage/5 transition-colors"
+                className="w-full text-left p-3 border border-[var(--reader-border)] rounded-standard hover:bg-[rgba(var(--reader-accent-rgb),0.08)] transition-colors"
               >
                 <p className="text-[var(--reader-text)]">
                   {highlightMatch(match.context, match.text)}

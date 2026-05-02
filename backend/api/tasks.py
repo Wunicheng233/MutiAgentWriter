@@ -3,6 +3,7 @@
 获取Celery任务进度
 """
 
+import logging
 from datetime import datetime
 from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -61,9 +62,10 @@ def check_project_access(
 
     return project
 from celery_app import celery_app
-from backend.tasks.writing_tasks import generate_novel_task
+from backend.tasks.writing_tasks import generate_novel_task, sync_project_quality_scores_from_info
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
+logger = logging.getLogger(__name__)
 
 
 class ConfirmationRequest(BaseModel):
@@ -126,6 +128,14 @@ def confirm_chapter(
         )
     configured_start_chapter = project.config.get("start_chapter", 1) if project.config else 1
     configured_end_chapter = project.config.get("end_chapter") if project.config else None
+    try:
+        configured_start_chapter = int(configured_start_chapter)
+    except (TypeError, ValueError):
+        configured_start_chapter = 1
+    try:
+        configured_end_chapter = int(configured_end_chapter) if configured_end_chapter is not None else None
+    except (TypeError, ValueError):
+        configured_end_chapter = None
 
     # 如果用户不通过且提供了修改意见，需要将反馈保存到项目目录
     # 供orchestrator下次启动时读取并重新优化
@@ -153,14 +163,23 @@ def confirm_chapter(
             with open(feedback_file, "w", encoding="utf-8") as f:
                 f.write(request.feedback)
 
-    new_task_id = make_task_id("continue")
     review_outcome = "approved" if request.approved else "rejected"
+    is_final_chapter_approved = (
+        request.approved
+        and chapter_index > 0
+        and configured_end_chapter is not None
+        and chapter_index >= configured_end_chapter
+    )
+    new_task_id = None if is_final_chapter_approved else make_task_id("continue")
 
     # 先将当前任务标记为完成状态，这样才能创建新任务（避免部分唯一索引冲突）
     # 注意：必须先完成旧任务，再创建新任务，否则会触发唯一索引约束
     task_record.status = "success"
     task_record.completed_at = datetime.utcnow()
-    if chapter_index == 0:
+    if is_final_chapter_approved:
+        task_record.current_step = f"第{chapter_index}章已确认，章节范围已全部完成"
+        task_record.progress = 1.0
+    elif chapter_index == 0:
         task_record.current_step = (
             "策划方案已确认，已继续生成正文"
             if request.approved
@@ -172,19 +191,45 @@ def confirm_chapter(
             if request.approved
             else f"第{chapter_index}章已驳回，已启动重写"
         )
+    review_metadata = {
+        "review_decision": review_outcome,
+        "review_feedback": request.feedback.strip() or None,
+    }
+    if new_task_id is not None:
+        review_metadata["continued_with_task_id"] = new_task_id
+    if is_final_chapter_approved:
+        review_metadata["completed_generation_range"] = True
+
     update_workflow_run_status(
         db=db,
         generation_task=task_record,
         task_status="success",
         current_step_key="completed",
         current_chapter=chapter_index,
-        metadata_updates={
-            "review_decision": review_outcome,
-            "review_feedback": request.feedback.strip() or None,
-            "continued_with_task_id": new_task_id,
-        },
+        metadata_updates=review_metadata,
     )
     db.flush()  # 确保旧任务状态更新到数据库
+
+    if is_final_chapter_approved:
+        try:
+            sync_project_quality_scores_from_info(
+                db=db,
+                project=project,
+                workflow_run_id=task_record.workflow_run.id if task_record.workflow_run else None,
+            )
+        except Exception:
+            logger.warning(
+                "Failed to sync quality scores before completing final chapter confirmation",
+                exc_info=True,
+            )
+        project.status = "completed"
+        db.commit()
+        return {
+            "success": True,
+            "completed": True,
+            "new_task_id": None,
+            "message": "已确认最终章节，生成范围已完成",
+        }
 
     if chapter_index == 0:
         next_current_chapter = configured_start_chapter if request.approved else 0

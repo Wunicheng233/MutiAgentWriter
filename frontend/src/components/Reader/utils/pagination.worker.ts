@@ -6,13 +6,17 @@ const measurer = new TextMeasurer();
 // 中文段落首行缩进两个字符（用两个空格占位，实际宽度由字体和字号决定）
 const FIRST_LINE_INDENT = '  ';
 
+function clampFitLengthByVisualWidth(fitLength: number, maxWidth: number, fontSize: number): number {
+  // Canvas 在不同中文字体下可能低估宽度；用 em 宽度再做一道保守上限，避免渲染时自动换行。
+  const maxCjkChars = Math.max(1, Math.floor(maxWidth / (fontSize * 0.95)));
+  return Math.max(1, Math.min(fitLength, maxCjkChars));
+}
+
 self.onmessage = (e: MessageEvent<PaginationRequest>) => {
   const { content, containerWidth, containerHeight, fontSize, lineHeight, fontFamily } = e.data;
 
-  // 计算可用内容区域，底部留出更多空间避免最后一行被截断
-  // 前端已经减去了 40px，这里再减去一行保证完整显示
   const lineHeightPx = fontSize * lineHeight;
-  const linesPerPage = Math.floor((containerHeight - fontSize * 2) / lineHeightPx);
+  const linesPerPage = Math.max(1, Math.floor(containerHeight / lineHeightPx));
 
   // 按原始段落分割，过滤空行
   const paragraphs = content.split('\n').filter(p => p.trim());
@@ -26,12 +30,13 @@ self.onmessage = (e: MessageEvent<PaginationRequest>) => {
     let remainingText = FIRST_LINE_INDENT + trimmedPara;
 
     while (remainingText.length > 0) {
-      const fitLength = measurer.fitTextToWidth(
+      const measuredFitLength = measurer.fitTextToWidth(
         remainingText,
         containerWidth,
         fontSize,
         fontFamily
       );
+      const fitLength = clampFitLengthByVisualWidth(measuredFitLength, containerWidth, fontSize);
 
       const line = remainingText.slice(0, fitLength);
       remainingText = remainingText.slice(fitLength);
@@ -58,6 +63,7 @@ self.onmessage = (e: MessageEvent<PaginationRequest>) => {
 
     // 段落结束，添加一个空行分隔（如果还有空间）
     if (remainingText.length === 0 && currentLineCount + 1 <= linesPerPage) {
+      currentLines.push('');
       currentLineCount++;
     }
   }

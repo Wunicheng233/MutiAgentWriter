@@ -33,13 +33,13 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
   return (
     <div
       className={`
-        fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-black/95 backdrop-blur border-t border-border z-40
+        fixed bottom-0 left-0 right-0 bg-[var(--reader-surface)] backdrop-blur border-t border-[var(--reader-border)] z-40
         transition-transform duration-300 px-4 py-3
         ${visible ? 'translate-y-0' : 'translate-y-full'}
       `}
     >
       <div className="max-w-4xl mx-auto flex justify-between items-center">
-        <div className="text-sm text-secondary">
+        <div className="text-sm text-[var(--reader-secondary)]">
           {isSaving && <span>保存中...</span>}
           {!isSaving && <span>自动保存已开启</span>}
         </div>

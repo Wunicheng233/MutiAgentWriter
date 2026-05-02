@@ -263,7 +263,7 @@ export const SelectItem: React.FC<SelectItemProps> = ({
       tabIndex={disabled ? -1 : 0}
       className={`px-3 py-2 text-sm cursor-pointer transition-colors duration-100 outline-none ${
         isSelected
-          ? 'bg-[var(--accent-primary)] bg-opacity-10 text-[var(--accent-primary)]'
+          ? 'bg-[rgba(var(--accent-primary-rgb),0.10)] text-[var(--text-primary)]'
           : 'text-[var(--text-body)] hover:bg-[var(--bg-tertiary)]'
       } ${disabled ? 'opacity-50 cursor-not-allowed' : ''} ${className}`.trim()}
     >

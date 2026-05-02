@@ -16,6 +16,15 @@ function getScoreColor(score: number): BadgeVariant {
   return 'error'
 }
 
+function getCssVar(name: string, fallback: string): string {
+  if (typeof window === 'undefined') return fallback
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback
+}
+
+function getCssRgb(name: string, alpha: number, fallbackRgb: string): string {
+  return `rgba(${getCssVar(name, fallbackRgb)}, ${alpha})`
+}
+
 export const QualityDashboard: React.FC = () => {
   const { id } = useParams<{ id: string }>()
   const projectId = id ? parseInt(id, 10) : 0
@@ -112,6 +121,14 @@ export const QualityDashboard: React.FC = () => {
     weak: chapterScores.filter(item => item.quality_score < 6).length,
   }
 
+  const chartText = getCssVar('--text-primary', '#3a2c1f')
+  const chartAxis = getCssVar('--text-muted', '#888888')
+  const chartSplitLine = getCssVar('--border-subtle', '#e5e1db')
+  const chartSurfaceA = getCssVar('--bg-primary', '#faf7f2')
+  const chartSurfaceB = getCssVar('--bg-tertiary', '#f0ebe4')
+  const chartPrimary = getCssVar('--accent-primary', '#5b7f6e')
+  const chartWarm = getCssVar('--accent-warm', '#c06b4e')
+
   const radarIndicator = Object.entries(dimScores).map(([key, value]) => ({
     name: dimensionMapping[key] || key,
     max: 10,
@@ -126,12 +143,12 @@ export const QualityDashboard: React.FC = () => {
       indicator: radarIndicator,
       radius: '60%',
       axisName: {
-        color: '#3a2c1f',
+        color: chartText,
         fontSize: 14,
       },
       splitArea: {
         areaStyle: {
-          color: ['#faf7f2', '#f0ebe4'],
+          color: [chartSurfaceA, chartSurfaceB],
         },
       },
     } : {
@@ -147,13 +164,13 @@ export const QualityDashboard: React.FC = () => {
             value: radarIndicator.map(item => item.value),
             name: '平均评分',
             areaStyle: {
-              color: 'rgba(91, 127, 110, 0.3)',
+              color: getCssRgb('--accent-primary-rgb', 0.3, '91, 127, 110'),
             },
             lineStyle: {
-              color: '#5b7f6e',
+              color: chartPrimary,
             },
             itemStyle: {
-              color: '#5b7f6e',
+              color: chartPrimary,
             },
           },
         ],
@@ -175,11 +192,11 @@ export const QualityDashboard: React.FC = () => {
       type: 'category',
       data: chapterScores.map(item => `第${item.chapter_index}章`),
       axisLabel: {
-        color: '#3a2c1f',
+        color: chartText,
       },
       axisLine: {
         lineStyle: {
-          color: '#888',
+          color: chartAxis,
         },
       },
     },
@@ -188,16 +205,16 @@ export const QualityDashboard: React.FC = () => {
       min: 0,
       max: 10,
       axisLabel: {
-        color: '#3a2c1f',
+        color: chartText,
       },
       axisLine: {
         lineStyle: {
-          color: '#888',
+          color: chartAxis,
         },
       },
       splitLine: {
         lineStyle: {
-          color: '#e5e1db',
+          color: chartSplitLine,
         },
       },
     },
@@ -215,17 +232,17 @@ export const QualityDashboard: React.FC = () => {
             x2: 0,
             y2: 1,
             colorStops: [
-              { offset: 0, color: 'rgba(192, 107, 78, 0.4)' },
-              { offset: 1, color: 'rgba(192, 107, 78, 0.05)' },
+              { offset: 0, color: getCssRgb('--accent-warm-rgb', 0.4, '192, 107, 78') },
+              { offset: 1, color: getCssRgb('--accent-warm-rgb', 0.05, '192, 107, 78') },
             ],
           },
         },
         lineStyle: {
-          color: '#c06b4e',
+          color: chartWarm,
           width: 2,
         },
         itemStyle: {
-          color: '#c06b4e',
+          color: chartWarm,
         },
       },
     ],
@@ -233,7 +250,7 @@ export const QualityDashboard: React.FC = () => {
 
   return (
     <div className="space-y-6">
-        <Card className="border-[var(--border-default)] bg-[linear-gradient(135deg,rgba(91,127,110,0.12),rgba(255,255,255,0.9),rgba(192,107,78,0.08))]">
+        <Card className="border-[var(--border-default)] bg-[linear-gradient(135deg,rgba(var(--accent-primary-rgb),0.12),var(--bg-secondary),rgba(var(--accent-warm-rgb),0.08))]">
           <div className="flex flex-col gap-5">
             <div className="flex flex-wrap items-center gap-3">
               <Link to={`/projects/${projectId}/overview`}>

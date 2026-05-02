@@ -14,7 +14,15 @@ describe('Button', () => {
     expect(screen.getByRole('button')).toHaveClass(/accent-primary/)
 
     rerender(<Button variant="danger">Danger</Button>)
-    expect(screen.getByRole('button')).toHaveClass(/text-rose-700/)
+    expect(screen.getByRole('button')).toHaveClass(/badge-error-text/)
+  })
+
+  it('uses themed surface colors for secondary buttons', () => {
+    render(<Button variant="secondary">Secondary</Button>)
+    const button = screen.getByRole('button')
+
+    expect(button).toHaveClass('bg-[var(--bg-secondary)]')
+    expect(button.className).not.toContain('bg-white')
   })
 
   it('applies size correctly', () => {
