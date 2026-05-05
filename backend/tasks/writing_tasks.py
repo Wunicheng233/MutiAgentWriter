@@ -5,6 +5,7 @@
 同时同步更新数据库 generation_tasks 表
 """
 
+import os
 import re
 import json
 import yaml
@@ -19,6 +20,7 @@ from celery_app import celery_app
 from backend.chapter_sync import sync_chapter_file_to_db
 from backend.auth import get_user_api_key
 from backend.core.orchestrator import GenerationCancelledError, NovelOrchestrator, WaitingForConfirmationError
+from backend.core.config import settings
 from backend.utils.runtime_context import (
     RunContext,
     get_current_output_dir_optional,
@@ -180,6 +182,19 @@ def generate_novel_task(
         start_chapter,
         end_chapter,
     )
+
+    # Celery fork 后清除 OpenAI 客户端缓存并强制创建新连接池
+    try:
+        from backend.utils.volc_engine import _client_cache
+        _client_cache.clear()
+        # 同时清除 httpx 隐式全局连接池上下文
+        import gc
+        gc.collect()
+    except Exception:
+        pass
+
+    # 禁止 huggingface_hub 联网下载（WSL2 无法访问 huggingface.co）
+    os.environ["HF_HUB_OFFLINE"] = "1"
 
     # 获取数据库会话，查找对应的GenerationTask记录
     previous_run_context = get_current_run_context_optional()
@@ -416,6 +431,17 @@ def generate_novel_task(
                                     logger.info(f"Incremental sync: updated quality scores for chapter {chapter_index}")
                             except Exception as e:
                                 logger.warning(f"Failed to incremental sync quality scores: {e}")
+
+                    # 学习闭环触发点：章生成完成后，异步提取经验
+                    if settings.enable_experience_extraction:
+                        try:
+                            extract_experience_task.delay(
+                                project_id=task_record.project_id,
+                                chapter_index=chapter_index,
+                            )
+                            logger.info(f"Experience extraction triggered for chapter {chapter_index}")
+                        except Exception as e:
+                            logger.warning(f"Failed to trigger experience extraction: {e}")
             except Exception as e:
                 logger.warning(f"Failed to incremental sync chapter to database: {e}")
 
@@ -776,4 +802,155 @@ def generate_novel_task(
         else:
             set_current_run_context(None)
             set_current_output_dir(previous_output_dir)
+        db.close()
+
+
+# ---------------------------------------------------------------------------
+# Hermes-style: Experience Extraction (async learning loop)
+# ---------------------------------------------------------------------------
+
+
+@celery_app.task(bind=True, name="extract_experience", max_retries=2, acks_late=True)
+def extract_experience_task(
+    self,
+    project_id: int,
+    chapter_index: int,
+) -> dict:
+    """Async task: extract writing experiences from a completed chapter,
+    distill them into skills, and register auto-generated skills.
+
+    Triggered by progress_callback after each "章生成完成" event.
+    Runs asynchronously to avoid blocking the main generation flow.
+    """
+    from backend.database import SessionLocal
+    from backend.core.learning.feedback_collector import FeedbackCollector
+    from backend.core.learning.experience_extractor import ExperienceExtractor
+    from backend.core.learning.skill_distiller import SkillDistiller
+    from backend.core.skill_runtime.skill_registry import SkillRegistry
+    from backend.utils.vector_db import add_skill_to_db
+    from backend.core.learning.trace_aggregator import TraceAggregator
+    from backend.utils.logger import logger as task_logger
+
+    db = SessionLocal()
+    try:
+        # 1. Collect signals from DB (critique artifacts + user feedback)
+        trace = TraceAggregator(db).get_chapter_trace(project_id, chapter_index)
+        if not trace.has_critique and not trace.has_feedback:
+            return {"skipped": True, "reason": "no critique or feedback found"}
+
+        collector = FeedbackCollector()
+
+        # Build critic signals from stored evaluation report
+        critic_issues = []
+        critic_dimensions = {}
+        if trace.evaluation_report:
+            critic_dimensions = trace.evaluation_report.get("dimensions", {})
+            # Pull issues from critique_v2 if available
+            if trace.critique_v2:
+                for issue_list in trace.critique_v2.values():
+                    if isinstance(issue_list, list):
+                        critic_issues.extend(issue_list)
+
+        signals = collector.collect_all_for_chapter(
+            db=db,
+            project_id=project_id,
+            chapter_index=chapter_index,
+            critic_issues=critic_issues,
+            critic_dimensions=critic_dimensions,
+        )
+
+        # 2. Filter: only process chapters with at least one medium+ signal
+        actionable = [s for s in signals if s.is_actionable]
+        if not actionable:
+            return {"skipped": True, "reason": "no actionable signals"}
+
+        task_logger.info(
+            f"Experience extraction: chapter {chapter_index}, "
+            f"{len(actionable)} actionable signals"
+        )
+
+        # 3. Extract experiences via LLM
+        user_feedback_text = "；".join(
+            s.description for s in signals if s.source.value == "user"
+        )
+
+        extractor = ExperienceExtractor()
+        experiences = extractor.extract(
+            chapter_index=chapter_index,
+            critique_report=trace.evaluation_report,
+            user_feedback=user_feedback_text or None,
+            chapter_outline=(
+                trace.scene_anchor_plan.get("outline", "")
+                if trace.scene_anchor_plan else ""
+            ),
+        )
+
+        if not experiences:
+            return {"extracted": 0, "skills_generated": 0}
+
+        # 4. Distill and register skills
+        distiller = SkillDistiller()
+        registry = SkillRegistry()
+        skills_generated = 0
+
+        for exp in experiences:
+            skill = distiller.distill(exp)
+            if skill is None:
+                continue
+
+            # Auto-register if confidence meets threshold
+            if skill.confidence >= settings.skill_confidence_threshold:
+                try:
+                    registered = registry.register_skill(
+                        skill.skill_id,
+                        skill.to_skill_md(),
+                    )
+                    # Also index in vector DB for retrieval
+                    try:
+                        add_skill_to_db(
+                            skill_id=skill.skill_id,
+                            skill_name=skill.name,
+                            content=skill.injection_content,
+                            skill_type=skill.skill_type,
+                            target_character=skill.target_character,
+                            confidence=skill.confidence,
+                            auto_generated=True,
+                        )
+                    except Exception as vector_err:
+                        task_logger.warning(
+                            f"Vector DB indexing failed for skill {skill.skill_id}: {vector_err}"
+                        )
+
+                    skills_generated += 1
+                    task_logger.info(
+                        f"Registered auto-generated skill: {skill.skill_id} "
+                        f"(confidence={skill.confidence:.2f})"
+                    )
+                except Exception as reg_err:
+                    task_logger.warning(
+                        f"Failed to register skill {skill.skill_id}: {reg_err}"
+                    )
+            else:
+                task_logger.info(
+                    f"Skill candidate {skill.skill_id} below confidence threshold "
+                    f"({skill.confidence:.2f} < {settings.skill_confidence_threshold}), skipped"
+                )
+
+        db.commit()
+        return {
+            "extracted": len(experiences),
+            "skills_generated": skills_generated,
+            "chapter_index": chapter_index,
+        }
+
+    except Exception as e:
+        task_logger.error(
+            f"Experience extraction failed for project {project_id}, "
+            f"chapter {chapter_index}: {e}",
+            exc_info=True,
+        )
+        db.rollback()
+        return {"error": str(e), "extracted": 0, "skills_generated": 0}
+
+    finally:
         db.close()

@@ -355,7 +355,140 @@ def search_core_setting(query: str, top_k: int = 3) -> str:
     return related_content
 
 
-# ===================== 文风参考范例检索 =====================
+def _get_current_skills_collection_name():
+    """获取当前项目专属的skills collection名称"""
+    return _build_collection_name(
+        prefix="skills",
+        namespace=_get_current_vector_namespace(),
+        default_name="novel_skills_default",
+    )
+
+
+def get_skill_collection():
+    client = _get_client()
+    embed = _get_embedding_func()
+    return client.get_or_create_collection(
+        name=_get_current_skills_collection_name(),
+        embedding_function=embed,
+        metadata={"description": "Auto-generated writing skills (Hermes-style)"},
+    )
+
+
+def add_skill_to_db(
+    skill_id: str,
+    skill_name: str,
+    content: str,
+    skill_type: str = "general",
+    target_character: str = "",
+    confidence: float = 0.0,
+    auto_generated: bool = True,
+):
+    """Index a skill in the vector DB for semantic retrieval.
+
+    Args:
+        skill_id: Unique skill ID (used as the document ID)
+        skill_name: Human-readable skill name
+        content: The skill body text (injection content) for semantic matching
+        skill_type: character_style / writing_style / plot_helper / user_preference
+        target_character: Character this skill targets (if any)
+        confidence: Confidence score (0.0-1.0)
+        auto_generated: Whether this skill was auto-generated
+    """
+    collection = get_skill_collection()
+    try:
+        collection.upsert(
+            documents=[content],
+            ids=[skill_id],
+            metadatas=[{
+                "skill_id": skill_id,
+                "skill_name": skill_name,
+                "skill_type": skill_type,
+                "target_character": target_character,
+                "confidence": confidence,
+                "auto_generated": int(auto_generated),
+            }],
+        )
+        logger.info(f"✅ 技能 '{skill_id}' 已同步到向量库 (type={skill_type})")
+    except Exception as e:
+        logger.error(f"❌ 技能存入向量库失败：{str(e)}")
+
+
+def search_relevant_skills(
+    query: str,
+    top_k: int = 5,
+    character_name: str | None = None,
+    min_confidence: float = 0.0,
+) -> list[dict[str, Any]]:
+    """Semantically search for skills relevant to the current context.
+
+    Args:
+        query: Search query describing the current writing context
+        top_k: Max results to return
+        character_name: If set, filter skills targeting this character
+        min_confidence: Minimum confidence threshold
+
+    Returns:
+        List of matched skill metadata dicts, sorted by relevance
+    """
+    collection = get_skill_collection()
+    try:
+        # Build ChromaDB filter
+        filter_parts: list[dict[str, Any]] = []
+        if character_name:
+            filter_parts.append(
+                {"target_character": {"$eq": character_name}}
+            )
+
+        filter_condition = None
+        if filter_parts:
+            filter_condition = {"$and": filter_parts} if len(filter_parts) > 1 else filter_parts[0]
+
+        results = collection.query(
+            query_texts=[query],
+            n_results=top_k,
+            where=filter_condition,
+        )
+    except Exception as e:
+        logger.error(f"❌ 技能检索失败：{str(e)}")
+        return []
+
+    documents = results["documents"][0]
+    metadatas = results["metadatas"][0]
+    if not documents:
+        return []
+
+    # Filter by confidence and return only metadata
+    matched: list[dict[str, Any]] = []
+    for doc, meta in zip(documents, metadatas):
+        conf = meta.get("confidence", 0.0)
+        if conf < min_confidence:
+            continue
+        matched.append({
+            "skill_id": meta.get("skill_id", ""),
+            "skill_name": meta.get("skill_name", ""),
+            "skill_type": meta.get("skill_type", "general"),
+            "target_character": meta.get("target_character", ""),
+            "confidence": conf,
+            "auto_generated": bool(meta.get("auto_generated", False)),
+            "content_preview": doc[:200],
+        })
+
+    logger.info(f"🔍 已检索到 {len(matched)} 条相关技能")
+    return matched
+
+
+def remove_skill_from_db(skill_id: str) -> bool:
+    """Remove a skill from the vector DB (e.g. when deleted)."""
+    collection = get_skill_collection()
+    try:
+        collection.delete(ids=[skill_id])
+        logger.info(f"✅ 技能 '{skill_id}' 已从向量库删除")
+        return True
+    except Exception as e:
+        if _is_missing_collection_error(e):
+            return False
+        logger.error(f"❌ 技能删除失败：{str(e)}")
+        return False
 def init_reference_collection():
     """初始化文风参考集合，加载references目录下的所有txt文件"""
     reference_collection = get_reference_collection()

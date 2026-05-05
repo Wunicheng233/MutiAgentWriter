@@ -71,8 +71,11 @@ class NovelStateServiceExceptionLoggingTests(unittest.TestCase):
             # Verify logger.warning was NOT called
             mock_warning.assert_not_called()
 
-            # Verify state was loaded correctly
-            self.assertEqual(state["characters"], {"test": "data"})
+            # Verify state was loaded and auto-upgraded to v2 profile format
+            self.assertIn("test", state["characters"])
+            self.assertEqual(state["characters"]["test"]["state"], "data")
+            self.assertIn("speech_pattern", state["characters"]["test"])
+            self.assertIn("behavior_traits", state["characters"]["test"])
 
 
 class OrchestratorPrintReplacementTests(unittest.TestCase):

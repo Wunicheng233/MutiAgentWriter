@@ -1,6 +1,5 @@
 import openai
 import time
-import threading
 from backend.utils.logger import logger
 from backend.utils.file_utils import load_prompt
 
@@ -15,44 +14,25 @@ except ImportError:
     from backend.config import API_KEYS, BASE_URL, MODELS, DEFAULT_TEMPERATURE, DEFAULT_MAX_TOKENS, TEMPERATURES, WRITER_MAX_TOKENS
     USE_NEW_CONFIG = False
 
-# ========== 优化：全局客户端缓存，每个Agent角色复用连接 ==========
-# key: agent_role, value: (client, created_timestamp)
-_client_cache: dict[str, tuple[openai.OpenAI, float]] = {}
-_client_cache_lock = threading.Lock()  # 线程安全锁，防止并发访问竞态
-_CLIENT_CACHE_MAX_SIZE = 20  # 最多缓存20个客户端实例
-_CLIENT_CACHE_TTL_SECONDS = 3600  # 1小时自动过期清理
+_client_cache: dict[str, openai.OpenAI] = {}
 
 def _get_client(agent_role: str) -> openai.OpenAI:
-    """获取或创建缓存的OpenAI客户端，复用连接（线程安全）"""
-    current_time = time.time()
+    """获取或创建OpenAI客户端"""
+    if agent_role in _client_cache:
+        return _client_cache[agent_role]
 
-    with _client_cache_lock:
-        # 先检查并清理过期的客户端
-        expired_keys = [
-            key for key, (_, created_at) in _client_cache.items()
-            if current_time - created_at > _CLIENT_CACHE_TTL_SECONDS
-        ]
-        for key in expired_keys:
-            del _client_cache[key]
+    if USE_NEW_CONFIG:
+        from backend.core.config import settings
+        api_key = settings.get_api_key_for_agent(agent_role)
+        base_url = settings.base_url
+    else:
+        api_key = API_KEYS.get(agent_role, API_KEYS.get("default", ""))
+        base_url = BASE_URL
 
-        # 如果缓存已满，清理最老的1个（简化版LRU）
-        if len(_client_cache) >= _CLIENT_CACHE_MAX_SIZE:
-            oldest_key = min(_client_cache.keys(), key=lambda k: _client_cache[k][1])
-            del _client_cache[oldest_key]
-
-        if agent_role not in _client_cache:
-            if USE_NEW_CONFIG:
-                from backend.core.config import settings
-                api_key = settings.get_api_key_for_agent(agent_role)
-                base_url = settings.base_url
-            else:
-                api_key = API_KEYS.get(agent_role, API_KEYS.get("default", ""))
-                base_url = BASE_URL
-
-            client = openai.OpenAI(api_key=api_key, base_url=base_url)
-            _client_cache[agent_role] = (client, current_time)
-            logger.debug(f"初始化{agent_role}Agent客户端并缓存")
-        return _client_cache[agent_role][0]
+    client = openai.OpenAI(api_key=api_key, base_url=base_url)
+    _client_cache[agent_role] = client
+    logger.debug(f"初始化{agent_role}Agent客户端")
+    return client
 
 def call_volc_api(
     agent_role: str,
@@ -68,6 +48,7 @@ def call_volc_api(
     perspective: str = None,
     perspective_strength: float = None,
     project_config: dict = None,
+    chapter_context: object = None,
 ) -> str:
     """
     调用火山引擎Coding Plan Pro API的通用函数
@@ -84,6 +65,7 @@ def call_volc_api(
     :param perspective: 视角类型，用于调整写作视角（如第一人称、第三人称等）
     :param perspective_strength: 视角强度，0-1之间的浮点数，控制视角转换的强度
     :param project_config: 项目配置字典，包含项目级别的全局配置参数
+    :param chapter_context: ChapterContext 对象，用于动态技能检索（Hermes-style）
     :return: API返回的文本内容
     """
     # 不同Agent差异化温度配置（从配置读取）
@@ -119,6 +101,7 @@ def call_volc_api(
             perspective=perspective,
             perspective_strength=perspective_strength,
             project_config=project_config,
+            chapter_context=chapter_context,
         )
         if client is None:
             client = _get_client(agent_role)
@@ -187,11 +170,10 @@ def call_volc_api(
             return result
         except Exception as e:
             remaining_retries -= 1
-            logger.error(f"{agent_role} Agent调用失败：{e}，剩余重试次数：{remaining_retries}")
-            # 连接出错时清除缓存，下次重新创建，注意加锁保护
-            with _client_cache_lock:
-                if agent_role in _client_cache:
-                    del _client_cache[agent_role]
+            logger.error(f"{agent_role} Agent调用失败：{type(e).__name__}: {e}，剩余重试次数：{remaining_retries}", exc_info=True)
+            # 连接出错时清除缓存，下次重新创建
+            if agent_role in _client_cache:
+                del _client_cache[agent_role]
             if remaining_retries <= 0:
                 logger.error(f"{agent_role} Agent已重试{max_retries}次仍失败，放弃重试")
                 raise RuntimeError(f"{agent_role} Agent调用失败，已达到最大重试次数: {e}") from e

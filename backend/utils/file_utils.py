@@ -69,6 +69,7 @@ def load_prompt(
     perspective: str = None,
     perspective_strength: float = None,
     project_config: dict = None,
+    chapter_context: object = None,
 ) -> str:
     """
     从prompts文件夹加载对应Agent的提示词
@@ -78,6 +79,7 @@ def load_prompt(
     :param perspective: 旧版作家视角ID，若指定会映射到内置 Skill（兼容旧项目）
     :param perspective_strength: 旧版视角注入强度 (0.0-1.0)
     :param project_config: 项目配置，支持 config.skills.enabled
+    :param chapter_context: ChapterContext 对象，用于动态技能检索（Hermes-style）
     :return: 提示词内容
     """
     # 第一步：加载基础提示词文件
@@ -126,6 +128,7 @@ def load_prompt(
         assembled_skills = SkillAssembler().assemble(
             agent_name,
             project_config=skill_project_config,
+            chapter_context=chapter_context,
         )
         content = inject_skill_layer(content, assembled_skills)
     except Exception as e:

@@ -1,0 +1,14 @@
+allow_plot_adjustment: true
+chapter_word_count: 2000
+content_type: full_novel
+core_hook: 项目代码中的注释似乎在对他说话
+core_requirement: 悬疑氛围，层层递进，每章结尾有钩子
+end_chapter: 5
+genre: 悬疑
+novel_description: 程序员林夜接手了一个神秘的旧项目，代码中隐藏着前同事留下的诡异线索。随着他深入调查，发现这个项目可能与一起未解的失踪案有关。
+novel_name: 迷雾之窗
+skip_chapter_confirmation: true
+skip_plan_confirmation: true
+start_chapter: 1
+target_platform: 网络小说
+total_words: 10000

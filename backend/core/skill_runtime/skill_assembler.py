@@ -1,11 +1,13 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from . import safety_filter
 from . import strength_trimmer
 from .skill_registry import Skill, SkillRegistry, is_author_style_skill
+from backend.core.learning.chapter_context import ChapterContext
+from backend.utils.logger import logger
 
 
 @dataclass(frozen=True)
@@ -16,11 +18,17 @@ class AssembledSkill:
 
 
 class SkillAssembler:
-    """Match enabled project skills to an agent and render their injection text."""
+    """Match enabled project skills to an agent and render their injection text.
+
+    Supports two selection modes:
+    1. Static: Skills enabled in project_config (existing behavior)
+    2. Dynamic: Skills matched via ChromaDB against ChapterContext (Hermes-style)
+    """
 
     AGENT_ALLOWLIST = {"planner", "writer", "revise", "critic", "revise_local_patch", "stitch"}
     AUTHOR_STYLE_CHAR_BUDGET = 4200
     HELPER_SKILL_CHAR_BUDGET = 2600
+    CONTEXT_SKILL_MAX = 3  # Max dynamically matched skills to include
 
     def __init__(
         self,
@@ -33,14 +41,15 @@ class SkillAssembler:
         agent_name: str,
         *,
         project_config: dict[str, Any] | None = None,
+        chapter_context: ChapterContext | None = None,
     ) -> list[AssembledSkill]:
         if agent_name not in self.AGENT_ALLOWLIST:
             return []
 
-        enabled = self._enabled_skill_entries(project_config)
+        # 1. Static skills from project config (existing behavior)
         assembled: list[AssembledSkill] = []
         selected_author_style = False
-        for entry in enabled:
+        for entry in self._enabled_skill_entries(project_config):
             skill_id = str(entry.get("skill_id") or "")
             skill = self.registry.load_skill(skill_id)
             if skill is None or not self._applies_to_agent(skill, agent_name, entry):
@@ -67,14 +76,75 @@ class SkillAssembler:
             if rendered:
                 assembled.append(AssembledSkill(skill=skill, rendered_content=rendered, config=config))
 
+        # 2. Dynamic skills matched via ChromaDB (Hermes-style)
+        if chapter_context is not None:
+            dynamic_skills = self._retrieve_dynamic_skills(agent_name, chapter_context)
+            seen_ids = {a.skill.id for a in assembled}
+            for skill in dynamic_skills:
+                if skill.id in seen_ids:
+                    continue  # Already included from project config
+                config = {"strength": max(skill.confidence, 0.3)}
+                raw_content = skill.injection_for(agent_name)
+                trimmed = strength_trimmer.trim_by_strength(raw_content, strength=config["strength"])
+                trimmed = self._trim_to_budget(
+                    trimmed,
+                    self.HELPER_SKILL_CHAR_BUDGET,
+                    prefer_style_sections=False,
+                )
+                if not trimmed:
+                    continue
+                rendered = safety_filter.filter_unsafe_content(trimmed, mode="style_only")
+                if rendered:
+                    assembled.append(AssembledSkill(skill=skill, rendered_content=rendered, config=config))
+                    seen_ids.add(skill.id)
+
         return sorted(
             assembled,
             key=lambda item: (
                 0 if is_author_style_skill(item.skill) else 1,
+                # Dynamic skills that match current characters get a boost
+                -1 if (
+                    chapter_context is not None
+                    and item.skill.target_character
+                    and item.skill.target_character in chapter_context.characters_involved
+                ) else 0,
                 item.skill.priority,
                 item.skill.id,
             ),
         )
+
+    def _retrieve_dynamic_skills(
+        self,
+        agent_name: str,
+        chapter_context: ChapterContext,
+    ) -> list[Skill]:
+        """Use ChromaDB to find skills relevant to the current chapter context."""
+        try:
+            from backend.utils.vector_db import search_relevant_skills
+
+            query_parts = list(chapter_context.characters_involved)
+            if chapter_context.plot_stage and chapter_context.plot_stage != "unknown":
+                query_parts.append(chapter_context.plot_stage)
+            query_parts.append(chapter_context.chapter_type)
+            query = " ".join(query_parts)
+
+            results = search_relevant_skills(
+                query=query,
+                top_k=self.CONTEXT_SKILL_MAX,
+                character_name=chapter_context.characters_involved[0] if chapter_context.characters_involved else None,
+            )
+        except Exception as e:
+            logger.debug(f"动态技能检索失败: {e}")
+            return []
+
+        skills: list[Skill] = []
+        for match in results:
+            skill_id = match.get("skill_id", "")
+            skill = self.registry.load_skill(skill_id)
+            if skill is not None and self._applies_to_agent(skill, agent_name, {"skill_id": skill_id}):
+                skills.append(skill)
+
+        return skills
 
     def _enabled_skill_entries(self, project_config: dict[str, Any] | None) -> list[dict[str, Any]]:
         if not project_config:

@@ -39,6 +39,10 @@ class Skill:
     injection_content: str = ""
     injection_by_agent: dict[str, str] = field(default_factory=dict)
     path: Path | None = None
+    # Auto-generated skill metadata (Hermes-style)
+    confidence: float = 0.0
+    source_chapters: list[int] = field(default_factory=list)
+    target_character: str = ""
 
     def injection_for(self, agent_name: str) -> str:
         return (
@@ -60,6 +64,10 @@ class Skill:
             "config_schema": self.config_schema,
             "safety_tags": self.safety_tags,
             "dependencies": self.dependencies,
+            "confidence": self.confidence,
+            "target_character": self.target_character,
+            "source_chapters": self.source_chapters,
+            "auto_generated": "auto_generated" in (self.tags or []),
         }
 
 
@@ -129,6 +137,10 @@ class SkillRegistry:
             injection_content=body,
             injection_by_agent=injection_by_agent,
             path=skill_dir,
+            # Auto-generated skill metadata
+            confidence=float(metadata.get("confidence") or 0.0),
+            source_chapters=list(metadata.get("source_chapters") or []),
+            target_character=str(metadata.get("target") or ""),
         )
         self._cache[skill_id] = skill
         return skill
@@ -161,6 +173,10 @@ class SkillRegistry:
             "config_schema": dict(frontmatter.get("config_schema") or self._default_config_schema()),
             "safety_tags": list(frontmatter.get("safety_tags") or ["safe_for_all"]),
             "dependencies": list(frontmatter.get("dependencies") or []),
+            # Hermes-style auto-generated skill metadata
+            "confidence": frontmatter.get("confidence", 0.0),
+            "source_chapters": frontmatter.get("source_chapters", []),
+            "target": frontmatter.get("target", ""),
         }
 
     def _default_config_schema(self) -> dict[str, Any]:
@@ -196,3 +212,55 @@ class SkillRegistry:
         if not isinstance(frontmatter, dict):
             frontmatter = {}
         return frontmatter, body
+
+    # ------------------------------------------------------------------
+    # Dynamic skill registration (Hermes-style)
+    # ------------------------------------------------------------------
+
+    def register_skill(self, skill_id: str, skill_md_content: str) -> Skill:
+        """Dynamically register a new skill by writing its SKILL.md to disk.
+
+        The skill is immediately available via the registry cache.
+
+        Args:
+            skill_id: Unique identifier (used as directory name)
+            skill_md_content: Full SKILL.md content (frontmatter + body)
+
+        Returns:
+            The newly registered Skill instance.
+        """
+        skill_dir = self.skills_dir / skill_id
+        skill_dir.mkdir(parents=True, exist_ok=True)
+        skill_path = skill_dir / "SKILL.md"
+        skill_path.write_text(skill_md_content.strip(), encoding="utf-8")
+
+        # Invalidate cache entry so load_skill re-reads from disk
+        self._cache.pop(skill_id, None)
+        skill = self.load_skill(skill_id)
+        if skill is None:
+            raise SkillValidationError(
+                f"Failed to load registered skill '{skill_id}' from {skill_path}"
+            )
+        return skill
+
+    def list_auto_generated_skills(self) -> list[Skill]:
+        """List all skills tagged as auto_generated."""
+        return [
+            skill for skill in self.list_skills()
+            if "auto_generated" in (skill.tags or [])
+        ]
+
+    def get_skills_by_character(self, character_name: str) -> list[Skill]:
+        """Find skills targeting a specific character (case-insensitive)."""
+        char_lower = character_name.lower()
+        return [
+            skill for skill in self.list_skills()
+            if skill.target_character.lower() == char_lower
+        ]
+
+    def get_skills_by_type(self, skill_type: str) -> list[Skill]:
+        """Find skills with a specific type tag (e.g. 'character_style', 'writing_style')."""
+        return [
+            skill for skill in self.list_skills()
+            if skill_type in (skill.tags or [])
+        ]

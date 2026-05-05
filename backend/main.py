@@ -48,7 +48,7 @@ async def lifespan(app: FastAPI):
     # 启动时验证关键配置
     _validate_startup_config()
     # 启动时创建表（开发环境）
-    # create_tables()
+    create_tables()
     yield
     # 关闭时清理
     pass

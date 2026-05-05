@@ -13,7 +13,7 @@ from backend.utils.logger import logger
 
 
 DEFAULT_NOVEL_STATE: dict[str, Any] = {
-    "schema_version": "novel_state_v1",
+    "schema_version": "novel_state_v2",
     "characters": {},
     "timeline": [],
     "foreshadows": {},
@@ -25,6 +25,48 @@ DEFAULT_NOVEL_STATE: dict[str, Any] = {
     },
     "updated_at": None,
 }
+
+# ------------------------------------------------------------------
+# Character profile helpers (Hermes-style character memory)
+# Each character is stored as a dict with these optional keys:
+#
+#   state             – current dynamic state (e.g. "已受伤，左臂中箭")
+#   speech_pattern    – observed dialogue traits
+#   behavior_traits   – observed behavioral patterns
+#   last_appearance   – last chapter index where this character appeared
+#   appearance_count  – total chapters the character has appeared in
+#
+# Old format (string) is auto-upgraded on load.
+# ------------------------------------------------------------------
+
+DEFAULT_CHARACTER_PROFILE: dict[str, Any] = {
+    "state": "",
+    "speech_pattern": {
+        "traits": [],
+        "avoid": [],
+        "confidence": 0.0,
+        "observations": [],
+    },
+    "behavior_traits": {
+        "patterns": [],
+        "confidence": 0.0,
+        "observations": [],
+    },
+    "last_appearance": 0,
+    "appearance_count": 0,
+}
+
+
+def _ensure_character_profile(char_value: Any) -> dict:
+    """Upgrade a legacy (string) character value to the new dict format."""
+    if isinstance(char_value, dict):
+        profile = deepcopy(DEFAULT_CHARACTER_PROFILE)
+        profile.update(char_value)
+        return profile
+    # Legacy string format: "已受伤，在第5章左臂中箭"
+    base = deepcopy(DEFAULT_CHARACTER_PROFILE)
+    base["state"] = str(char_value)
+    return base
 
 
 class NovelStateService:
@@ -51,11 +93,18 @@ class NovelStateService:
                 logger.warning(f"加载状态文件失败，使用默认状态: {type(e).__name__}: {e}")
         for key, default_value in DEFAULT_NOVEL_STATE.items():
             state.setdefault(key, deepcopy(default_value))
+
+        # Auto-upgrade legacy character format (string → dict profile)
+        characters = state.get("characters", {})
+        if isinstance(characters, Mapping):
+            for char_name in list(characters.keys()):
+                characters[char_name] = _ensure_character_profile(characters[char_name])
+
         return state
 
     def save_state(self, state: Mapping[str, Any]) -> dict[str, Any]:
         saved = deepcopy(dict(state))
-        saved["schema_version"] = "novel_state_v1"
+        saved["schema_version"] = "novel_state_v2"
         saved["updated_at"] = datetime.utcnow().isoformat()
         if self.state_path:
             content = json.dumps(saved, ensure_ascii=False, indent=2)
@@ -189,7 +238,80 @@ class NovelStateService:
 
         return self.save_state(state)
 
-    def snapshot(self, chapter_index: int | None = None) -> dict[str, Any]:
+    # ------------------------------------------------------------------
+    # Character memory (Hermes-style)
+    # ------------------------------------------------------------------
+
+    def record_character_observation(
+        self,
+        character_name: str,
+        observation_type: str,
+        content: str,
+        chapter_index: int = 0,
+    ) -> dict[str, Any]:
+        """Record an observation about a character's speech or behavior.
+
+        Observations are accumulated over time. When enough consistent
+        observations exist, the ExperienceExtractor can aggregate them
+        into a Character Skill.
+
+        Args:
+            character_name: The character's name (e.g. "林舟")
+            observation_type: "speech" | "behavior"
+            content: Free-text description of the observation
+            chapter_index: Chapter where this was observed
+        """
+        state = self.load_state()
+        characters = state.setdefault("characters", {})
+        profile = _ensure_character_profile(characters.get(character_name))
+        key = "speech_pattern" if observation_type == "speech" else "behavior_traits"
+        target = profile.setdefault(key, {})
+        observations = target.setdefault("observations", [])
+        observations.append({
+            "content": content,
+            "chapter": chapter_index,
+            "recorded_at": datetime.utcnow().isoformat(),
+        })
+        profile["last_appearance"] = max(profile.get("last_appearance", 0), chapter_index)
+        profile["appearance_count"] = profile.get("appearance_count", 0) + 1
+        characters[character_name] = profile
+        return self.save_state(state)
+
+    def build_character_profile(
+        self,
+        character_name: str,
+    ) -> dict[str, Any]:
+        """Get a consolidated character profile for skill distillation.
+
+        Returns the full profile dict, or an empty DEFAULT_CHARACTER_PROFILE
+        if the character hasn't been observed yet.
+        """
+        state = self.load_state()
+        raw = state.get("characters", {}).get(character_name, {})
+        if not raw:
+            return dict(DEFAULT_CHARACTER_PROFILE)
+        return _ensure_character_profile(raw)
+
+    def get_all_character_names(self) -> list[str]:
+        """Return names of all characters tracked in NovelState."""
+        state = self.load_state()
+        chars = state.get("characters", {})
+        if isinstance(chars, Mapping):
+            return list(chars.keys())
+        return []
+
+    def has_sufficient_observations(self, character_name: str, min_count: int = 3) -> bool:
+        """Check if a character has enough observations for skill distillation."""
+        profile = self.build_character_profile(character_name)
+        count = (
+            len(profile.get("speech_pattern", {}).get("observations", []))
+            + len(profile.get("behavior_traits", {}).get("observations", []))
+        )
+        return count >= min_count
+
+    # ------------------------------------------------------------------
+    # Snapshot
+    # ------------------------------------------------------------------
         return {
             "chapter_index": chapter_index,
             "state": self.load_state(),
@@ -201,8 +323,12 @@ class NovelStateService:
         if not isinstance(characters, Mapping) or not characters:
             return "角色动态：暂无新增动态状态。"
         lines = ["角色动态："]
-        for name, state in list(characters.items())[:8]:
-            lines.append(f"- {name}: {state}")
+        for name, profile in list(characters.items())[:8]:
+            profile = _ensure_character_profile(profile)
+            state = profile.get("state", "") or ""
+            traits = profile.get("speech_pattern", {}).get("traits", [])
+            extras = f" [特质: {', '.join(traits)}]" if traits else ""
+            lines.append(f"- {name}: {state}{extras}")
         return "\n".join(lines)
 
     @staticmethod
