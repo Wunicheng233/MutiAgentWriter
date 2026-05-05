@@ -129,6 +129,13 @@ const ExportIcon = () => (
   </svg>
 )
 
+const HistoryIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10"/>
+    <polyline points="12 6 12 12 16 14"/>
+  </svg>
+)
+
 // 全局导航项
 const globalNavItems: NavConfigItem[] = [
   { id: 'dashboard', label: '书架', path: '/dashboard', icon: <ProjectIcon /> },
@@ -156,6 +163,7 @@ export const NavRail: React.FC<NavRailProps> = React.memo(({ collapsed, onToggle
     { id: 'reader', label: '阅读器', path: 'read/1', activePath: 'read', icon: <ReaderIcon /> },
     { id: 'editor', label: '编辑器', path: 'editor/1', activePath: 'editor', icon: <EditorIcon /> },
     { id: 'analytics', label: '质量中心', path: 'analytics', icon: <AnalyticsIcon /> },
+    { id: 'versions', label: '历史版本', path: 'versions', icon: <HistoryIcon /> },
     { id: 'export', label: '导出分享', path: 'export', icon: <ExportIcon /> },
   ], [])
 

@@ -75,7 +75,7 @@ describe('NavRail', () => {
       )
 
       const navItems = screen.getAllByTestId('nav-item')
-      expect(navItems).toHaveLength(7)
+      expect(navItems).toHaveLength(8)
 
       await fireEvent.click(navItems[3])
       expect(mockNavigate).toHaveBeenCalledWith('/projects/42/read/1')
@@ -100,7 +100,7 @@ describe('NavRail', () => {
       )
 
       const navItems = screen.getAllByTestId('nav-item')
-      expect(navItems).toHaveLength(7)
+      expect(navItems).toHaveLength(8)
     })
 
     it('点击"概览"导航项跳转到 /projects/${id}/overview', async () => {
@@ -147,7 +147,8 @@ describe('NavRail', () => {
         { path: 'read/1', index: 3 },
         { path: 'editor/1', index: 4 },
         { path: 'analytics', index: 5 },
-        { path: 'export', index: 6 },
+        { path: 'versions', index: 6 },
+        { path: 'export', index: 7 },
       ]
 
       testCases.forEach(({ path, index }) => {
