@@ -67,6 +67,11 @@ data/projects/**/exports/
 # Temporary review notes
 tmp-code-review.md
 
+# Remotion demo video workspace
+tools/demo-video/node_modules/
+tools/demo-video/out/
+tools/demo-video/.remotion/
+
 # Environment variables
 .env
 .env.*
