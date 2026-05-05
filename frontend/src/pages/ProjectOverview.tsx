@@ -87,6 +87,13 @@ const agentCards: AgentCardConfig[] = [
   },
 ]
 
+function getWordCountRangeLabel(target?: number): string {
+  if (typeof target !== 'number' || !Number.isFinite(target) || target <= 0) {
+    return '-'
+  }
+  return `${Math.ceil(target * 0.85)}-${Math.floor(target * 1.2)} 字`
+}
+
 function getProjectStatusColor(status: string): BadgeVariant {
   switch (status) {
     case 'draft':
@@ -373,6 +380,7 @@ export const ProjectOverview: React.FC = () => {
   const runSummary = getRunSummary(data)
   const targetStart = config?.start_chapter ?? 1
   const targetEnd = config?.end_chapter ?? 10
+  const chapterWordTarget = config?.chapter_word_count ?? 2000
   const completedChapters = data.chapters?.length ?? 0
   const completedChapterRatio = targetEnd >= targetStart ? Math.min((completedChapters / (targetEnd - targetStart + 1)) * 100, 100) : 0
   // 项目已完成时强制显示100%，否则用任务进度或章节完成率
@@ -431,7 +439,8 @@ export const ProjectOverview: React.FC = () => {
           </div>
           <div className="flex flex-wrap gap-4 text-sm text-[var(--text-secondary)]">
             <span>目标章节 {targetStart} - {targetEnd}</span>
-            <span>每章约 {config?.chapter_word_count ?? 2000} 字</span>
+            <span>每章目标 {chapterWordTarget} 字</span>
+            <span>目标区间 {getWordCountRangeLabel(chapterWordTarget)}</span>
             {config?.genre && <span>{config.genre}</span>}
             {tokenStats && tokenStats.total_tokens > 0 && (
               <span>约 ${tokenStats.estimated_cost_usd.toFixed(4)}</span>

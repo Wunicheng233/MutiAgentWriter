@@ -13,6 +13,11 @@ import {
 import type { EnabledSkillConfig } from '../types/api'
 import { useToast } from '../components/toastContext'
 
+function getWordCountRangeLabel(target: number): string {
+  if (!Number.isFinite(target) || target <= 0) return '-'
+  return `${Math.ceil(target * 0.85)}-${Math.floor(target * 1.2)} 字`
+}
+
 export const ProjectOutline: React.FC = () => {
   const { id } = useParams<{ id: string }>()
   const projectId = id ? parseInt(id, 10) : 0
@@ -232,12 +237,15 @@ export const ProjectOutline: React.FC = () => {
             )}
             <div className="grid grid-cols-2 gap-4">
               <Input
-                label="每章字数"
+                label="每章目标字数"
                 type="number"
                 value={configForm.chapter_word_count}
                 onChange={(event: React.ChangeEvent<HTMLInputElement>) => setConfigForm(prev => ({ ...prev, chapter_word_count: parseInt(event.target.value, 10) || 0 }))}
               />
             </div>
+            <p className="text-sm text-[var(--text-secondary)]">
+              当前目标区间 {getWordCountRangeLabel(configForm.chapter_word_count)}；系统低于 85% 会定向扩写，高于 120% 才压缩。
+            </p>
             <div className="grid grid-cols-2 gap-4">
               <Input
                 label="起始章节"

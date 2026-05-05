@@ -13,12 +13,15 @@ from typing import List, Optional, Dict
 
 from backend.utils.logger import logger
 from backend.core.config import settings
+from backend.core.word_count_policy import WordCountPolicy
 
 
 # 默认配置
 DEFAULT_CONFIG = {
     "guardrails": {
         "word_count": {
+            "min_ratio": 0.85,
+            "max_ratio": 1.20,
             "tolerance": 0.20
         },
         "paragraph": {
@@ -158,7 +161,12 @@ def filter_sensitive_words(content: str, sensitive_words: Dict = None) -> tuple[
 
 # ================ G-04: 字数偏离检查 ================
 
-def check_word_count(content: str, target_count: int, tolerance: float = 0.30) -> tuple[bool, int, float, str]:
+def check_word_count(
+    content: str,
+    target_count: int,
+    tolerance: float = 0.30,
+    policy: WordCountPolicy | None = None,
+) -> tuple[bool, int, float, str]:
     """
     检查字数偏离。
 
@@ -168,19 +176,13 @@ def check_word_count(content: str, target_count: int, tolerance: float = 0.30) -
     返回：
         (是否在范围内, 实际字数, 偏离比例, 警告信息)
     """
-    # 中文环境下，字数约等于字符数（去除空格和换行符的影响）
-    text = content.replace('\n', '').replace('\r', '').replace(' ', '')
-    actual = len(text)
-
-    safe_target = max(1, target_count)
-    deviation = (actual - safe_target) / safe_target
-
-    if abs(deviation) <= tolerance:
-        return True, actual, deviation, ""
-    elif deviation > 0:
-        return False, actual, deviation, f"字数超标 {deviation:.1%}（目标{target_count}，实际{actual}）"
-    else:
-        return False, actual, deviation, f"字数不足 {abs(deviation):.1%}（目标{target_count}，实际{actual}）"
+    if policy is None:
+        policy = WordCountPolicy(
+            min_ratio=max(0.01, 1 - float(tolerance)),
+            max_ratio=max(0.01, 1 + float(tolerance)),
+        )
+    evaluation = policy.evaluate(content, target_count)
+    return evaluation.passed, evaluation.actual_word_count, evaluation.deviation, evaluation.message
 
 
 # ================ G-05: 段落长度检查 ================
@@ -410,12 +412,19 @@ def run_system_guardrails(
 
     # G-04: 字数检查（P2优先级）
     target_word_count = context.get('target_word_count', 2000)
-    word_tolerance = guardrails_config.get("word_count", {}).get("tolerance", 0.30)
-    in_range, actual, dev, msg = check_word_count(current, target_word_count, word_tolerance)
+    word_count_policy = WordCountPolicy.from_config(
+        context.get("word_count_policy") or guardrails_config.get("word_count") or {}
+    )
+    in_range, actual, dev, msg = check_word_count(current, target_word_count, policy=word_count_policy)
+    min_count, max_count = word_count_policy.target_range(target_word_count)
     result.metrics['word_count'] = actual
     result.metrics['word_count_deviation'] = dev
+    result.metrics['word_count_min'] = min_count
+    result.metrics['word_count_max'] = max_count
+    result.metrics['word_count_status'] = "ok" if in_range else ("over" if dev > 0 else "under")
     if not in_range:
         result.warnings.append(msg)
+        result.violations['G-04'] = msg
 
     # G-05: 段落长度（P2优先级）
     para_config = guardrails_config.get("paragraph", {})

@@ -44,6 +44,11 @@ function isPositiveNumber(value: unknown): boolean {
   return typeof value === 'number' && Number.isFinite(value) && value > 0
 }
 
+function getWordCountRange(target?: number): string {
+  if (typeof target !== 'number' || !Number.isFinite(target) || target <= 0) return '-'
+  return `${Math.ceil(target * 0.85)} - ${Math.floor(target * 1.2)} 字`
+}
+
 function validateStep(stepId: number, formData: ProjectCreate): string {
   if (stepId === 1 && !formData.novel_name?.trim()) {
     return '请输入作品名称'
@@ -58,7 +63,7 @@ function validateStep(stepId: number, formData: ProjectCreate): string {
   }
   if (stepId === 4) {
     if (!isPositiveNumber(formData.chapter_word_count)) {
-      return '每章字数必须大于 0'
+      return '每章目标字数必须大于 0'
     }
     if (!isPositiveNumber(formData.start_chapter) || !isPositiveNumber(formData.end_chapter)) {
       return '章节范围必须是正整数'
@@ -162,6 +167,7 @@ export const CreateProject: React.FC = () => {
   const selectedContentType = contentTypes.find(type => type.value === formData.content_type)
   const workName = formData.novel_name?.trim()
   const workDescription = formData.novel_description?.trim()
+  const wordCountRange = getWordCountRange(formData.chapter_word_count)
   const skills = skillsData?.skills ?? []
   const enabledSkills = formData.config?.skills?.enabled ?? []
   const selectedSkillNames = enabledSkills.map(item => {
@@ -363,13 +369,16 @@ export const CreateProject: React.FC = () => {
                     onChange={event => updateForm({ target_platform: event.target.value })}
                   />
                   <Input
-                    label="每章字数"
+                    label="每章目标字数"
                     type="number"
                     placeholder="2000"
                     value={formData.chapter_word_count || ''}
                     onChange={event => updateForm({ chapter_word_count: parseInt(event.target.value, 10) || 0 })}
                   />
                 </div>
+                <p className="text-sm text-[var(--text-secondary)]">
+                  系统会优先控制在目标字数的 85%-120%，当前目标区间：{wordCountRange}。质量优先，必要时会触发定向扩写或压缩。
+                </p>
 
                 <div className="grid gap-4 md:grid-cols-2">
                   <Input
@@ -440,6 +449,11 @@ export const CreateProject: React.FC = () => {
                     <p className="mt-1 font-medium">{getModeLabel(formData)}</p>
                   </div>
                   <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-4">
+                    <p className="text-sm text-[var(--text-secondary)]">每章目标字数</p>
+                    <p className="mt-1 font-medium">{formData.chapter_word_count || '未填写'} 字</p>
+                    <p className="mt-1 text-xs text-[var(--text-secondary)]">目标区间 {wordCountRange}</p>
+                  </div>
+                  <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-4">
                     <p className="text-sm text-[var(--text-secondary)]">创作风格</p>
                     <p className="mt-1 font-medium">{selectedSkillNames.join('、') || '未选择'}</p>
                   </div>
@@ -453,6 +467,7 @@ export const CreateProject: React.FC = () => {
                     <p><span className="text-[var(--text-secondary)]">题材：</span>{formData.genre || '未填写'}</p>
                     <p><span className="text-[var(--text-secondary)]">核心钩子：</span>{formData.core_hook || '未填写'}</p>
                     <p><span className="text-[var(--text-secondary)]">目标总字数：</span>{formData.total_words || '未填写'}</p>
+                    <p><span className="text-[var(--text-secondary)]">每章目标字数：</span>{formData.chapter_word_count || '未填写'} 字（目标区间 {wordCountRange}）</p>
                     <p><span className="text-[var(--text-secondary)]">发布平台：</span>{formData.target_platform || '未填写'}</p>
                     <p><span className="text-[var(--text-secondary)]">创作风格：</span>{selectedSkillNames.join('、') || '未选择'}</p>
                     {formData.core_requirement && (

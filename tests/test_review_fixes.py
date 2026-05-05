@@ -734,6 +734,8 @@ class ReviewFixRegressionTests(BaseWorkflowTestCase):
         orchestrator.writer_perspective = None
         orchestrator.perspective_strength = 0.7
         orchestrator.use_perspective_critic = True
+        from backend.core.word_count_policy import WordCountPolicy
+        orchestrator.word_count_policy = WordCountPolicy(min_ratio=0.001, max_ratio=10)
         orchestrator._check_cancellation = lambda: None
         orchestrator.get_chapter_outline = lambda chapter_index: "剧情"
         orchestrator.get_target_word_count = lambda chapter_index: 1000

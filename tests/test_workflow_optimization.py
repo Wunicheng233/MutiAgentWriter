@@ -6,7 +6,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import backend.core.orchestrator as orchestrator_module
-from backend.core.orchestrator import NovelOrchestrator
+from backend.core.orchestrator import ChapterQualityGateError, NovelOrchestrator
 from backend.core.workflow_optimization import (
     apply_local_patch,
     apply_stitching_patch,
@@ -17,6 +17,7 @@ from backend.core.workflow_optimization import (
     parse_scene_anchors_from_outline,
     route_repair_strategy,
 )
+from backend.core.word_count_policy import WordCountPolicy
 
 
 DIMENSIONS = {"plot": 8, "character": 8, "hook": 8, "writing": 8, "setting": 8}
@@ -213,6 +214,7 @@ class WorkflowOptimizationOrchestratorTests(unittest.TestCase):
             orchestrator.writer_perspective = "liu-cixin"
             orchestrator.perspective_strength = 0.8
             orchestrator.use_perspective_critic = True
+            orchestrator.word_count_policy = WordCountPolicy(min_ratio=0.01, max_ratio=10)
 
             class FakeWriter:
                 def generate_chapter(self, *args, **kwargs):
@@ -317,7 +319,130 @@ class WorkflowOptimizationOrchestratorTests(unittest.TestCase):
             self.assertEqual(fake_revise.local_perspective_strength, 0.8)
             self.assertEqual(fake_revise.stitch_perspective, "liu-cixin")
             self.assertEqual(fake_revise.stitch_perspective_strength, 0.8)
-            self.assertEqual(issues, [])
+
+    def test_final_word_gate_uses_expansion_repair_for_under_target_content(self):
+        orchestrator = NovelOrchestrator.__new__(NovelOrchestrator)
+        orchestrator.word_count_policy = WordCountPolicy()
+        orchestrator._check_cancellation = lambda: None
+        orchestrator._report_workflow_event = lambda message: None
+
+        captured = {}
+
+        def fake_apply_repair_batch(
+            chapter_index,
+            current_content,
+            issues,
+            chapter_outline,
+            revise_round,
+        ):
+            captured["issues"] = issues
+            captured["revise_round"] = revise_round
+            return "第1章 标题\n\n" + ("字" * 1800), True, []
+
+        orchestrator._apply_repair_batch = fake_apply_repair_batch
+
+        content, passed, issues = orchestrator._enforce_final_word_count(
+            chapter_index=1,
+            current_content="第1章 标题\n\n" + ("字" * 1200),
+            chapter_outline="本章目标：主角收到辞职信",
+            target_word_count=2000,
+            budgeted_scene_plan={
+                "beats": [
+                    {"beat_id": "opening", "goal": "承接上一章", "word_budget": 400},
+                    {"beat_id": "conflict", "goal": "辞职信制造冲突", "word_budget": 900},
+                ]
+            },
+            revise_round=2,
+        )
+
+        self.assertTrue(passed)
+        self.assertEqual(content, "第1章 标题\n\n" + ("字" * 1800))
+        self.assertEqual(issues, [])
+        self.assertEqual(captured["revise_round"], 3)
+        self.assertEqual(captured["issues"][0]["issue_type"], "word_count_under_target")
+        self.assertEqual(captured["issues"][0]["fix_strategy"], "expansion_repair")
+
+    def test_skip_confirm_generation_fails_when_final_word_gate_remains_invalid(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            project_dir = Path(tmpdir)
+            (project_dir / "chapters").mkdir(parents=True)
+            orchestrator = NovelOrchestrator.__new__(NovelOrchestrator)
+            orchestrator.output_dir = project_dir
+            orchestrator.project_dir = str(project_dir)
+            orchestrator.info_path = project_dir / "info.json"
+            orchestrator.plan = "plan"
+            orchestrator.setting_bible = "主角：林岚"
+            orchestrator.chapter_outlines = [
+                {
+                    "chapter_num": 1,
+                    "title": "第一章",
+                    "outline": "本章目标：收到异常短信",
+                    "target_word_count": 1000,
+                }
+            ]
+            orchestrator.req = {"content_type": "novel"}
+            orchestrator.content_type = "novel"
+            orchestrator.novel_name = "Test Novel"
+            orchestrator.chapter_word_count = "1000"
+            orchestrator.skip_chapter_confirm = True
+            orchestrator.dimension_scores = {"plot": [], "character": [], "hook": [], "writing": [], "setting": []}
+            orchestrator.evaluation_reports = []
+            orchestrator.scene_anchor_plans = []
+            orchestrator.budgeted_scene_plans = []
+            orchestrator.repair_traces = []
+            orchestrator.stitching_reports = []
+            orchestrator.novel_state_snapshots = []
+            orchestrator.chapter_scores = []
+            orchestrator.writer_perspective = None
+            orchestrator.perspective_strength = 0.7
+            orchestrator.use_perspective_critic = True
+            orchestrator.word_count_policy = WordCountPolicy()
+            orchestrator._check_cancellation = lambda: None
+            from backend.core.novel_state_service import NovelStateService
+            orchestrator.novel_state_service = NovelStateService(project_dir)
+
+            class FakeWriter:
+                def generate_chapter(self, *args, **kwargs):
+                    return "第1章 标题\n\n太短。"
+
+            class FakeCritic:
+                def critic_chapter(self, *args, **kwargs):
+                    return True, 8, DIMENSIONS, [], {}
+
+            class FakeRevise:
+                def revise_chapter(self, original_chapter, issues, setting_bible, **kwargs):
+                    return original_chapter
+
+            orchestrator.writer = FakeWriter()
+            orchestrator.critic = FakeCritic()
+            orchestrator.revise = FakeRevise()
+
+            original_search_related = orchestrator_module.search_related_chapter_content
+            original_search_core = orchestrator_module.search_core_setting
+            original_add_chapter = orchestrator_module.add_chapter_to_db
+            from backend.core.config import settings as config_settings
+            original_consistency = config_settings.enable_chapter_consistency_pass
+            original_validator = config_settings.enable_novel_state_validator
+            try:
+                orchestrator_module.search_related_chapter_content = lambda *args, **kwargs: ""
+                orchestrator_module.search_core_setting = lambda *args, **kwargs: ""
+                orchestrator_module.add_chapter_to_db = lambda *args, **kwargs: None
+                config_settings.enable_chapter_consistency_pass = False
+                config_settings.enable_novel_state_validator = False
+
+                with self.assertRaises(ChapterQualityGateError) as error:
+                    orchestrator.run_chapter_generation(1)
+            finally:
+                orchestrator_module.search_related_chapter_content = original_search_related
+                orchestrator_module.search_core_setting = original_search_core
+                orchestrator_module.add_chapter_to_db = original_add_chapter
+                config_settings.enable_chapter_consistency_pass = original_consistency
+                config_settings.enable_novel_state_validator = original_validator
+
+            self.assertEqual(error.exception.chapter_index, 1)
+            self.assertTrue((project_dir / "chapters" / "chapter_1.txt").exists())
+            self.assertEqual(orchestrator.chapter_scores[0]["passed"], False)
+            self.assertEqual(orchestrator.chapter_scores[0]["issues"][-1]["issue_type"], "word_count_under_target")
 
 
 if __name__ == "__main__":

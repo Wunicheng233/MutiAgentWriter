@@ -494,6 +494,10 @@ def generate_novel_task(
                     "core_hook": project.config.get("core_hook", ""),
                     "target_platform": project.config.get("target_platform", "网络小说"),
                     "chapter_word_count": project.config.get("chapter_word_count", 2000),
+                    "word_count_policy": project.config.get("word_count_policy", {
+                        "min_ratio": 0.85,
+                        "max_ratio": 1.20,
+                    }),
                     "start_chapter": effective_start_chapter,
                     "end_chapter": effective_end_chapter,
                     "skip_plan_confirmation": default_skip_plan,

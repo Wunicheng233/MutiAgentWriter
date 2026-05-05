@@ -32,7 +32,10 @@
 | `{{world_bible}}` | `string` | 完整的设定圣经。包含人物档案、世界规则、时代校准。 | Planner 输出 |
 | `{{chapter_outline}}` | `string` | 当前章节的大纲条目。包含 **本章目标、核心冲突/爽点、结尾钩子**。 | Planner 输出的大纲表当前行 |
 | `{{previous_summary}}` | `string` | 前文摘要。系统自动生成，包含最近500字内容及关键事件。 | 系统记忆模块 |
-| `{{target_word_count}}` | `integer` | 本章目标字数。作为参考，非硬性约束。 | 用户设定 |
+| `{{target_word_count}}` | `integer` | 本章目标字数。 | 用户设定 |
+| `{{min_word_count}}` | `integer` | 本章最低合规字数。 | 字数策略 |
+| `{{max_word_count}}` | `integer` | 本章最高合规字数。 | 字数策略 |
+| `{{budgeted_scene_plan}}` | `string` | 本章预算化叙事拍点。 | Context Assembler |
 | `{{content_type}}` | `enum` | `novel` / `short_story` / `script`。影响叙事密度。 | 项目类型 |
 
 ---
@@ -44,6 +47,9 @@
 - **本章目标**：本节要完成的事件。
 - **核心冲突/爽点**：本节情绪最高点或主要矛盾。
 - **结尾钩子**：本节如何收尾，勾住读者。
+
+**Step 1.5: 读取字数预算**
+读取 `{{budgeted_scene_plan}}`，按拍点预算组织篇幅。本章目标为 `{{target_word_count}}` 字，合规区间为 `{{min_word_count}}-{{max_word_count}}` 字。不得低于最低字数；不得为了凑字数新增主线外事件，只能围绕已有拍点扩展场景压力、动作、心理、对话和氛围。
 
 **Step 2: 加载人物与规则**
 从 `{{world_bible}}` 中提取：

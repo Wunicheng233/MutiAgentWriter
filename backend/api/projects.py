@@ -59,6 +59,10 @@ router = APIRouter(prefix="/projects", tags=["projects"])
 
 # 项目文件根目录
 PROJECTS_ROOT = settings.root_dir / "data" / "projects"
+DEFAULT_WORD_COUNT_POLICY = {
+    "min_ratio": 0.85,
+    "max_ratio": 1.20,
+}
 
 
 def _backfill_quality_scores_if_missing(db: Session, project: Project) -> None:
@@ -210,6 +214,26 @@ def _validate_generation_config(config: dict | None, *, project_name: str | None
                 detail="目标总字数必须大于 0",
             )
 
+    policy = config.get("word_count_policy") or DEFAULT_WORD_COUNT_POLICY
+    if not isinstance(policy, dict):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="字数策略配置格式不正确",
+        )
+    try:
+        min_ratio = float(policy.get("min_ratio", DEFAULT_WORD_COUNT_POLICY["min_ratio"]))
+        max_ratio = float(policy.get("max_ratio", DEFAULT_WORD_COUNT_POLICY["max_ratio"]))
+    except (TypeError, ValueError):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="字数策略配置必须是数字",
+        )
+    if min_ratio <= 0 or max_ratio <= 0 or min_ratio > max_ratio:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="字数策略配置范围不正确",
+        )
+
 def _project_config_from_create(project_in: ProjectCreate) -> dict[str, Any]:
     novel_name = _clean_text(project_in.novel_name) or _clean_text(project_in.name)
     name = _clean_text(project_in.name) or novel_name
@@ -231,6 +255,7 @@ def _project_config_from_create(project_in: ProjectCreate) -> dict[str, Any]:
         "skip_plan_confirmation": project_in.skip_plan_confirmation or False,
         "skip_chapter_confirmation": project_in.skip_chapter_confirmation or False,
         "allow_plot_adjustment": project_in.allow_plot_adjustment or False,
+        "word_count_policy": DEFAULT_WORD_COUNT_POLICY.copy(),
     }
     skills_config = _initial_skills_config(project_in.config)
     if skills_config is not None:

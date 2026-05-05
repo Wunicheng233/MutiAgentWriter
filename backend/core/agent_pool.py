@@ -71,11 +71,27 @@ class WriterAgent(BaseAgent):
     def __init__(self, client: openai.OpenAI, model: str, temperature: float):
         super().__init__("writer", client, model, temperature)
 
-    def generate_chapter(self, setting_bible: str, plan: str, chapter_num: int, prev_chapter_end: str = "", related_content: str = "", constraints: dict = None, target_word_count: int = 2000, content_type: str = "novel", perspective: str = None, perspective_strength: float = 0.7) -> str:
+    def generate_chapter(
+        self,
+        setting_bible: str,
+        plan: str,
+        chapter_num: int,
+        prev_chapter_end: str = "",
+        related_content: str = "",
+        constraints: dict = None,
+        target_word_count: int = 2000,
+        content_type: str = "novel",
+        perspective: str = None,
+        perspective_strength: float = 0.7,
+        budgeted_scene_plan: str = "",
+        word_count_policy: dict | None = None,
+    ) -> str:
         return writer_agent.generate_chapter(
             setting_bible, plan, chapter_num, prev_chapter_end, related_content, constraints, target_word_count, content_type,
             perspective=perspective, perspective_strength=perspective_strength,
             project_config=getattr(self, "project_config", None),
+            budgeted_scene_plan=budgeted_scene_plan,
+            word_count_policy=word_count_policy,
             client=self.client
         )
 

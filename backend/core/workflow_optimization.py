@@ -46,6 +46,8 @@ _REPAIR_STRATEGY_BY_TYPE = {
     "情绪生硬": "rhythm_continuity_repair",
     "字数不足": "expansion_repair",
     "字数超标": "compression_tension_rewrite",
+    "word_count_under_target": "expansion_repair",
+    "word_count_over_target": "compression_tension_rewrite",
 }
 
 

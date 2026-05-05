@@ -75,7 +75,7 @@ class SkillAPITests(BaseWorkflowTestCase):
         )
 
         self.assertEqual(response.status_code, 400)
-        self.assertIn("项目名称", response.json()["detail"])
+        self.assertIn("作品名称", response.json()["detail"])
 
     def test_create_project_rejects_invalid_generation_numbers(self):
         """创建项目时拒绝会导致生成流程不确定的章节与字数参数。"""

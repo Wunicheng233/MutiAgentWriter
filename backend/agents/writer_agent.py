@@ -4,6 +4,7 @@ from backend.utils.volc_engine import call_volc_api
 from backend.utils.logger import logger
 from backend.utils.vector_db import search_reference_style, search_related_chapter_content, search_core_setting
 from backend.core.config import settings
+from backend.core.word_count_policy import WordCountPolicy
 
 WRITER_MAX_TOKENS = settings.writer_max_tokens
 
@@ -52,6 +53,8 @@ def generate_chapter(
     perspective: str = None,
     perspective_strength: float = 0.7,
     project_config: dict = None,
+    budgeted_scene_plan: str = "",
+    word_count_policy: dict = None,
 ) -> str:
     constraints_text = ""
     if constraints:
@@ -69,6 +72,8 @@ def generate_chapter(
 
     # 检索文风参考范例（从用户提供的优秀参考文中找相似风格）
     style_ref = search_reference_style(plan, top_k=2)
+    policy = WordCountPolicy.from_config(word_count_policy or project_config)
+    min_word_count, max_word_count = policy.target_range(target_word_count)
 
     user_input = f"""
 =========================================
@@ -79,13 +84,15 @@ def generate_chapter(
 {constraints_text}
 相关历史内容：{related_content}
 {style_ref}
+本章字数预算与叙事拍点：
+{budgeted_scene_plan or "（无预算拍点，按章节大纲与目标区间连续写作）"}
 本章剧情节点：请从以下策划方案里提取第{chapter_num}章的核心剧情节点并生成正文：{plan}
 上一章结尾内容：{prev_chapter_end if prev_chapter_end else "（第1章无，留空）"}
 
 重要强制要求：
 1. 【已经说了一万遍还是要再说】本章开头第一行必须先输出 `第X章 章节标题`，缺了标题不合格，章节号必须正确
 2. 【**最关键连贯性要求**】本章开头必须直接顺畅承接上面给的「上一章结尾内容」，故事从**上一章停的地方**直接开始，不能凭空跳转到新场景，必须让读者感觉是连贯读下来的，中间没有断片。这一条非常非常重要！
-3. 【**字数硬要求，非常重要，绝对不能违反**】本章字数**必须严格控制在 {target_word_count} 字左右**，误差不能超过200字。**这是硬要求，必须达到！** 如果大纲描述简洁（通常表格格式大纲都是一句话简述），请你**必须主动大幅铺展细节**：场景环境描写要充分展开，人物外貌表情动作要细致刻画，内心心理活动要充分展现，氛围情绪要渲染到位。绝对不能因为大纲简洁就只干巴巴写完剧情骨架，你必须把一句话大纲扩展成 full-text 小说。仅仅写完大纲列出的情节节点是远远不够的，必须填充足够的细节才能达到字数要求！
+3. 【**字数硬要求，非常重要，绝对不能违反**】本章目标字数为 {target_word_count} 字，合规区间为 **{min_word_count}-{max_word_count} 字**。必须按上面的预算拍点分配篇幅，低于下限不合格。不能为了凑字数新增主线外事件，只能围绕已有拍点扩展场景压力、人物动作表情、心理活动、对话和氛围描写。
 4. 【必须】如果故事涉及现实历史时间点，必须严格符合对应年代的科技发展水平，禁止超前概念出现在错误的时间点
 5. 【必须】严格遵守上面的全局世界观强制约束，人设、时间线、设定不能有任何矛盾
 6. 【必须】完整输出本章全部内容，不能只写一半就截断
@@ -104,6 +111,9 @@ def generate_chapter(
         "previous_summary": prev_chapter_end,
         "content_type": content_type,
         "target_word_count": str(target_word_count),
+        "min_word_count": str(min_word_count),
+        "max_word_count": str(max_word_count),
+        "budgeted_scene_plan": budgeted_scene_plan,
     }
 
     # 第一次生成（client为None时call_volc_api内部会处理）

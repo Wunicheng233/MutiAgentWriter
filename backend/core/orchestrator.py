@@ -25,6 +25,11 @@ from .agent_pool import (
 from .evaluation_harness import evaluate_chapter_with_critic
 from .novel_state_service import NovelStateService
 from .system_guardrails import run_system_guardrails, GuardrailResult
+from .budgeted_scene_plan import (
+    build_budgeted_scene_plan as build_budgeted_scene_plan_payload,
+    format_budgeted_scene_plan_for_prompt,
+)
+from .word_count_policy import WordCountPolicy
 from .workflow_optimization import (
     apply_local_patch,
     build_local_repair_context,
@@ -66,31 +71,17 @@ def _merge_guardrail_issues_into_review(guardrail_result: GuardrailResult, issue
         是否仍然通过（True 表示不需要因为 guardrails 强制失败）
     """
     ok = True
-    word_count = guardrail_result.metrics.get("word_count", 0)
     target_wc = max(1, int(guardrail_context.get("target_word_count", 2000)))
-    if word_count > 0:
-        deviation = abs(word_count - target_wc) / target_wc
-        if deviation > 0.30:
-            if word_count < target_wc:
-                issues.append(
-                    {
-                        "type": "字数不足",
-                        "location": "全文",
-                        "fix": (
-                            f"本章实际只有 {word_count} 字，目标要求 {target_wc} 字，请大幅扩展细节："
-                            "增加场景描写、人物动作表情、心理活动、环境氛围描写，把字数增加到目标要求。"
-                        ),
-                    }
-                )
-            else:
-                issues.append(
-                    {
-                        "type": "字数超标",
-                        "location": "全文",
-                        "fix": f"本章实际 {word_count} 字，目标要求 {target_wc} 字，请适当精简内容，压缩到目标字数范围内。",
-                    }
-                )
-            ok = False
+    word_count_policy = WordCountPolicy.from_config(guardrail_context.get("word_count_policy"))
+    evaluation = word_count_policy.evaluate(guardrail_result.corrected_content, target_wc)
+    if not evaluation.passed:
+        issues.append(
+            word_count_policy.build_issue(
+                evaluation,
+                budgeted_scene_plan=guardrail_context.get("budgeted_scene_plan"),
+            )
+        )
+        ok = False
 
     if "G-05" in guardrail_result.violations:
         issues.append(
@@ -155,6 +146,16 @@ class GenerationCancelledError(Exception):
         super().__init__(message)
 
 
+class ChapterQualityGateError(Exception):
+    """异常：章节最终质量门未通过，不能作为正常完成继续推进。"""
+
+    def __init__(self, chapter_index: int, current_content: str, issues: List[Dict]):
+        self.chapter_index = chapter_index
+        self.current_content = current_content
+        self.issues = issues
+        super().__init__(f"Chapter {chapter_index} failed final quality gate")
+
+
 class NovelOrchestrator:
     """
     小说生成流程编排器（精简架构版）
@@ -199,6 +200,7 @@ class NovelOrchestrator:
         self.perspective_strength = perspective_strength
         self.use_perspective_critic = use_perspective_critic
         self.project_config = project_config or {}
+        self.word_count_policy = WordCountPolicy.from_config(self.project_config)
 
         # 创建 OpenAI 客户端，使用用户 API Key（如果提供了）
         api_key = user_api_key or settings.get_api_key_for_agent("default")
@@ -237,6 +239,7 @@ class NovelOrchestrator:
         self.chapter_scores: List[Dict] = []
         self.evaluation_reports: List[Dict] = []
         self.scene_anchor_plans: List[Dict] = []
+        self.budgeted_scene_plans: List[Dict] = []
         self.repair_traces: List[Dict] = []
         self.stitching_reports: List[Dict] = []
         self.novel_state_snapshots: List[Dict] = []
@@ -405,6 +408,7 @@ class NovelOrchestrator:
         info["evaluation_reports"] = evaluation_reports
         info["workflow_optimization_version"] = "quality-workflow-v2"
         info["scene_anchor_plans"] = getattr(self, "scene_anchor_plans", [])
+        info["budgeted_scene_plans"] = getattr(self, "budgeted_scene_plans", [])
         info["repair_traces"] = getattr(self, "repair_traces", [])
         info["stitching_reports"] = getattr(self, "stitching_reports", [])
         info["novel_state_snapshots"] = getattr(self, "novel_state_snapshots", [])
@@ -465,6 +469,11 @@ class NovelOrchestrator:
         self.allow_plot_adjustment = self.req.get("allow_plot_adjustment", False)
         self.content_type = _normalize_content_type(self.req.get("content_type", "novel"))
         self.req["content_type"] = self.content_type
+        self.word_count_policy = WordCountPolicy.from_config(
+            {"word_count_policy": self.req.get("word_count_policy")}
+            if self.req.get("word_count_policy") is not None
+            else self.project_config
+        )
         self.original_requirement = f"{core_requirement} | {target_platform} | {self.chapter_word_count}字/章"
 
         # 创建输出文件夹
@@ -738,6 +747,32 @@ class NovelOrchestrator:
         ]
         return "\n\n".join(part for part in context_parts if part), scene_anchors
 
+    def build_budgeted_scene_plan(
+        self,
+        chapter_index: int,
+        chapter_plot: str,
+        scene_anchors: List[Dict],
+        target_word_count: int,
+    ) -> Dict:
+        """Attach word budgets to existing anchors without adding an LLM step."""
+        if not hasattr(self, "word_count_policy"):
+            self.word_count_policy = WordCountPolicy()
+        plan = build_budgeted_scene_plan_payload(
+            chapter_index=chapter_index,
+            chapter_outline=chapter_plot,
+            scene_anchors=scene_anchors,
+            target_word_count=target_word_count,
+            policy=self.word_count_policy,
+        )
+        if not hasattr(self, "budgeted_scene_plans"):
+            self.budgeted_scene_plans = []
+        self.budgeted_scene_plans.append(plan)
+        self._report_workflow_event(
+            f"Workflow v2 · 第{chapter_index}章 Budgeted Scene Plan："
+            f"{len(plan.get('beats', []))} 个拍点，目标区间 {plan.get('min_word_count')}-{plan.get('max_word_count')} 字"
+        )
+        return plan
+
     def route_repair_strategy(self, issue: Dict) -> str:
         """Select a local repair strategy for an issue."""
         return route_repair_strategy(issue)
@@ -886,6 +921,52 @@ class NovelOrchestrator:
         )
         return current_content, False, repair_trace
 
+    def _enforce_final_word_count(
+        self,
+        chapter_index: int,
+        current_content: str,
+        chapter_outline: str,
+        target_word_count: int,
+        budgeted_scene_plan: Dict | None,
+        revise_round: int,
+    ) -> Tuple[str, bool, List[Dict]]:
+        """Run the final deterministic word-count gate before confirmation/save."""
+        evaluation = self.word_count_policy.evaluate(current_content, target_word_count)
+        if evaluation.passed:
+            return current_content, True, []
+
+        issue = self.word_count_policy.build_issue(
+            evaluation,
+            budgeted_scene_plan=budgeted_scene_plan,
+        )
+        self._report_workflow_event(
+            f"Workflow v2 · 第{chapter_index}章 Final Word Gate：{evaluation.message}，执行定向修复"
+        )
+        repaired_content, _, _ = self._apply_repair_batch(
+            chapter_index=chapter_index,
+            current_content=current_content,
+            issues=[issue],
+            chapter_outline=chapter_outline,
+            revise_round=revise_round + 1,
+        )
+        final_evaluation = self.word_count_policy.evaluate(repaired_content, target_word_count)
+        if final_evaluation.passed:
+            self._report_workflow_event(
+                f"Workflow v2 · 第{chapter_index}章 Final Word Gate：修复后已进入目标区间 "
+                f"{final_evaluation.min_word_count}-{final_evaluation.max_word_count} 字"
+            )
+            return repaired_content, True, []
+
+        final_issue = self.word_count_policy.build_issue(
+            final_evaluation,
+            budgeted_scene_plan=budgeted_scene_plan,
+        )
+        self._report_workflow_event(
+            f"Workflow v2 · 第{chapter_index}章 Final Word Gate：修复后仍不达标，"
+            f"{final_evaluation.message}"
+        )
+        return repaired_content, False, [final_issue]
+
     def run_stitching_pass(self, chapter_index: int, chapter_content: str, repair_trace: List[Dict]) -> str:
         """Repair transitions and voice after local patches."""
         stitcher = getattr(self.revise, "stitch_chapter", None)
@@ -1027,6 +1108,13 @@ class NovelOrchestrator:
             related_content,
             target_word_count,
         )
+        budgeted_scene_plan = self.build_budgeted_scene_plan(
+            chapter_index,
+            chapter_plot,
+            scene_anchors,
+            target_word_count,
+        )
+        budgeted_scene_plan_text = format_budgeted_scene_plan_for_prompt(budgeted_scene_plan)
 
         # Step 1: Writer 生成章节初稿
         content_type = self.req.get("content_type", "novel")
@@ -1041,6 +1129,8 @@ class NovelOrchestrator:
             content_type=content_type,
             perspective=self.writer_perspective,
             perspective_strength=self.perspective_strength,
+            budgeted_scene_plan=budgeted_scene_plan_text,
+            word_count_policy=self.word_count_policy.to_dict(),
         )
         logger.info(f"第 {chapter_index} 章初稿生成完成")
         self._check_cancellation()
@@ -1062,6 +1152,8 @@ class NovelOrchestrator:
             'previous_chapter_num': chapter_index - 1,
             'target_word_count': target_word_count,
             'protagonist_name': protagonist_name,
+            'word_count_policy': self.word_count_policy.to_dict(),
+            'budgeted_scene_plan': budgeted_scene_plan,
         }
 
         guardrail_result: GuardrailResult = run_system_guardrails(draft, guardrail_context)
@@ -1157,6 +1249,23 @@ class NovelOrchestrator:
             for dim, score_val in dimensions.items():
                 if dim in self.dimension_scores:
                     self.dimension_scores[dim].append(score_val)
+
+        current_content, _, word_count_issues = self._enforce_final_word_count(
+            chapter_index=chapter_index,
+            current_content=current_content,
+            chapter_outline=chapter_outline,
+            target_word_count=target_word_count,
+            budgeted_scene_plan=budgeted_scene_plan,
+            revise_round=revise_count,
+        )
+        if word_count_issues:
+            issues.extend(word_count_issues)
+            passed = False
+            if self.skip_chapter_confirm:
+                self.save_chapter(chapter_index, current_content)
+                self._record_chapter_quality_score(chapter_index, score, False, issues)
+                self._persist_quality_summary()
+                raise ChapterQualityGateError(chapter_index, current_content, issues)
 
         if not passed:
             logger.warning(
@@ -1394,7 +1503,7 @@ class NovelOrchestrator:
                     issues = []
                     try:
                         current_content, score, passed, issues = self.run_chapter_generation(chapter_num, prev_chapter_end)
-                    except (WaitingForConfirmationError, GenerationCancelledError):
+                    except (WaitingForConfirmationError, GenerationCancelledError, ChapterQualityGateError):
                         raise
                     except Exception as e:
                         logger.error(f"第 {chapter_num} 章生成过程发生异常: {e}，尝试保存已有内容继续")
@@ -1476,7 +1585,7 @@ class NovelOrchestrator:
                 "output_dir": str(self.output_dir),
             }
 
-        except (WaitingForConfirmationError, GenerationCancelledError):
+        except (WaitingForConfirmationError, GenerationCancelledError, ChapterQualityGateError):
             raise
         except Exception as e:
             logger.error(f"系统运行出错：{e}", exc_info=True)
