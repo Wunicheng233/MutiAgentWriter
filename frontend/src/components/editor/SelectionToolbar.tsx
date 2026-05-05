@@ -3,21 +3,31 @@ import { useSelectionStore } from '../../store/useSelectionStore'
 import { RewriteMode } from '../../utils/selectionAI'
 import { Button } from '../v2'
 import { Popover, PopoverTrigger, PopoverContent } from '../v2/Popover/Popover'
+import {
+  PolishIcon,
+  ExpandIcon,
+  ShortenIcon,
+  DramaticIcon,
+  ForeshadowIcon,
+  ContinuityIcon,
+  CloseIcon,
+  ChevronDownIcon,
+} from './icons'
 
 interface SelectionToolbarProps {
   onAction: (mode: RewriteMode) => void
 }
 
 const quickActions = [
-  { mode: RewriteMode.POLISH, label: '润色', icon: '✨' },
-  { mode: RewriteMode.EXPAND, label: '扩写', icon: '🔄' },
-  { mode: RewriteMode.SHORTEN, label: '缩写', icon: '✂️' },
+  { mode: RewriteMode.POLISH, label: '润色', Icon: PolishIcon },
+  { mode: RewriteMode.EXPAND, label: '扩写', Icon: ExpandIcon },
+  { mode: RewriteMode.SHORTEN, label: '缩写', Icon: ShortenIcon },
 ]
 
 const moreActions = [
-  { mode: RewriteMode.MORE_DRAMATIC, label: '增强戏剧张力', icon: '😱' },
-  { mode: RewriteMode.ADD_FORESHADOWING, label: '植入伏笔', icon: '📍' },
-  { mode: RewriteMode.CHECK_CONTINUITY, label: '检查连续性', icon: '🧐' },
+  { mode: RewriteMode.MORE_DRAMATIC, label: '增强戏剧张力', Icon: DramaticIcon },
+  { mode: RewriteMode.ADD_FORESHADOWING, label: '植入伏笔', Icon: ForeshadowIcon },
+  { mode: RewriteMode.CHECK_CONTINUITY, label: '检查连续性', Icon: ContinuityIcon },
 ]
 
 export const SelectionToolbar: React.FC<SelectionToolbarProps> = ({ onAction }) => {
@@ -45,7 +55,7 @@ export const SelectionToolbar: React.FC<SelectionToolbarProps> = ({ onAction }) 
           onClick={() => onAction(action.mode)}
           className="text-sm"
         >
-          <span className="mr-1">{action.icon}</span>
+          <action.Icon className="w-4 h-4 mr-1" />
           {action.label}
         </Button>
       ))}
@@ -55,7 +65,8 @@ export const SelectionToolbar: React.FC<SelectionToolbarProps> = ({ onAction }) 
       <Popover open={showMore} onOpenChange={setShowMore}>
         <PopoverTrigger>
           <Button variant="tertiary" size="sm">
-            更多 ⌄
+            更多
+            <ChevronDownIcon className="w-3 h-3 ml-1" />
           </Button>
         </PopoverTrigger>
         <PopoverContent align="start" side="bottom">
@@ -69,7 +80,7 @@ export const SelectionToolbar: React.FC<SelectionToolbarProps> = ({ onAction }) 
                   setShowMore(false)
                 }}
               >
-                <span>{action.icon}</span>
+                <action.Icon className="w-4 h-4" />
                 {action.label}
               </button>
             ))}
@@ -81,7 +92,7 @@ export const SelectionToolbar: React.FC<SelectionToolbarProps> = ({ onAction }) 
         className="ml-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors p-1"
         onClick={hideToolbar}
       >
-        ✕
+        <CloseIcon className="w-4 h-4" />
       </button>
     </div>
   )

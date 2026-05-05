@@ -4,6 +4,17 @@ import { RewriteMode, buildRewritePrompt } from '../../utils/selectionAI'
 import { renderDiffHtml } from '../../utils/textDiff'
 import { aiChat } from '../../utils/endpoints'
 import { Button } from '../v2'
+import {
+  PolishIcon,
+  ExpandIcon,
+  ShortenIcon,
+  DramaticIcon,
+  ForeshadowIcon,
+  PencilIcon,
+  CloseIcon,
+  SpinnerIcon,
+  CharacterIcon,
+} from './icons'
 
 interface SelectionAIPanelProps {
   isOpen: boolean
@@ -13,11 +24,11 @@ interface SelectionAIPanelProps {
 }
 
 const actionButtons = [
-  { mode: RewriteMode.POLISH, label: '润色', icon: '✨' },
-  { mode: RewriteMode.EXPAND, label: '扩写', icon: '🔄' },
-  { mode: RewriteMode.SHORTEN, label: '缩写', icon: '✂️' },
-  { mode: RewriteMode.MORE_DRAMATIC, label: '增强张力', icon: '😱' },
-  { mode: RewriteMode.ADD_FORESHADOWING, label: '植入伏笔', icon: '📍' },
+  { mode: RewriteMode.POLISH, label: '润色', Icon: PolishIcon },
+  { mode: RewriteMode.EXPAND, label: '扩写', Icon: ExpandIcon },
+  { mode: RewriteMode.SHORTEN, label: '缩写', Icon: ShortenIcon },
+  { mode: RewriteMode.MORE_DRAMATIC, label: '增强张力', Icon: DramaticIcon },
+  { mode: RewriteMode.ADD_FORESHADOWING, label: '植入伏笔', Icon: ForeshadowIcon },
 ]
 
 export const SelectionAIPanel: React.FC<SelectionAIPanelProps> = ({
@@ -77,12 +88,15 @@ export const SelectionAIPanel: React.FC<SelectionAIPanelProps> = ({
     >
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border-default)]">
-        <h3 className="font-medium text-[var(--text-primary)]">✏️ 选区智能操作</h3>
+        <h3 className="font-medium text-[var(--text-primary)] flex items-center gap-2">
+          <PencilIcon className="w-4 h-4" />
+          选区智能操作
+        </h3>
         <button
           onClick={onClose}
           className="text-[var(--text-muted)] hover:text-[var(--text-primary)]"
         >
-          ✕
+          <CloseIcon className="w-4 h-4" />
         </button>
       </div>
 
@@ -104,7 +118,7 @@ export const SelectionAIPanel: React.FC<SelectionAIPanelProps> = ({
             onClick={() => handleAction(action.mode)}
             disabled={isLoading || !selectedText}
           >
-            <span className="mr-1">{action.icon}</span>
+            <action.Icon className="w-4 h-4 mr-1" />
             {action.label}
           </Button>
         ))}
@@ -113,7 +127,10 @@ export const SelectionAIPanel: React.FC<SelectionAIPanelProps> = ({
       {/* Character voice section */}
       {characters.length > 0 && (
         <div className="px-4 py-3 border-t border-[var(--border-default)]">
-          <p className="text-xs text-[var(--text-muted)] mb-2">🎭 角色语气改写：</p>
+          <p className="text-xs text-[var(--text-muted)] mb-2 flex items-center gap-1">
+            <CharacterIcon className="w-3 h-3" />
+            角色语气改写：
+          </p>
           <div className="flex flex-wrap gap-2">
             {characters.map(char => (
               <Button
@@ -134,7 +151,7 @@ export const SelectionAIPanel: React.FC<SelectionAIPanelProps> = ({
       <div className="flex-1 overflow-y-auto p-4">
         {isLoading ? (
           <div className="text-center py-8">
-            <div className="animate-spin text-2xl mb-2">⏳</div>
+            <SpinnerIcon className="w-8 h-8 mx-auto mb-3 text-[var(--accent-primary)]" />
             <p className="text-sm text-[var(--text-secondary)]">AI 正在改写中...</p>
           </div>
         ) : result ? (
