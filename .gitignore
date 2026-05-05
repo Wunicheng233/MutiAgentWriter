@@ -28,6 +28,11 @@ ENV/
 *.env
 *.venv
 
+# JavaScript dependencies and accidental root npm artifacts
+# The frontend package lock lives in frontend/package-lock.json.
+/node_modules/
+/package-lock.json
+
 # IDE
 .vscode/
 .idea/
@@ -43,6 +48,13 @@ vector_db/
 logs/
 static_export/
 *.log
+
+# Local database/runtime state
+pgdata/
+
+# Generated frontend reports/build artifacts
+frontend/coverage/
+frontend/storybook-static/
 
 # Runtime project artifacts
 # Keep generated novel drafts, score snapshots, and dynamic state local.
