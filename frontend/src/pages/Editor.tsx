@@ -34,6 +34,10 @@ import {
   chapterContentToPreviewText,
   renderSafeMarkdown,
 } from '../utils/safeContent'
+import SelectionToolbar from '../components/editor/SelectionToolbar'
+import SelectionAIPanel from '../components/editor/SelectionAIPanel'
+import { useSelectionStore } from '../store/useSelectionStore'
+import { RewriteMode } from '../utils/selectionAI'
 
 // 精简架构：仅 4 个核心 Agent
 const agentNames = [
@@ -71,6 +75,44 @@ export const Editor: React.FC = () => {
   const [liveTaskStatus, setLiveTaskStatus] = useState<string | null>(null)
   const [liveCurrentChapter, setLiveCurrentChapter] = useState<number | null>(null)
   const [inspectorOpen, setInspectorOpen] = useState(false)
+  const [selectionPanelOpen, setSelectionPanelOpen] = useState(false)
+  const { setSelection, hideToolbar, selectedText } = useSelectionStore()
+
+  // Handle selection from TipTap editor
+  const handleSelectionUpdate = useCallback(({ editor }: { editor: any }) => {
+    const { from, to } = editor.state.selection
+    const selectedText = editor.state.doc.textBetween(from, to, '\n')
+
+    // Only show toolbar for meaningful selections (5+ chars)
+    if (selectedText && selectedText.length >= 5) {
+      // Get selection coordinates
+      const { view } = editor
+      const start = view.coordsAtPos(from)
+      const end = view.coordsAtPos(to)
+
+      // Position toolbar in the middle of selection horizontally, above selection
+      const toolbarLeft = start.left + (end.left - start.left) / 2
+
+      setSelection(
+        selectedText,
+        from,
+        to,
+      )
+      useSelectionStore.getState().setToolbarPosition({
+        top: start.top + window.scrollY,
+        left: toolbarLeft,
+      })
+    } else {
+      hideToolbar()
+    }
+  }, [setSelection, hideToolbar])
+
+  // Handle rewrite action from toolbar
+  const handleRewriteAction = useCallback((mode: RewriteMode) => {
+    setSelectionPanelOpen(true)
+    hideToolbar()
+    // We could auto-trigger the action here instead of making user click again
+  }, [hideToolbar])
 
   const setCurrentProject = useProjectStore(state => state.setCurrentProject)
   const setProjectStatus = useProjectStore(state => state.setProjectStatus)
@@ -222,8 +264,26 @@ export const Editor: React.FC = () => {
       // 防抖自动保存
       debouncedSave(editor.getHTML())
     },
+    onSelectionUpdate: handleSelectionUpdate,
     immediatelyRender: false,
   })
+
+  // Apply AI rewrite result to editor
+  const handleApplyRewrite = useCallback((newText: string) => {
+    if (!editor) return
+
+    const { selectionStart, selectionEnd } = useSelectionStore.getState()
+
+    // Replace selected text in editor
+    editor.chain()
+      .focus()
+      .setTextSelection({ from: selectionStart, to: selectionEnd })
+      .deleteSelection()
+      .insertContent(newText)
+      .run()
+
+    setSelectionPanelOpen(false)
+  }, [editor])
 
   // 当编辑器实例创建完成或者chapter内容加载完成，填充到编辑器
   // 只在编辑器为空时填充，不会覆盖用户已做的修改
@@ -764,6 +824,9 @@ export const Editor: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Selection Floating Toolbar */}
+      <SelectionToolbar onAction={handleRewriteAction} />
     </div>
   )
 }
