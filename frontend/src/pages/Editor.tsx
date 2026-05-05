@@ -298,6 +298,29 @@ export const Editor: React.FC = () => {
     }
   }, [editor, chapter?.content])
 
+  // Click outside to hide selection toolbar
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+
+      // Don't hide if clicking toolbar or panel
+      if (
+        target.closest('[data-selection-toolbar]') ||
+        target.closest('[data-selection-panel]')
+      ) {
+        return
+      }
+
+      // Hide toolbar when clicking elsewhere
+      if (useSelectionStore.getState().isToolbarVisible) {
+        hideToolbar()
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [hideToolbar])
+
   // 手动保存
   const handleSave = () => {
     if (editor) {
