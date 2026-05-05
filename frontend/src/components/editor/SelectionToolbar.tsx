@@ -79,17 +79,19 @@ export const SelectionToolbar: React.FC<SelectionToolbarProps> = ({ onAction }) 
         <PopoverContent align="start" side="bottom">
           <div className="flex flex-col gap-1 p-2 min-w-[160px]">
             {moreActions.map(action => (
-              <button
+              <Button
                 key={action.mode}
-                className="flex items-center gap-2 px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] rounded-md transition-colors text-left"
+                variant="tertiary"
+                size="sm"
+                className="justify-start"
                 onClick={() => {
                   onAction(action.mode)
                   setShowMore(false)
                 }}
+                leftIcon={<action.Icon className="w-4 h-4" />}
               >
-                <action.Icon className="w-4 h-4" />
                 {action.label}
-              </button>
+              </Button>
             ))}
           </div>
         </PopoverContent>
