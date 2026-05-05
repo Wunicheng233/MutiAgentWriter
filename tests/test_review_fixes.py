@@ -26,6 +26,8 @@ from backend.schemas import ChapterUpdate, UserCreate
 from backend.core.orchestrator import NovelOrchestrator
 from tests.base import BaseWorkflowTestCase
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
 
 class ReviewFixRegressionTests(BaseWorkflowTestCase):
     def test_shared_project_endpoint_loads_related_project(self):
@@ -985,7 +987,7 @@ class ReviewFixRegressionTests(BaseWorkflowTestCase):
         self.assertEqual(response.status_code, 401)
 
     def test_editor_navigation_uses_registered_route_pattern(self):
-        editor_source = Path("/Users/nobody1/Desktop/project/writer/frontend/src/pages/Editor.tsx").read_text(encoding="utf-8")
+        editor_source = (REPO_ROOT / "frontend/src/pages/Editor.tsx").read_text(encoding="utf-8")
         # Editor 现在使用 useParams 从路由获取 id 和 chapterIndex，不直接硬编码路径
         self.assertIn("useParams", editor_source)
         # 安全的空值处理：三元运算符而非非空断言
@@ -993,7 +995,7 @@ class ReviewFixRegressionTests(BaseWorkflowTestCase):
         self.assertIn("Number.isNaN", editor_source)  # 确认有 NaN 检查
 
     def test_workflow_detail_routes_plan_confirmation_to_overview_confirm_modal(self):
-        source = Path("/Users/nobody1/Desktop/project/writer/frontend/src/pages/WorkflowRunDetail.tsx").read_text(encoding="utf-8")
+        source = (REPO_ROOT / "frontend/src/pages/WorkflowRunDetail.tsx").read_text(encoding="utf-8")
 
         self.assertIn("overview?confirm-plan=true", source)
 

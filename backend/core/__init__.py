@@ -7,7 +7,18 @@ Core 模块 - 重构后的核心层
 """
 
 from .config import settings
-from .agent_pool import agent_pool, AgentPool
-from .orchestrator import NovelOrchestrator
 
 __all__ = ["settings", "agent_pool", "AgentPool", "NovelOrchestrator"]
+
+
+def __getattr__(name):
+    """Lazy-load heavy core exports to avoid import cycles during config setup."""
+    if name in {"agent_pool", "AgentPool"}:
+        from .agent_pool import AgentPool, agent_pool
+
+        return {"agent_pool": agent_pool, "AgentPool": AgentPool}[name]
+    if name == "NovelOrchestrator":
+        from .orchestrator import NovelOrchestrator
+
+        return NovelOrchestrator
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

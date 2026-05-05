@@ -1118,7 +1118,9 @@ class NovelOrchestrator:
         budgeted_scene_plan_text = format_budgeted_scene_plan_for_prompt(budgeted_scene_plan)
 
         # Build ChapterContext for dynamic skill retrieval
-        total_chapters = max(len(self.chapter_outlines) if self.chapter_outlines else 0, self.end_chapter, chapter_index)
+        chapter_outlines = getattr(self, "chapter_outlines", []) or []
+        end_chapter = getattr(self, "end_chapter", chapter_index) or chapter_index
+        total_chapters = max(len(chapter_outlines), end_chapter, chapter_index)
         ratio = chapter_index / max(total_chapters, 1)
         if ratio <= 0.25:
             plot_stage = "exposition"

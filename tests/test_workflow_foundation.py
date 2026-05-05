@@ -21,6 +21,15 @@ from tests.base import BaseWorkflowTestCase
 
 
 class WorkflowFoundationTests(BaseWorkflowTestCase):
+    def _run_generate_novel_task(self, task_id: str, **kwargs):
+        """Run the Celery task body without requiring a live result backend."""
+        with patch.object(writing_tasks.generate_novel_task, "update_state", return_value=None):
+            writing_tasks.generate_novel_task.push_request(id=task_id, retries=0)
+            try:
+                return writing_tasks.generate_novel_task.run(**kwargs)
+            finally:
+                writing_tasks.generate_novel_task.pop_request()
+
     def test_trigger_generation_creates_workflow_run_and_project_snapshot_artifact(self):
         owner = self._create_user("workflow_owner", "workflow_owner@example.com")
         project_dir = self.workspace / "workflow-project"
@@ -819,10 +828,12 @@ class WorkflowFoundationTests(BaseWorkflowTestCase):
         try:
             writing_tasks.SessionLocal = self.SessionLocal
             writing_tasks.NovelOrchestrator = FakeOrchestrator
-            writing_tasks.generate_novel_task.push_request(id="celery-waiting-1", retries=0)
-            result = writing_tasks.generate_novel_task.run(project_dir=str(project_dir), user_id=str(owner.id))
+            result = self._run_generate_novel_task(
+                "celery-waiting-1",
+                project_dir=str(project_dir),
+                user_id=str(owner.id),
+            )
         finally:
-            writing_tasks.generate_novel_task.pop_request()
             writing_tasks.SessionLocal = original_session_local
             writing_tasks.NovelOrchestrator = original_orchestrator
 
@@ -963,10 +974,12 @@ class WorkflowFoundationTests(BaseWorkflowTestCase):
         try:
             writing_tasks.SessionLocal = self.SessionLocal
             writing_tasks.NovelOrchestrator = FakeOrchestrator
-            writing_tasks.generate_novel_task.push_request(id="celery-success-1", retries=0)
-            result = writing_tasks.generate_novel_task.run(project_dir=str(project_dir), user_id=str(owner.id))
+            result = self._run_generate_novel_task(
+                "celery-success-1",
+                project_dir=str(project_dir),
+                user_id=str(owner.id),
+            )
         finally:
-            writing_tasks.generate_novel_task.pop_request()
             writing_tasks.SessionLocal = original_session_local
             writing_tasks.NovelOrchestrator = original_orchestrator
 
@@ -1078,15 +1091,14 @@ class WorkflowFoundationTests(BaseWorkflowTestCase):
         try:
             writing_tasks.SessionLocal = self.SessionLocal
             writing_tasks.NovelOrchestrator = ExplodingOrchestrator
-            writing_tasks.generate_novel_task.push_request(id="celery-empty-range-1", retries=0)
-            result = writing_tasks.generate_novel_task.run(
+            result = self._run_generate_novel_task(
+                "celery-empty-range-1",
                 project_dir=str(project_dir),
                 user_id=str(owner.id),
                 start_chapter=5,
                 end_chapter=4,
             )
         finally:
-            writing_tasks.generate_novel_task.pop_request()
             writing_tasks.SessionLocal = original_session_local
             writing_tasks.NovelOrchestrator = original_orchestrator
 
@@ -1161,10 +1173,12 @@ class WorkflowFoundationTests(BaseWorkflowTestCase):
         try:
             writing_tasks.SessionLocal = self.SessionLocal
             writing_tasks.NovelOrchestrator = FakeOrchestrator
-            writing_tasks.generate_novel_task.push_request(id="celery-cancel-1", retries=0)
-            result = writing_tasks.generate_novel_task.run(project_dir=str(project_dir), user_id=str(owner.id))
+            result = self._run_generate_novel_task(
+                "celery-cancel-1",
+                project_dir=str(project_dir),
+                user_id=str(owner.id),
+            )
         finally:
-            writing_tasks.generate_novel_task.pop_request()
             writing_tasks.SessionLocal = original_session_local
             writing_tasks.NovelOrchestrator = original_orchestrator
 
@@ -1947,10 +1961,12 @@ class WorkflowFoundationTests(BaseWorkflowTestCase):
         try:
             writing_tasks.SessionLocal = self.SessionLocal
             writing_tasks.NovelOrchestrator = FakeOrchestrator
-            writing_tasks.generate_novel_task.push_request(id="celery-materialize-1", retries=0)
-            result = writing_tasks.generate_novel_task.run(project_dir=str(project_dir), user_id=str(owner.id))
+            result = self._run_generate_novel_task(
+                "celery-materialize-1",
+                project_dir=str(project_dir),
+                user_id=str(owner.id),
+            )
         finally:
-            writing_tasks.generate_novel_task.pop_request()
             writing_tasks.SessionLocal = original_session_local
             writing_tasks.NovelOrchestrator = original_orchestrator
 
@@ -2018,10 +2034,12 @@ class WorkflowFoundationTests(BaseWorkflowTestCase):
         try:
             writing_tasks.SessionLocal = self.SessionLocal
             writing_tasks.NovelOrchestrator = FakeOrchestrator
-            writing_tasks.generate_novel_task.push_request(id="celery-applied-1", retries=0)
-            result = writing_tasks.generate_novel_task.run(project_dir=str(project_dir), user_id=str(owner.id))
+            result = self._run_generate_novel_task(
+                "celery-applied-1",
+                project_dir=str(project_dir),
+                user_id=str(owner.id),
+            )
         finally:
-            writing_tasks.generate_novel_task.pop_request()
             writing_tasks.SessionLocal = original_session_local
             writing_tasks.NovelOrchestrator = original_orchestrator
 
