@@ -55,6 +55,7 @@ def generate_chapter(
     project_config: dict = None,
     budgeted_scene_plan: str = "",
     word_count_policy: dict = None,
+    chapter_context: object = None,
 ) -> str:
     constraints_text = ""
     if constraints:
@@ -117,7 +118,7 @@ def generate_chapter(
     }
 
     # 第一次生成（client为None时call_volc_api内部会处理）
-    result = call_volc_api("writer", user_input, max_tokens=WRITER_MAX_TOKENS, content_type=content_type, context=context, client=client, perspective=perspective, perspective_strength=perspective_strength, project_config=project_config)
+    result = call_volc_api("writer", user_input, max_tokens=WRITER_MAX_TOKENS, content_type=content_type, context=context, client=client, perspective=perspective, perspective_strength=perspective_strength, project_config=project_config, chapter_context=chapter_context)
     fixed_result = _check_and_fix_title(result, chapter_num)
 
     if fixed_result != result:
@@ -133,6 +134,7 @@ def generate_chapter(
             perspective=perspective,
             perspective_strength=perspective_strength,
             project_config=project_config,
+            chapter_context=chapter_context,
         )
         fixed_result = _check_and_fix_title(result, chapter_num)
 

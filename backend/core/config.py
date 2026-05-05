@@ -101,6 +101,12 @@ class Settings(BaseSettings):
     enable_scene_grouped_repair: bool = Field(True, description="启用按scene分组局部修复策略")
     enable_chapter_consistency_pass: bool = Field(True, description="启用章节一致性终检（纯代码检查）")
 
+    # ========== 学习闭环 (Hermes-style) 功能开关 ==========
+    enable_experience_extraction: bool = Field(True, description="启用经验提取（每次章节生成后分析失败案例）")
+    enable_auto_skill_generation: bool = Field(True, description="启用自动技能生成（默认开启，从失败案例中自动提炼技能）")
+    skill_confidence_threshold: float = Field(0.5, description="自动生成技能的最低置信度阈值（0.0-1.0）")
+    experience_extractor_agent: str = Field("planner", description="经验提取使用的agent角色配置")
+
     # ========== 定价配置（美元 / 1K tokens） ==========
     # 默认价格适用于 OpenAI GPT-3.5/GPT-4 标准定价
     # 火山方舟等其他平台按实际计费调整

@@ -49,6 +49,7 @@ from backend.utils.vector_db import (
     add_chapter_to_db,
     reset_current_db
 )
+from backend.core.learning.chapter_context import ChapterContext
 
 
 # Severity priority mapping: higher = more important
@@ -202,28 +203,28 @@ class NovelOrchestrator:
         self.project_config = project_config or {}
         self.word_count_policy = WordCountPolicy.from_config(self.project_config)
 
-        # 创建 OpenAI 客户端，使用用户 API Key（如果提供了）
+        # 验证 API Key 配置
         api_key = user_api_key or settings.get_api_key_for_agent("default")
         if not api_key or not api_key.strip():
             raise ValueError(
                 "API Key 为空！请先在前端设置页面输入你的火山引擎 API Key，"
                 "或者在 .env 文件中配置 UNIFIED_API_KEY 环境变量。"
             )
-        base_url = settings.base_url
-        client = openai.OpenAI(api_key=api_key.strip(), base_url=base_url)
 
-        # 为每个项目创建独立的 Agent 实例，使用用户自己的 API Key
+        # 注意：不在此处创建共享 OpenAI 客户端。每个 Agent 通过 call_volc_api()
+        # 的 _get_client() 获取独立缓存的客户端，避免 Celery fork 后共享
+        # httpx 连接池导致 "Cannot send a request, as the client has been closed" 错误。
         self.planner: PlannerAgent = PlannerAgent(
-            client, settings.get_model_for_agent("planner"), settings.get_temperature_for_agent("planner")
+            None, settings.get_model_for_agent("planner"), settings.get_temperature_for_agent("planner")
         )
         self.writer: WriterAgent = WriterAgent(
-            client, settings.get_model_for_agent("writer"), settings.get_temperature_for_agent("writer")
+            None, settings.get_model_for_agent("writer"), settings.get_temperature_for_agent("writer")
         )
         self.critic: CriticAgent = CriticAgent(
-            client, settings.get_model_for_agent("critic"), settings.get_temperature_for_agent("critic")
+            None, settings.get_model_for_agent("critic"), settings.get_temperature_for_agent("critic")
         )
         self.revise: ReviseAgent = ReviseAgent(
-            client, settings.get_model_for_agent("revise"), settings.get_temperature_for_agent("revise")
+            None, settings.get_model_for_agent("revise"), settings.get_temperature_for_agent("revise")
         )
         for agent in (self.planner, self.writer, self.critic, self.revise):
             agent.project_config = self.project_config
@@ -1116,6 +1117,38 @@ class NovelOrchestrator:
         )
         budgeted_scene_plan_text = format_budgeted_scene_plan_for_prompt(budgeted_scene_plan)
 
+        # Build ChapterContext for dynamic skill retrieval
+        total_chapters = max(len(self.chapter_outlines) if self.chapter_outlines else 0, self.end_chapter, chapter_index)
+        ratio = chapter_index / max(total_chapters, 1)
+        if ratio <= 0.25:
+            plot_stage = "exposition"
+        elif ratio <= 0.50:
+            plot_stage = "rising"
+        elif ratio <= 0.75:
+            plot_stage = "climax"
+        else:
+            plot_stage = "falling"
+
+        if chapter_index <= 2:
+            chapter_type = "setup"
+        elif chapter_index >= total_chapters - 1:
+            chapter_type = "climax"
+        else:
+            chapter_type = "regular"
+
+        # Extract known character names from setting_bible
+        character_matches = re.findall(r'(?:^|\n)[-*]\s*\*{0,2}([^*\n:：,，]+?)\*{0,2}\s*[:：]', self.setting_bible or "")
+        characters_involved = list(set(m.strip() for m in character_matches if 1 < len(m.strip()) <= 6))
+
+        chapter_context = ChapterContext(
+            chapter_index=chapter_index,
+            characters_involved=characters_involved,
+            plot_stage=plot_stage,
+            chapter_type=chapter_type,
+            chapter_outline=chapter_plot,
+            target_word_count=target_word_count,
+        )
+
         # Step 1: Writer 生成章节初稿
         content_type = self.req.get("content_type", "novel")
         draft = self.writer.generate_chapter(
@@ -1131,6 +1164,7 @@ class NovelOrchestrator:
             perspective_strength=self.perspective_strength,
             budgeted_scene_plan=budgeted_scene_plan_text,
             word_count_policy=self.word_count_policy.to_dict(),
+            chapter_context=chapter_context,
         )
         logger.info(f"第 {chapter_index} 章初稿生成完成")
         self._check_cancellation()
@@ -1506,7 +1540,7 @@ class NovelOrchestrator:
                     except (WaitingForConfirmationError, GenerationCancelledError, ChapterQualityGateError):
                         raise
                     except Exception as e:
-                        logger.error(f"第 {chapter_num} 章生成过程发生异常: {e}，尝试保存已有内容继续")
+                        logger.error(f"第 {chapter_num} 章生成过程发生异常: {e}，尝试保存已有内容继续", exc_info=True)
                         # 如果生成失败但已有部分内容，仍然继续处理
                         if current_content is None or not current_content.strip():
                             # 完全失败，创建一个占位章节说明错误
@@ -1514,6 +1548,8 @@ class NovelOrchestrator:
                             score = 0
                             passed = False
                             issues = [{"type": "生成错误", "location": "全文", "fix": str(e)}]
+                        # 占位内容也要保存到磁盘，否则后续读文件会报 FileNotFoundError
+                        self.save_chapter(chapter_num, current_content)
 
                     # 即使内容为空，也创建一个占位符，不直接跳过
                     # 用户要求：即使没通过检验也要保存章节，不要轻易跳过

@@ -85,6 +85,7 @@ class WriterAgent(BaseAgent):
         perspective_strength: float = 0.7,
         budgeted_scene_plan: str = "",
         word_count_policy: dict | None = None,
+        chapter_context: object = None,
     ) -> str:
         return writer_agent.generate_chapter(
             setting_bible, plan, chapter_num, prev_chapter_end, related_content, constraints, target_word_count, content_type,
@@ -92,7 +93,8 @@ class WriterAgent(BaseAgent):
             project_config=getattr(self, "project_config", None),
             budgeted_scene_plan=budgeted_scene_plan,
             word_count_policy=word_count_policy,
-            client=self.client
+            client=self.client,
+            chapter_context=chapter_context,
         )
 
     def rewrite_chapter(self, setting_bible: str, original_draft: str, feedback: str, chapter_num: int = None, perspective: str = None, perspective_strength: float = 0.7) -> str:
