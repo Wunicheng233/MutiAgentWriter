@@ -34,6 +34,13 @@ export const SelectionToolbar: React.FC<SelectionToolbarProps> = ({ onAction }) 
   const { isToolbarVisible, toolbarPosition, hideToolbar } = useSelectionStore()
   const [showMore, setShowMore] = useState(false)
 
+  // Reset dropdown state when toolbar is hidden
+  React.useEffect(() => {
+    if (!isToolbarVisible) {
+      setShowMore(false)
+    }
+  }, [isToolbarVisible])
+
   if (!isToolbarVisible || !toolbarPosition) {
     return null
   }
