@@ -37,11 +37,11 @@ function NovelCard() {
           迷雾中的灯火
         </h3>
         <div style={{ fontFamily: 'var(--font-display, "Crimson Pro", serif)', fontSize: 15, lineHeight: 2, color: 'var(--text-secondary, #6b5a48)', textIndent: '2em' }}>
-          <p>林远推开那扇锈蚀的铁门时，并不知道自己即将面对什么。</p>
+          <p>推开那扇门时，生涩的铰链震落了簌簌的锈渣，像是某种倒计时的沙漏。</p>
           <br />
-          <p>雨已经下了三天三夜，整座城市浸泡在灰蒙蒙的水汽里，像一块拧不干的旧毛巾。路灯的光晕在雨幕中<span style={{ background: 'linear-gradient(to top, rgba(192,107,78,0.15) 40%, transparent 40%)' }}>晕染成模糊的橘黄色圆点</span>，照在湿漉漉的柏油路上，反射出破碎的光斑。</p>
+          <p>雨下到第三个夜晚，已经失去了声息，化作一张湿冷沉闷的巨网，将整座城市死死罩住。<span style={{ background: 'linear-gradient(to top, rgba(192,107,78,0.15) 40%, transparent 40%)' }}>街灯在浓雾般的水雾里勉强撑开几片橘红，却照不透更深处的阴霾。光斑落在柏油路上，随着积水的涟漪碎成一地残影。</span></p>
           <br />
-          <p>他回头看了一眼——来时的脚印已经被雨水填满，变成一串深浅不一的水洼。</p>
+          <p>林远在半开的门边停顿了片刻，回头看了一眼。漫天大雨已经冲刷掉了他所有的脚印。没有退路，只有这扇门是开着的了。他收回视线，走进了更深的黑暗里。</p>
           <br />
           <p style={{ fontSize: 12, color: 'var(--text-muted, #a69a8d)', textIndent: 0 }}>——《迷雾之城》节选 · Writer 生成 · Critic 评分 8.7/10</p>
         </div>

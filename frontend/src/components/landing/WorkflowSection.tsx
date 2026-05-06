@@ -41,17 +41,6 @@ function StepCard({ num, title, desc, index }: { num: string; title: string; des
         transitionDelay: `${index * 0.1}s`,
       }}
     >
-      {index < 3 && (
-        <div style={{
-          position: 'absolute',
-          right: 0,
-          top: 28,
-          width: 'calc(100% - 80px)',
-          height: 1,
-          background: 'var(--border-strong, rgba(58,44,31,0.15))',
-          pointerEvents: 'none',
-        }} />
-      )}
       <div className="step-num">{num}</div>
       <h3 className="step-title">{title}</h3>
       <p className="step-desc">{desc}</p>

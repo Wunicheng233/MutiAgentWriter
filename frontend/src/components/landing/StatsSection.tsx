@@ -41,7 +41,7 @@ function CountUp({ target, suffix = '' }: { target: number; suffix?: string }) {
 }
 
 const stats = [
-  { target: 50000, suffix: '+', label: '已生成字数' },
+  { target: 500000, suffix: '+', label: '已生成字数' },
   { target: 128, suffix: '', label: '已完成章节' },
   { target: 97, suffix: '%', label: '用户满意度' },
 ]
