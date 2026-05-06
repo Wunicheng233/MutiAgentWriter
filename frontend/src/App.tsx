@@ -7,6 +7,7 @@ import { useAuthStore } from './store/useAuthStore'
 import { Suspense, lazy, useEffect } from 'react'
 
 // Pages
+const Landing = lazy(() => import('./pages/Landing'))
 const Login = lazy(() => import('./pages/Login'))
 const Register = lazy(() => import('./pages/Register'))
 const Settings = lazy(() => import('./pages/Settings'))
@@ -72,6 +73,7 @@ export function AppRoutes() {
     <Suspense fallback={<RouteLoader />}>
       <Routes>
         {/* Public routes */}
+        <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/share/:token" element={<ShareView />} />
@@ -79,7 +81,6 @@ export function AppRoutes() {
 
         {/* Protected routes with unified 3-column layout */}
         <Route element={<ProtectedLayout />}>
-          <Route path="/" element={<Dashboard />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/projects/new" element={<CreateProject />} />
 

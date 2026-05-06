@@ -1,0 +1,262 @@
+/* ========================================
+   Landing Page Styles
+   ======================================== */
+
+/* --- Scroll Snap Container (mandatory = strong snap) --- */
+.landing-scroll {
+  height: 100vh;
+  overflow-y: scroll;
+  scroll-snap-type: y proximity;
+  scroll-behavior: smooth;
+}
+
+/* Each major section is a "page" */
+.landing-scroll > .lp-page {
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+/* --- Background Variations --- */
+
+.bg-hero {
+  background: linear-gradient(145deg,
+    #faf7f2 0%, #f0e8dc 25%, #e8ddd0 50%, #d8e8e0 75%, #c8d8d0 100%);
+}
+.bg-cream  { background: #faf7f2; }
+.bg-warm   { background: linear-gradient(180deg, #faf7f2 0%, #f5efe6 100%); }
+.bg-sage-tint  { background: linear-gradient(180deg, #faf7f2 0%, rgba(91,127,110,0.04) 50%, #faf7f2 100%); }
+.bg-terra-tint { background: linear-gradient(180deg, #faf7f2 0%, rgba(192,107,78,0.03) 50%, #faf7f2 100%); }
+.bg-gold-tint  { background: linear-gradient(180deg, #faf7f2 0%, rgba(163,139,90,0.04) 50%, #faf7f2 100%); }
+.bg-deep-warm  { background: #f5efe6; }
+.bg-charcoal-tint { background: linear-gradient(180deg, #f5efe6 0%, #f0ebe0 100%); }
+.bg-radial-warm   { background: radial-gradient(ellipse at 50% 0%, #f5efe6 0%, #faf7f2 70%); }
+
+/* --- "Glide-to-Stop" Animation (fast start, gradual deceleration) --- */
+@keyframes glideUp {
+  0%   { opacity: 0; transform: translateY(100px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes glideUpScale {
+  0%   { opacity: 0; transform: scale(0.9) translateY(60px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* Default reveal: smooth deceleration glide */
+.lp-page .reveal {
+  opacity: 0;
+}
+.lp-page .reveal.visible {
+  animation: glideUp 1.2s cubic-bezier(0.05, 0.7, 0.1, 1) forwards;
+}
+
+/* Scale variant for card grids */
+.lp-page .reveal-scale {
+  opacity: 0;
+}
+.lp-page .reveal-scale.visible {
+  animation: glideUpScale 1.0s cubic-bezier(0.05, 0.7, 0.1, 1) forwards;
+}
+
+/* Stagger delays (applied via animation-delay) */
+.lp-page .d1 { animation-delay: 0.05s; }
+.lp-page .d2 { animation-delay: 0.15s; }
+.lp-page .d3 { animation-delay: 0.25s; }
+.lp-page .d4 { animation-delay: 0.35s; }
+.lp-page .d5 { animation-delay: 0.45s; }
+.lp-page .d6 { animation-delay: 0.55s; }
+
+/* --- Floating particles for Hero --- */
+@keyframes floatUp {
+  0%   { transform: translateY(100vh) scale(0); opacity: 0; }
+  10%  { opacity: 0.06; }
+  90%  { opacity: 0.06; }
+  100% { transform: translateY(-10vh) scale(1); opacity: 0; }
+}
+
+/* --- Page Down Arrow --- */
+@keyframes arrowBounce {
+  0%, 100% { transform: translateY(0); opacity: 0.4; }
+  50%      { transform: translateY(8px); opacity: 0.8; }
+}
+.lp-page .page-arrow {
+  position: absolute;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 12px;
+  color: var(--text-muted, #a69a8d);
+  opacity: 0;
+  transition: opacity 0.4s ease, color 0.3s ease;
+  animation: arrowBounce 2.2s ease-in-out infinite;
+  pointer-events: none;
+}
+.lp-page .page-arrow.visible {
+  opacity: 0.5;
+  pointer-events: auto;
+}
+.lp-page .page-arrow.visible:hover {
+  opacity: 1;
+  color: var(--accent-primary, #5b7f6e);
+}
+
+/* --- SVG chart line draw --- */
+.lp-page .chart-line {
+  stroke-dasharray: 500;
+  stroke-dashoffset: 500;
+  transition: stroke-dashoffset 1.5s cubic-bezier(0.33, 1, 0.68, 1);
+}
+.lp-page .chart-line.d2 { transition-delay: 0.3s; }
+.lp-page .chart-line.animate { stroke-dashoffset: 0; }
+
+.lp-page .chart-area {
+  opacity: 0;
+  transition: opacity 1.2s cubic-bezier(0.33, 1, 0.68, 1);
+  transition-delay: 0.5s;
+}
+.lp-page .chart-area.animate { opacity: 1; }
+
+/* --- UI Components --- */
+
+/* Primary button */
+.lp-page .btn-pri {
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 500;
+  color: white;
+  background: var(--accent-warm, #c06b4e);
+  border: none;
+  padding: 16px 44px;
+  border-radius: 100px;
+  cursor: pointer;
+  text-decoration: none;
+  letter-spacing: 0.03em;
+  transition: all 0.3s cubic-bezier(0.33, 1, 0.68, 1);
+}
+.lp-page .btn-pri:hover {
+  background: #b05a3e;
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(192, 107, 78, 0.3);
+}
+
+/* Step number circle */
+.lp-page .step-num {
+  width: 56px; height: 56px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 24px;
+  font-family: var(--font-display, 'Crimson Pro', serif);
+  font-size: 20px; font-weight: 500;
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid var(--border-default, rgba(58,44,31,0.08));
+  color: var(--text-secondary, #6b5a48);
+  position: relative; z-index: 1;
+  transition: all 0.3s cubic-bezier(0.33, 1, 0.68, 1);
+}
+.lp-page .step-num:hover {
+  background: var(--accent-primary, #5b7f6e);
+  color: white;
+  border-color: var(--accent-primary, #5b7f6e);
+}
+
+/* Section common styles */
+.lp-page .section-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 72px 48px;
+  width: 100%;
+}
+
+.lp-page .section-label {
+  font-size: 12px; font-weight: 500; letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent-primary, #5b7f6e);
+  text-align: center; margin-bottom: 16px;
+}
+
+.lp-page .section-title {
+  font-family: var(--font-display, 'Crimson Pro', serif);
+  font-size: clamp(28px, 3.5vw, 40px);
+  font-weight: 500;
+  color: var(--text-primary, #3a2c1f);
+  text-align: center; margin-bottom: 16px;
+}
+
+.lp-page .section-subtitle {
+  font-size: 15px;
+  color: var(--text-secondary, #6b5a48);
+  text-align: center;
+  max-width: 540px;
+  margin: 0 auto 72px;
+  line-height: 1.7;
+}
+
+/* Agent card */
+.lp-page .agent-card {
+  background: rgba(255,255,255,0.6);
+  border: 1px solid var(--border-default, rgba(58,44,31,0.08));
+  border-radius: 16px; padding: 32px 28px;
+  text-align: center;
+  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+              box-shadow 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+              border-color 0.3s ease;
+}
+.lp-page .agent-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 12px 32px rgba(60,40,20,0.1);
+  border-color: var(--accent-primary, #5b7f6e);
+}
+
+.lp-page .agent-icon {
+  width: 48px; height: 48px; margin: 0 auto 20px;
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.lp-page .agent-name {
+  font-family: var(--font-display, 'Crimson Pro', serif);
+  font-size: 20px; font-weight: 500;
+  color: var(--text-primary, #3a2c1f); margin-bottom: 4px;
+}
+
+.lp-page .agent-role {
+  font-size: 12px; font-weight: 500; letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent-primary, #5b7f6e);
+  margin-bottom: 16px; padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-default, rgba(58,44,31,0.08));
+}
+
+.lp-page .agent-desc {
+  font-size: 14px;
+  color: var(--text-secondary, #6b5a48);
+  line-height: 1.8;
+}
+
+/* Workflow step */
+.lp-page .step-title {
+  font-family: var(--font-display, 'Crimson Pro', serif);
+  font-size: 18px; font-weight: 500; margin-bottom: 8px;
+}
+
+.lp-page .step-desc {
+  font-size: 14px;
+  color: var(--text-secondary, #6b5a48);
+  line-height: 1.8;
+}
+
+/* --- Responsive --- */
+@media (max-width: 768px) {
+  .lp-page .section-content {
+    padding: 60px 24px;
+  }
+}
