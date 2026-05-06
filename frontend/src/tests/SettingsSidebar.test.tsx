@@ -24,8 +24,8 @@ describe('SettingsSidebar', () => {
     render(<SettingsSidebar activeTab="theme" onTabChange={mockOnTabChange} />)
 
     const themeTab = screen.getByTestId('settings-tab-theme')
-    expect(themeTab).toHaveClass('bg-[var(--accent-primary)]')
-    expect(themeTab).toHaveClass('text-white')
+    expect(themeTab).toHaveClass('bg-[var(--bg-tertiary)]')
+    expect(themeTab).toHaveClass('text-[var(--text-primary)]')
   })
 
   it('should call onTabChange when clicking a tab', () => {

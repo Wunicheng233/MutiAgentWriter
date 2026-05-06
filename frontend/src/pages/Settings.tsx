@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Card, Button, Input, Divider, Alert, Switch, Select } from '../components/v2'
+import { Button, Input, Divider, Alert, Switch, Select } from '../components/v2'
 import { ThemeSelector } from '../components/ThemeSelector'
 import { CanvasContainer } from '../components/layout/CanvasContainer'
 import SettingsSidebar from '../components/settings/SettingsSidebar'
@@ -13,15 +13,6 @@ import { useLayoutStore } from '../store/useLayoutStore'
 import { clearApiKey, getUserMonthlyTokenStats, updateApiKey } from '../utils/endpoints'
 import { useToast } from '../components/toastContext'
 import { RewriteMode } from '../utils/selectionAI'
-
-const tabTitles: Record<SettingsTab, string> = {
-  theme: '外观主题',
-  editor: '编辑器模式',
-  shortcuts: '键盘快捷键',
-  ai: 'AI 助手偏好',
-  layout: '布局设置',
-  account: '账户与数据',
-}
 
 const rewriteModeOptions = [
   { value: RewriteMode.POLISH, label: '润色' },
@@ -67,12 +58,10 @@ export const Settings: React.FC = () => {
     queryFn: getUserMonthlyTokenStats,
   })
 
-  // Update URL when tab changes
   useEffect(() => {
     setSearchParams({ tab: activeTab })
   }, [activeTab, setSearchParams])
 
-  // Handle tab from URL changes
   useEffect(() => {
     if (tabFromUrl && tabFromUrl !== activeTab) {
       setActiveTab(tabFromUrl)
@@ -136,38 +125,45 @@ export const Settings: React.FC = () => {
     return `${user.api_key.slice(0, 4)}...${user.api_key.slice(-4)}`
   }
 
+  const SettingItem = ({ label, description, children }: { label: string; description?: string; children: React.ReactNode }) => (
+    <div className="flex items-center justify-between py-3">
+      <div className="flex-1 pr-8">
+        <p className="text-sm text-[var(--text-primary)]">{label}</p>
+        {description && <p className="text-xs text-[var(--text-muted)] mt-0.5">{description}</p>}
+      </div>
+      <div className="flex-shrink-0">{children}</div>
+    </div>
+  )
+
+  const SettingSection = ({ title, children }: { title?: string; children: React.ReactNode }) => (
+    <div className="space-y-1">
+      {title && <h3 className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-3">{title}</h3>}
+      {children}
+    </div>
+  )
+
   const renderTabContent = () => {
     switch (activeTab) {
       case 'theme':
-        return <ThemeSelector />
+        return (
+          <SettingSection>
+            <ThemeSelector />
+          </SettingSection>
+        )
 
       case 'editor':
         return (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between py-2">
-              <div>
-                <p className="text-[var(--text-primary)] font-medium">Typewriter 模式</p>
-                <p className="text-sm text-[var(--text-muted)]">光标保持在视口 1/3 处，平滑滚动</p>
-              </div>
+          <SettingSection title="编辑器模式">
+            <SettingItem label="Typewriter 模式" description="光标保持在视口 1/3 处，平滑滚动">
               <Switch checked={typewriterMode} onChange={toggleTypewriterMode} />
-            </div>
-
-            <div className="flex items-center justify-between py-2">
-              <div>
-                <p className="text-[var(--text-primary)] font-medium">Fade 模式</p>
-                <p className="text-sm text-[var(--text-muted)]">淡化非当前段落，聚焦当前编辑内容</p>
-              </div>
+            </SettingItem>
+            <SettingItem label="Fade 模式" description="淡化非当前段落，聚焦当前编辑内容">
               <Switch checked={fadeMode} onChange={toggleFadeMode} />
-            </div>
-
-            <div className="flex items-center justify-between py-2">
-              <div>
-                <p className="text-[var(--text-primary)] font-medium">Vim 模式</p>
-                <p className="text-sm text-[var(--text-muted)]">启用 Vim 键绑定，需刷新页面生效</p>
-              </div>
+            </SettingItem>
+            <SettingItem label="Vim 模式" description="启用 Vim 键绑定，需刷新页面生效">
               <Switch checked={vimMode} onChange={toggleVimMode} />
-            </div>
-          </div>
+            </SettingItem>
+          </SettingSection>
         )
 
       case 'shortcuts':
@@ -175,173 +171,128 @@ export const Settings: React.FC = () => {
 
       case 'ai':
         return (
-          <div className="space-y-6">
-            <div>
-              <label className="block text-[var(--text-primary)] font-medium mb-2">
-                选区 AI 默认重写模式
-              </label>
-              <Select
-                value={defaultRewriteMode}
-                onChange={(e) => setDefaultRewriteMode(e.target.value as RewriteMode)}
-                options={rewriteModeOptions}
-                className="w-full"
-              />
-            </div>
+          <div className="space-y-8">
+            <SettingSection title="AI 偏好">
+              <SettingItem label="选区 AI 默认重写模式">
+                <div className="w-48">
+                  <Select
+                    value={defaultRewriteMode}
+                    onChange={(e) => setDefaultRewriteMode(e.target.value as RewriteMode)}
+                    options={rewriteModeOptions}
+                  />
+                </div>
+              </SettingItem>
+            </SettingSection>
 
-            <Divider />
+            <Divider className="border-[var(--border-subtle)]" />
 
-            <div>
-              <h3 className="text-lg font-medium mb-4 text-[var(--text-primary)]">API Key 设置</h3>
-
-              <div className="flex justify-between items-center py-2 mb-4">
-                <span className="text-[var(--text-secondary)]">当前 Key</span>
-                <code className="px-2 py-1 bg-[var(--bg-tertiary)] rounded text-[var(--text-body)] text-sm">
-                  {displayApiKey()}
-                </code>
+            <SettingSection title="API Key">
+              <div className="flex items-center justify-between py-3">
+                <span className="text-sm text-[var(--text-secondary)]">当前 Key</span>
+                <code className="text-sm font-mono text-[var(--text-body)]">{displayApiKey()}</code>
               </div>
-
-              <div className="space-y-4">
+              <div className="space-y-3 pt-2">
                 <Input
-                  label="火山引擎 API Key"
+                  label="更新火山引擎 API Key"
                   placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
                   value={newApiKey}
                   onChange={(e) => setNewApiKey(e.target.value)}
                 />
-                <Button
-                  variant="primary"
-                  onClick={handleUpdate}
-                  disabled={loading}
-                >
+                <Button variant="primary" size="sm" onClick={handleUpdate} disabled={loading}>
                   {loading ? '保存中...' : '保存'}
                 </Button>
               </div>
-
-              <Divider className="my-6" />
-              <div>
-                <Button
-                  variant="secondary"
-                  onClick={handleClear}
-                  disabled={loading}
-                >
+              <div className="pt-4">
+                <Button variant="secondary" size="sm" onClick={handleClear} disabled={loading}>
                   {loading ? '清除中...' : '使用系统默认 Key'}
                 </Button>
               </div>
-            </div>
+            </SettingSection>
           </div>
         )
 
       case 'layout':
         return (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between py-2">
-              <div>
-                <p className="text-[var(--text-primary)] font-medium">Focus 模式</p>
-                <p className="text-sm text-[var(--text-muted)]">隐藏非必要 UI 元素，聚焦写作</p>
-              </div>
+          <SettingSection title="布局设置">
+            <SettingItem label="Focus 模式" description="隐藏非必要 UI 元素，聚焦写作">
               <Switch checked={focusMode} onChange={toggleFocusMode} />
-            </div>
-
-            <div className="flex items-center justify-between py-2">
-              <div>
-                <p className="text-[var(--text-primary)] font-medium">右侧面板默认打开</p>
-                <p className="text-sm text-[var(--text-muted)]">进入项目时自动打开 AI 面板</p>
-              </div>
+            </SettingItem>
+            <SettingItem label="右侧面板默认打开" description="进入项目时自动打开 AI 面板">
               <Switch checked={defaultAIPanelOpen} onChange={setDefaultAIPanelOpen} />
-            </div>
-
-            <div className="flex items-center justify-between py-2">
-              <div>
-                <p className="text-[var(--text-primary)] font-medium">顶栏自动展开</p>
-                <p className="text-sm text-[var(--text-muted)]">进入项目时自动展开顶部导航栏</p>
-              </div>
+            </SettingItem>
+            <SettingItem label="顶栏自动展开" description="进入项目时自动展开顶部导航栏">
               <Switch checked={autoExpandHeaderInProject} onChange={setAutoExpandHeaderInProject} />
-            </div>
-          </div>
+            </SettingItem>
+          </SettingSection>
         )
 
       case 'account':
         return (
-          <div className="space-y-6">
-            <div className="space-y-3">
-              <h3 className="text-lg font-medium text-[var(--text-primary)]">账户信息</h3>
-              <div className="flex justify-between items-center py-2">
-                <span className="text-[var(--text-secondary)]">用户名</span>
-                <span className="text-[var(--text-body)] font-medium">{user?.username}</span>
+          <div className="space-y-8">
+            <SettingSection title="账户信息">
+              <div className="flex items-center justify-between py-3">
+                <span className="text-sm text-[var(--text-secondary)]">用户名</span>
+                <span className="text-sm text-[var(--text-body)]">{user?.username}</span>
               </div>
-              <div className="flex justify-between items-center py-2">
-                <span className="text-[var(--text-secondary)]">邮箱</span>
-                <span className="text-[var(--text-body)] font-medium">{user?.email}</span>
+              <div className="flex items-center justify-between py-3">
+                <span className="text-sm text-[var(--text-secondary)]">邮箱</span>
+                <span className="text-sm text-[var(--text-body)]">{user?.email}</span>
               </div>
-            </div>
+            </SettingSection>
 
             {monthlyStats && monthlyStats.total_tokens > 0 && (
               <>
-                <Divider />
-                <div className="space-y-3">
-                  <h3 className="text-lg font-medium text-[var(--text-primary)]">
-                    本月使用统计 ({monthlyStats.month})
-                  </h3>
-                  <div className="flex justify-between items-center py-2">
-                    <span className="text-[var(--text-secondary)]">总 Token</span>
-                    <span className="text-[var(--text-body)] font-medium">{monthlyStats.total_tokens.toLocaleString()}</span>
+                <Divider className="border-[var(--border-subtle)]" />
+                <SettingSection title={`本月使用统计 (${monthlyStats.month})`}>
+                  <div className="flex items-center justify-between py-3">
+                    <span className="text-sm text-[var(--text-secondary)]">总 Token</span>
+                    <span className="text-sm text-[var(--text-body)] font-mono">{monthlyStats.total_tokens.toLocaleString()}</span>
                   </div>
-                  <div className="flex justify-between items-center py-2">
-                    <span className="text-[var(--text-secondary)]">Prompt</span>
-                    <span className="text-[var(--text-body)] font-medium">{monthlyStats.total_prompt_tokens.toLocaleString()}</span>
+                  <div className="flex items-center justify-between py-3">
+                    <span className="text-sm text-[var(--text-secondary)]">Prompt</span>
+                    <span className="text-sm text-[var(--text-body)] font-mono">{monthlyStats.total_prompt_tokens.toLocaleString()}</span>
                   </div>
-                  <div className="flex justify-between items-center py-2">
-                    <span className="text-[var(--text-secondary)]">Completion</span>
-                    <span className="text-[var(--text-body)] font-medium">{monthlyStats.total_completion_tokens.toLocaleString()}</span>
+                  <div className="flex items-center justify-between py-3">
+                    <span className="text-sm text-[var(--text-secondary)]">Completion</span>
+                    <span className="text-sm text-[var(--text-body)] font-mono">{monthlyStats.total_completion_tokens.toLocaleString()}</span>
                   </div>
-                  <div className="flex justify-between items-center py-2">
-                    <span className="text-[var(--text-secondary)]">估算费用</span>
-                    <span className="text-[var(--text-body)] font-medium">${monthlyStats.estimated_cost_usd.toFixed(4)}</span>
+                  <div className="flex items-center justify-between py-3">
+                    <span className="text-sm text-[var(--text-secondary)]">估算费用</span>
+                    <span className="text-sm text-[var(--text-body)] font-mono">${monthlyStats.estimated_cost_usd.toFixed(4)}</span>
                   </div>
-                </div>
+                </SettingSection>
               </>
             )}
 
-            <Divider />
+            <Divider className="border-[var(--border-subtle)]" />
 
-            <div className="space-y-3">
-              <h3 className="text-lg font-medium text-[var(--text-primary)]">数据管理</h3>
-              <Button
-                variant="secondary"
-                onClick={() => setShowClearConfirm(true)}
-              >
-                清除本地缓存
-              </Button>
-              <p className="text-sm text-[var(--text-muted)]">
-                清除所有本地保存的设置和状态，恢复为默认值
-              </p>
-            </div>
+            <SettingSection title="数据管理">
+              <div className="space-y-3">
+                <Button variant="secondary" size="sm" onClick={() => setShowClearConfirm(true)}>
+                  清除本地缓存
+                </Button>
+                <p className="text-xs text-[var(--text-muted)]">
+                  清除所有本地保存的设置和状态，恢复为默认值
+                </p>
+              </div>
+            </SettingSection>
 
-            {/* Clear Confirmation Modal */}
             {showClearConfirm && (
               <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                <Card className="max-w-md w-full mx-4">
-                  <h3 className="text-lg font-medium text-[var(--text-primary)] mb-4">
-                    确认清除本地缓存
-                  </h3>
-                  <p className="text-[var(--text-secondary)] mb-6">
+                <div className="bg-[var(--bg-primary)] rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
+                  <h3 className="text-base font-medium text-[var(--text-primary)] mb-2">确认清除本地缓存</h3>
+                  <p className="text-sm text-[var(--text-secondary)] mb-6">
                     此操作将清除所有本地保存的设置和状态，包括主题偏好、模式设置等。操作不可撤销。
                   </p>
                   <div className="flex gap-3 justify-end">
-                    <Button
-                      variant="secondary"
-                      onClick={() => setShowClearConfirm(false)}
-                    >
+                    <Button variant="secondary" size="sm" onClick={() => setShowClearConfirm(false)}>
                       取消
                     </Button>
-                    <Button
-                      variant="primary"
-                      onClick={handleClearLocalState}
-                      className="bg-red-500 hover:bg-red-600"
-                    >
+                    <Button variant="primary" size="sm" onClick={handleClearLocalState} className="bg-red-500 hover:bg-red-600">
                       确认清除
                     </Button>
                   </div>
-                </Card>
+                </div>
               </div>
             )}
           </div>
@@ -353,8 +304,8 @@ export const Settings: React.FC = () => {
   }
 
   return (
-    <CanvasContainer maxWidth={900}>
-      <h1 className="text-3xl font-medium text-[var(--text-primary)] mb-8">设置</h1>
+    <CanvasContainer maxWidth={860}>
+      <h1 className="text-[clamp(1.5rem,3vw,2rem)] font-medium text-[var(--text-primary)] mb-8">设置</h1>
 
       {alert && (
         <Alert variant={alert.variant} className="mb-6">
@@ -362,20 +313,13 @@ export const Settings: React.FC = () => {
         </Alert>
       )}
 
-      <div className="flex gap-8">
-        {/* Sidebar */}
-        <div className="w-56 flex-shrink-0">
+      <div className="flex gap-16">
+        <div className="w-40 flex-shrink-0">
           <SettingsSidebar activeTab={activeTab} onTabChange={setActiveTab} />
         </div>
 
-        {/* Content */}
         <div className="flex-1 min-w-0">
-          <h2 className="text-xl font-medium text-[var(--text-primary)] mb-6">
-            {tabTitles[activeTab]}
-          </h2>
-          <Card>
-            {renderTabContent()}
-          </Card>
+          {renderTabContent()}
         </div>
       </div>
     </CanvasContainer>
