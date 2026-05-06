@@ -47,4 +47,5 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
   )
 }
 
+export type { SettingsTab }
 export default SettingsSidebar
