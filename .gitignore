@@ -81,3 +81,4 @@ tools/demo-video/.remotion/
 
 # OS
 Thumbs.db
+.worktrees/
