@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>刘泽宇 · StoryForge AI 贡献展示</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;500;600;700&family=Inter:wght@300;400;500;600&family=Noto+Serif+SC:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --parchment: #faf7f2; --ink: #3a2c1f; --ink-light: #6b5a48; --ink-muted: #a69a8d;
+      --sage: #5b7f6e; --sage-light: #e8f0ec; --terracotta: #c06b4e; --gold: #a38b5a;
+      --hairline: rgba(58,44,31,0.08); --card-bg: rgba(255,255,255,0.65);
+      --font-ui: 'Inter', -apple-system, 'PingFang SC', sans-serif;
+      --font-display: 'Crimson Pro', 'Noto Serif SC', Georgia, serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      --ease-out: cubic-bezier(0.33,1,0.68,1);
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      font-family: var(--font-ui); color: var(--ink); background: var(--parchment);
+      line-height: 1.6; -webkit-font-smoothing: antialiased;
+    }
+    .paper {
+      position: fixed; inset:0; pointer-events:none; z-index:0; opacity:0.25;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='400'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='4' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.98  0 0 0 0 0.97  0 0 0 0 0.95  0 0 0 0.015 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+    }
+
+    .container { max-width: 960px; margin: 0 auto; padding: 0 32px; position: relative; z-index: 1; }
+
+    /* Header */
+    header {
+      padding: 60px 0 40px; text-align: center;
+      border-bottom: 1px solid var(--hairline); margin-bottom: 60px;
+    }
+    header .name {
+      font-family: var(--font-display); font-size: 36px; font-weight: 500; margin-bottom: 8px;
+    }
+    header .role {
+      font-size: 15px; color: var(--ink-light); letter-spacing: 0.05em;
+    }
+    header .tag {
+      display: inline-block; margin-top: 16px;
+      font-size: 12px; letter-spacing: 0.15em; text-transform: uppercase;
+      color: var(--sage); padding: 6px 20px; border: 1px solid var(--hairline); border-radius: 100px;
+      background: var(--card-bg);
+    }
+
+    /* Section */
+    .section { margin-bottom: 64px; }
+    .section-title {
+      font-family: var(--font-display); font-size: 26px; font-weight: 500;
+      margin-bottom: 12px; display: flex; align-items: center; gap: 12px;
+    }
+    .section-title .num {
+      font-size: 14px; color: var(--sage); font-family: var(--font-ui);
+      background: var(--sage-light); padding: 2px 10px; border-radius: 6px;
+    }
+    .section-desc { font-size: 15px; color: var(--ink-light); margin-bottom: 32px; line-height: 1.8; }
+
+    /* Code card */
+    .code-card {
+      background: var(--card-bg); border: 1px solid var(--hairline); border-radius: 16px;
+      padding: 28px; margin-bottom: 20px;
+      transition: transform 0.3s var(--ease-out), box-shadow 0.3s var(--ease-out);
+    }
+    .code-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(60,40,20,0.08); }
+    .code-card-header {
+      display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; gap: 16px;
+    }
+    .code-card-title {
+      font-family: var(--font-mono); font-size: 14px; font-weight: 500; color: var(--sage);
+      word-break: break-all;
+    }
+    .code-card-badge {
+      flex-shrink: 0;
+      font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 3px 12px; border-radius: 100px; white-space: nowrap;
+    }
+    .badge-core { background: var(--sage-light); color: var(--sage); }
+    .badge-frontend { background: #f0eadc; color: var(--gold); }
+    .badge-infra { background: var(--terracotta); opacity: 0.9; color: white; }
+
+    .code-card-desc {
+      font-size: 14px; color: var(--ink-light); line-height: 1.8; margin-bottom: 14px;
+    }
+    .code-card-meta {
+      display: flex; gap: 8px; flex-wrap: wrap;
+    }
+    .code-card-meta span {
+      font-size: 11px; color: var(--ink-muted); padding: 3px 10px;
+      border-radius: 6px; background: var(--parchment); border: 1px solid var(--hairline);
+    }
+
+    .code-block {
+      background: #2d2d2d; border-radius: 12px; padding: 20px; margin-bottom: 20px;
+      overflow-x: auto;
+    }
+    .code-block code {
+      font-family: var(--font-mono); font-size: 13px; line-height: 1.7; color: #e6e6e6;
+    }
+    .code-block .comment { color: #7a7a7a; }
+    .code-block .keyword { color: #c678dd; }
+    .code-block .string { color: #98c379; }
+    .code-block .func { color: #61afef; }
+    .code-block .cls { color: #e5c07b; }
+    .code-block .var { color: #e06c75; }
+
+    /* Summary */
+    .summary-wrap {
+      background: linear-gradient(135deg, var(--sage-light), var(--parchment));
+      border-radius: 20px; padding: 40px; margin-bottom: 60px;
+      border: 1px solid var(--hairline);
+    }
+    .summary-item {
+      display: flex; gap: 16px; padding: 16px 0;
+      border-bottom: 1px solid var(--hairline);
+    }
+    .summary-item:last-child { border-bottom: none; }
+    .summary-num {
+      flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-display); font-size: 16px; font-weight: 500;
+      background: var(--sage); color: white;
+    }
+    .summary-text { font-size: 15px; color: var(--ink-light); line-height: 1.7; padding-top: 6px; }
+
+    .back-link {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-size: 13px; color: var(--sage); text-decoration: none;
+      margin-bottom: 40px;
+    }
+    .back-link:hover { text-decoration: underline; }
+
+    footer {
+      text-align: center; padding: 40px 0 60px;
+      border-top: 1px solid var(--hairline); font-size: 13px; color: var(--ink-muted);
+    }
+
+    @media (max-width: 640px) {
+      .container { padding: 0 20px; }
+      header { padding: 40px 0 30px; }
+      .code-card-header { flex-direction: column; }
+      header .name { font-size: 28px; }
+    }
+  </style>
+</head>
+<body>
+<div class="paper"></div>
+
+<div class="container">
+  <a href="http://localhost:5173" class="back-link">← 返回 Landing Page</a>
+
+  <header>
+    <div class="name">刘泽宇</div>
+    <div class="role">StoryForge AI · 核心贡献者</div>
+    <div class="tag">Hermes 学习循环 · Landing Page · 部署</div>
+  </header>
+
+  <!-- ============ 一、核心代码 ============ -->
+  <div class="section">
+    <div class="section-title"><span class="num">01</span> Hermes 自我进化系统</div>
+    <div class="section-desc">
+      整个系统的"大脑"——让 StoryForge AI 不再每次从零开始，而是能从每次生成中总结经验、沉淀技能，越用越懂作者。
+    </div>
+
+    <div class="code-card">
+      <div class="code-card-header">
+        <div class="code-card-title">backend/core/workflow_optimization.py</div>
+        <span class="code-card-badge badge-core">Core · Python</span>
+      </div>
+      <div class="code-card-desc">
+        Hermes 学习循环的核心实现。包含四个子模块：<strong>TraceAggregator</strong> 聚合执行轨迹，<strong>FeedbackCollector</strong> 收集 Critic 低分 / Guardian 违规 / 用户反馈，<strong>ExperienceExtractor</strong> 用 LLM 分析问题根因，<strong>SkillDistiller</strong> 将经验蒸馏为结构化技能。
+      </div>
+      <div class="code-card-meta">
+        <span>Trace Aggregator</span>
+        <span>Feedback Collector</span>
+        <span>Experience Extractor</span>
+        <span>Skill Distiller</span>
+        <span>置信度分级</span>
+      </div>
+    </div>
+
+    <div class="code-block">
+<code><span class="comment"># ExperienceExtractor — LLM 驱动的根因分析</span>
+<span class="keyword">class</span> <span class="cls">ExperienceExtractor</span>:
+    <span class="keyword">def</span> <span class="func">extract</span>(<span class="var">self</span>, signal: FeedbackSignal) -> WritingExperience:
+        <span class="comment"># 分析 Critic 低分的根因：是设定冲突？语气漂移？情节断裂？</span>
+        root_cause = <span class="var">self</span>.<span class="func">_analyze_root_cause</span>(signal)
+        <span class="comment"># 生成结构化改进建议</span>
+        suggestion = <span class="var">self</span>.<span class="func">_generate_suggestion</span>(root_cause, signal)
+        <span class="keyword">return</span> WritingExperience(
+            problem_type=root_cause.type,
+            evidence=signal.evidence,
+            suggestion=suggestion,
+            confidence=root_cause.confidence
+        )</code>
+    </div>
+
+    <div class="code-card">
+      <div class="code-card-header">
+        <div class="code-card-title">backend/core/skill_runtime/skill_assembler.py</div>
+        <span class="code-card-badge badge-core">Core · Python</span>
+      </div>
+      <div class="code-card-desc">
+        <strong>SkillAssembler</strong> — Writer 每次生成前，根据当前章节的角色、剧情阶段、场景类型，从 ChromaDB 中语义检索最相关的 3-5 条技能，动态注入 Writer prompt。技能的来源有两个：预置的名家文风（鲁迅/刘慈欣等）和 Hermes 自动提炼的经验技能。
+      </div>
+      <div class="code-card-meta">
+        <span>语义检索</span>
+        <span>ChromaDB</span>
+        <span>动态注入</span>
+        <span>Character Style</span>
+        <span>Writing Style</span>
+      </div>
+    </div>
+
+    <div class="code-block">
+<code><span class="comment"># SkillAssembler — 上下文感知的技能注入</span>
+<span class="keyword">class</span> <span class="cls">SkillAssembler</span>:
+    <span class="keyword">def</span> <span class="func">assemble</span>(<span class="var">self</span>, ctx: ChapterContext) -> list[Skill]:
+        <span class="comment"># 根据角色、剧情阶段、场景类型检索技能</span>
+        query = <span class="var">self</span>.<span class="func">_build_query</span>(ctx.characters, ctx.plot_stage, ctx.scene_type)
+        skills = <span class="var">self</span>.vector_db.<span class="func">similarity_search</span>(query, k=<span class="string">5</span>)
+        <span class="comment"># 按置信度排序，过滤低质量技能</span>
+        <span class="keyword">return</span> [s <span class="keyword">for</span> s <span class="keyword">in</span> skills <span class="keyword">if</span> s.confidence >= <span class="number">0.5</span>]</code>
+    </div>
+  </div>
+
+  <!-- ============ 二、Landing Page ============ -->
+  <div class="section">
+    <div class="section-title"><span class="num">02</span> 前端 Landing Page</div>
+    <div class="section-desc">
+      从零设计并实现的产品展示页。暖冷渐变视觉风格，scroll-snap 翻页交互，Agent/特性卡片点击展开详情。
+    </div>
+
+    <div class="code-card">
+      <div class="code-card-header">
+        <div class="code-card-title">frontend/src/pages/Landing.tsx</div>
+        <span class="code-card-badge badge-frontend">Frontend · TSX</span>
+      </div>
+      <div class="code-card-desc">
+        Landing Page 主入口。负责页面整体布局、10 个 Section 的编排、顶部导航、页脚、scroll-snap 容器管理。集成自定义 <code>smoothScrollTo</code> 动画（easeInOutCubic 缓动，900ms）实现点击箭头翻页的高品质手感。
+      </div>
+      <div class="code-card-meta">
+        <span>scroll-snap</span>
+        <span>easeInOutCubic</span>
+        <span>PageArrow</span>
+        <span>10 Sections</span>
+      </div>
+    </div>
+
+    <div class="code-card">
+      <div class="code-card-header">
+        <div class="code-card-title">frontend/src/components/landing/</div>
+        <span class="code-card-badge badge-frontend">Frontend · TSX</span>
+      </div>
+      <div class="code-card-desc">
+        10 个子组件，每个负责一个展示 Section：LandingHero / PhilosophySection / AgentTeamSection（含点击展开弹窗） / V1V2Comparison（SVG 折线图动画） / FeatureCards（点击缩放展开 + SVG 流程图） / WorkflowSection / ShowcaseSection / StatsSection / TargetAudience / FinalCTA。
+      </div>
+      <div class="code-card-meta">
+        <span>Agent 弹窗</span>
+        <span>SVG 图表</span>
+        <span>缩放展开</span>
+        <span>工作流</span>
+        <span>glide-stop 动画</span>
+      </div>
+    </div>
+
+    <div class="code-card">
+      <div class="code-card-header">
+        <div class="code-card-title">frontend/src/hooks/useScrollReveal.ts</div>
+        <span class="code-card-badge badge-frontend">Frontend · TS</span>
+      </div>
+      <div class="code-card-desc">
+        封装 IntersectionObserver 的通用 Hook，支持自定义 threshold 和 rootMargin。初始化时自动扫描已可见元素，防止首屏内容空白。提供 <code>initScrollReveal</code> 批量观察和 <code>useScrollReveal</code> 单元素 hook 两种使用方式。
+      </div>
+      <div class="code-card-meta">
+        <span>IntersectionObserver</span>
+        <span>scroll reveal</span>
+        <span>custom threshold</span>
+      </div>
+    </div>
+
+    <div class="code-block">
+<code><span class="comment">// useScrollReveal — 滚动触发展入动画</span>
+<span class="keyword">export function</span> <span class="func">useScrollReveal</span>&lt;T <span class="keyword">extends</span> HTMLElement&gt;(options?) {
+  <span class="keyword">const</span> ref = useRef&lt;T&gt;(<span class="literal">null</span>)
+  useEffect(() => {
+    <span class="keyword">const</span> el = ref.current
+    <span class="keyword">if</span> (!el) <span class="keyword">return</span>
+    <span class="keyword">const</span> observer = <span class="keyword">new</span> IntersectionObserver(
+      ([entry]) => {
+        <span class="keyword">if</span> (entry.isIntersecting) {
+          el.classList.add(<span class="string">'visible'</span>)
+          observer.unobserve(el)
+        }
+      },
+      { threshold: <span class="number">0.35</span>, ...options }
+    )
+    observer.observe(el)
+    <span class="keyword">return</span> () => observer.disconnect()
+  }, [])
+  <span class="keyword">return</span> ref
+}</code>
+    </div>
+  </div>
+
+  <!-- ============ 三、部署 ============ -->
+  <div class="section">
+    <div class="section-title"><span class="num">03</span> 云端部署 &amp; 文档</div>
+    <div class="section-desc">
+      让项目能真正跑在云服务器上，从代码变成可访问的产品。
+    </div>
+
+    <div class="code-card">
+      <div class="code-card-header">
+        <div class="code-card-title">docker/nginx.conf</div>
+        <span class="code-card-badge badge-infra">Infra · Nginx</span>
+      </div>
+      <div class="code-card-desc">
+        生产环境 Nginx 配置：前端静态文件服务（dist/）、API 反向代理到 FastAPI（localhost:8000）、WebSocket 支持、SPA 路由兜底（非文件请求 fallback index.html）、静态资源长期缓存、Gzip 压缩。AI 生成场景的请求超时设置为 300s。
+      </div>
+      <div class="code-card-meta">
+        <span>反向代理</span>
+        <span>SPA fallback</span>
+        <span>gzip</span>
+        <span>缓存策略</span>
+        <span>WebSocket</span>
+      </div>
+    </div>
+
+    <div class="code-card">
+      <div class="code-card-header">
+        <div class="code-card-title">docs/product-documentation.md</div>
+        <span class="code-card-badge badge-core">Docs · Markdown</span>
+      </div>
+      <div class="code-card-desc">
+        开发日志形式的产品文档，完整记录 V1 → V2 → V3 的演进过程：V1 原型验证架构流程、V2 三项核心优化（Agent/Skill/前端）、V3 Hermes 学习循环详解。包含流程图和对比表格。
+      </div>
+      <div class="code-card-meta">
+        <span>V1→V3</span>
+        <span>架构图</span>
+        <span>Hermes</span>
+        <span>产品演进</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 总结 ============ -->
+  <div class="section">
+    <div class="section-title"><span class="num">─</span> 简短总结</div>
+    <div class="summary-wrap">
+      <div class="summary-item">
+        <div class="summary-num">1</div>
+        <div class="summary-text">
+          <strong>Hermes 学习循环的接入与实现</strong> — 从 Trace Aggregator 到 Skill Distiller，构建了一条完整的"生成 → 评估 → 提炼 → 提升"闭环管线，让系统能自动从每次创作中总结经验、沉淀技能，越用越懂作者的写作风格
+        </div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-num">2</div>
+        <div class="summary-text">
+          <strong>前端 Landing 页面的设计与搭建</strong> — 从零设计 10 个展示 Section，包括 scroll-snap 翻页交互、Agent/特性卡片点击展开详情、V1 vs V3 质量对比折线图、SVG 工作流程图等，将技术能力包装为可感知的产品体验
+        </div>
+      </div>
+      <div class="summary-item" style="border-bottom: none;">
+        <div class="summary-num">3</div>
+        <div class="summary-text">
+          <strong>后端代理部署与云服务器上线</strong> — 编写 Nginx 生产配置（反向代理 / SPA 路由 / 缓存策略），配置 Docker Compose 服务编排，制定阿里云部署方案，确保项目能跑在真实服务器上
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    StoryForge AI · 刘泽宇 · 2026
+  </footer>
+</div>
+</body>
+</html>
