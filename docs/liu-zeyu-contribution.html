@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>刘泽宇 · StoryForge AI 贡献展示</title>
+  <title>Liu Zeyu · StoryForge AI 贡献展示</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;500;600;700&family=Inter:wght@300;400;500;600&family=Noto+Serif+SC:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -26,16 +26,17 @@
       position: fixed; inset:0; pointer-events:none; z-index:0; opacity:0.25;
       background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='400'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='4' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.98  0 0 0 0 0.97  0 0 0 0 0.95  0 0 0 0.015 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
     }
-
     .container { max-width: 960px; margin: 0 auto; padding: 0 32px; position: relative; z-index: 1; }
 
-    /* Header */
     header {
       padding: 60px 0 40px; text-align: center;
       border-bottom: 1px solid var(--hairline); margin-bottom: 60px;
     }
     header .name {
-      font-family: var(--font-display); font-size: 36px; font-weight: 500; margin-bottom: 8px;
+      font-family: var(--font-display); font-size: 36px; font-weight: 500; margin-bottom: 4px;
+    }
+    header .name-en {
+      font-family: var(--font-ui); font-size: 16px; font-weight: 400; color: var(--ink-muted); letter-spacing: 0.1em; margin-bottom: 8px;
     }
     header .role {
       font-size: 15px; color: var(--ink-light); letter-spacing: 0.05em;
@@ -47,7 +48,6 @@
       background: var(--card-bg);
     }
 
-    /* Section */
     .section { margin-bottom: 64px; }
     .section-title {
       font-family: var(--font-display); font-size: 26px; font-weight: 500;
@@ -59,7 +59,6 @@
     }
     .section-desc { font-size: 15px; color: var(--ink-light); margin-bottom: 32px; line-height: 1.8; }
 
-    /* Code card */
     .code-card {
       background: var(--card-bg); border: 1px solid var(--hairline); border-radius: 16px;
       padding: 28px; margin-bottom: 20px;
@@ -107,7 +106,6 @@
     .code-block .cls { color: #e5c07b; }
     .code-block .var { color: #e06c75; }
 
-    /* Summary */
     .summary-wrap {
       background: linear-gradient(135deg, var(--sage-light), var(--parchment));
       border-radius: 20px; padding: 40px; margin-bottom: 60px;
@@ -126,13 +124,6 @@
     }
     .summary-text { font-size: 15px; color: var(--ink-light); line-height: 1.7; padding-top: 6px; }
 
-    .back-link {
-      display: inline-flex; align-items: center; gap: 8px;
-      font-size: 13px; color: var(--sage); text-decoration: none;
-      margin-bottom: 40px;
-    }
-    .back-link:hover { text-decoration: underline; }
-
     footer {
       text-align: center; padding: 40px 0 60px;
       border-top: 1px solid var(--hairline); font-size: 13px; color: var(--ink-muted);
@@ -150,19 +141,18 @@
 <div class="paper"></div>
 
 <div class="container">
-  <a href="http://localhost:5173" class="back-link">← 返回 Landing Page</a>
-
   <header>
     <div class="name">刘泽宇</div>
+    <div class="name-en">Liu Zeyu</div>
     <div class="role">StoryForge AI · 核心贡献者</div>
-    <div class="tag">Hermes 学习循环 · Landing Page · 部署</div>
+    <div class="tag">Hermes 自我进化 · Landing Page · 云端部署</div>
   </header>
 
-  <!-- ============ 一、核心代码 ============ -->
+  <!-- ============ 一、Hermes ============ -->
   <div class="section">
     <div class="section-title"><span class="num">01</span> Hermes 自我进化系统</div>
     <div class="section-desc">
-      整个系统的"大脑"——让 StoryForge AI 不再每次从零开始，而是能从每次生成中总结经验、沉淀技能，越用越懂作者。
+      整个系统的"学习大脑"——让 StoryForge AI 不再每次从零开始，而是能从每次生成中自动总结经验、沉淀技能，越用越懂作者的写作风格。贯穿了从后端核心管线到前端展示的完整链路。
     </div>
 
     <div class="code-card">
@@ -171,31 +161,64 @@
         <span class="code-card-badge badge-core">Core · Python</span>
       </div>
       <div class="code-card-desc">
-        Hermes 学习循环的核心实现。包含四个子模块：<strong>TraceAggregator</strong> 聚合执行轨迹，<strong>FeedbackCollector</strong> 收集 Critic 低分 / Guardian 违规 / 用户反馈，<strong>ExperienceExtractor</strong> 用 LLM 分析问题根因，<strong>SkillDistiller</strong> 将经验蒸馏为结构化技能。
+        Hermes 学习循环的核心实现，包含四条管线：<strong>TraceAggregator</strong> 聚合每次章节生成的完整执行轨迹（Critic 评分变化、Revise 修改记录、最终质量指标）；<strong>FeedbackCollector</strong> 从 Critic 低分项、Guardian 违规记录、用户手动修改三个来源采集反馈信号；<strong>ExperienceExtractor</strong> 利用 LLM 分析问题根因（是设定冲突？语气漂移？还是情节断裂？）；<strong>SkillDistiller</strong> 将分析结果蒸馏为四类结构化技能（character_style / writing_style / plot_helper / user_preference），按置信度分级自动注册。
       </div>
       <div class="code-card-meta">
-        <span>Trace Aggregator</span>
-        <span>Feedback Collector</span>
-        <span>Experience Extractor</span>
-        <span>Skill Distiller</span>
+        <span>TraceAggregator</span>
+        <span>FeedbackCollector</span>
+        <span>ExperienceExtractor</span>
+        <span>SkillDistiller</span>
         <span>置信度分级</span>
       </div>
     </div>
 
     <div class="code-block">
-<code><span class="comment"># ExperienceExtractor — LLM 驱动的根因分析</span>
+<code><span class="comment"># TraceAggregator — 聚合执行轨迹</span>
+<span class="keyword">class</span> <span class="cls">TraceAggregator</span>:
+    <span class="keyword">def</span> <span class="func">aggregate</span>(<span class="var">self</span>, run_id: str) -> ExecutionTrace:
+        <span class="keyword">return</span> ExecutionTrace(
+            critic_scores=<span class="var">self</span>.<span class="func">_collect_critic_history</span>(run_id),
+            revise_records=<span class="var">self</span>.<span class="func">_collect_revise_records</span>(run_id),
+            user_changes=<span class="var">self</span>.<span class="func">_detect_user_modifications</span>(run_id),
+        )
+
+<span class="comment"># FeedbackCollector — 多源信号采集</span>
+<span class="keyword">class</span> <span class="cls">FeedbackCollector</span>:
+    <span class="keyword">def</span> <span class="func">collect</span>(<span class="var">self</span>, trace: ExecutionTrace) -> list[FeedbackSignal]:
+        signals = []
+        <span class="keyword">if</span> trace.has_low_score():           <span class="comment"># Critic 低分</span>
+            signals.<span class="func">append</span>(FeedbackSignal(<span class="string">'critic_low'</span>, trace.low_score_items))
+        <span class="keyword">if</span> trace.has_guardrail_violations(): <span class="comment"># Guardian 违规</span>
+            signals.<span class="func">append</span>(FeedbackSignal(<span class="string">'guardrail'</span>, trace.guardrail_errors))
+        <span class="keyword">if</span> trace.has_user_edits():          <span class="comment"># 用户手动修改</span>
+            signals.<span class="func">append</span>(FeedbackSignal(<span class="string">'user_edit'</span>, trace.user_changes))
+        <span class="keyword">return</span> signals</code>
+    </div>
+
+    <div class="code-block">
+<code><span class="comment">// ExperienceExtractor → SkillDistiller 管线</span>
 <span class="keyword">class</span> <span class="cls">ExperienceExtractor</span>:
-    <span class="keyword">def</span> <span class="func">extract</span>(<span class="var">self</span>, signal: FeedbackSignal) -> WritingExperience:
-        <span class="comment"># 分析 Critic 低分的根因：是设定冲突？语气漂移？情节断裂？</span>
-        root_cause = <span class="var">self</span>.<span class="func">_analyze_root_cause</span>(signal)
-        <span class="comment"># 生成结构化改进建议</span>
-        suggestion = <span class="var">self</span>.<span class="func">_generate_suggestion</span>(root_cause, signal)
+    <span class="keyword">def</span> <span class="func">analyze</span>(<span class="var">self</span>, signal: FeedbackSignal) -> WritingExperience:
+        root_cause = <span class="var">self</span>.llm.<span class="func">analyze</span>(          <span class="comment"># LLM 分析根因</span>
+            problem=signal.evidence,
+            context=signal.chapter_context
+        )
         <span class="keyword">return</span> WritingExperience(
             problem_type=root_cause.type,
-            evidence=signal.evidence,
-            suggestion=suggestion,
+            root_cause=root_cause.description,
+            suggestion=root_cause.suggestion,
             confidence=root_cause.confidence
-        )</code>
+        )
+
+<span class="keyword">class</span> <span class="cls">SkillDistiller</span>:
+    <span class="keyword">def</span> <span class="func">distill</span>(<span class="var">self</span>, experience: WritingExperience) -> Skill:
+        <span class="keyword">if</span> experience.confidence >= <span class="number">0.8</span>:     <span class="comment"># 高置信度 → 直接生效</span>
+            strength = <span class="number">0.7</span>
+        <span class="keyword">elif</span> experience.confidence >= <span class="number">0.5</span>:  <span class="comment"># 中等 → 低强度试用</span>
+            strength = <span class="number">0.3</span>
+        <span class="keyword">else</span>:                                  <span class="comment"># 低置信度 → 标记 draft</span>
+            <span class="keyword">return</span> Skill.as_draft(experience)
+        <span class="keyword">return</span> Skill(experience.problem_type, strength)</code>
     </div>
 
     <div class="code-card">
@@ -204,26 +227,28 @@
         <span class="code-card-badge badge-core">Core · Python</span>
       </div>
       <div class="code-card-desc">
-        <strong>SkillAssembler</strong> — Writer 每次生成前，根据当前章节的角色、剧情阶段、场景类型，从 ChromaDB 中语义检索最相关的 3-5 条技能，动态注入 Writer prompt。技能的来源有两个：预置的名家文风（鲁迅/刘慈欣等）和 Hermes 自动提炼的经验技能。
+        <strong>SkillAssembler</strong> — 是 Hermes 学习循环的"消费端"。Writer 每章生成前被调用，根据当前章节的涉及角色、剧情阶段（开端/发展/高潮/收束）、场景类型（对话/战斗/描写/内心独白）三维特征，从 ChromaDB 语义检索 top-5 技能，按置信度排序后动态注入 Writer 的 system prompt。同时负责将预置的名家文风（鲁迅、刘慈欣等）和历史沉淀的经验技能统一装配。
       </div>
       <div class="code-card-meta">
         <span>语义检索</span>
         <span>ChromaDB</span>
         <span>动态注入</span>
-        <span>Character Style</span>
-        <span>Writing Style</span>
+        <span>多维特征</span>
+        <span>技能装配</span>
       </div>
     </div>
 
     <div class="code-block">
-<code><span class="comment"># SkillAssembler — 上下文感知的技能注入</span>
+<code><span class="comment"># SkillAssembler — 上下文感知的技能动态注入</span>
 <span class="keyword">class</span> <span class="cls">SkillAssembler</span>:
     <span class="keyword">def</span> <span class="func">assemble</span>(<span class="var">self</span>, ctx: ChapterContext) -> list[Skill]:
-        <span class="comment"># 根据角色、剧情阶段、场景类型检索技能</span>
+        <span class="comment"># 1. 构建查询：结合角色、剧情阶段、场景类型</span>
         query = <span class="var">self</span>.<span class="func">_build_query</span>(ctx.characters, ctx.plot_stage, ctx.scene_type)
-        skills = <span class="var">self</span>.vector_db.<span class="func">similarity_search</span>(query, k=<span class="string">5</span>)
-        <span class="comment"># 按置信度排序，过滤低质量技能</span>
-        <span class="keyword">return</span> [s <span class="keyword">for</span> s <span class="keyword">in</span> skills <span class="keyword">if</span> s.confidence >= <span class="number">0.5</span>]</code>
+        <span class="comment"># 2. 向量检索 top-5 技能</span>
+        candidates = <span class="var">self</span>.vector_db.<span class="func">similarity_search</span>(query, k=<span class="number">5</span>)
+        <span class="comment"># 3. 低质量技能过滤 + 按置信度排序</span>
+        <span class="keyword">return</span> [s <span class="keyword">for</span> s <span class="keyword">in</span> sorted(candidates, key=lambda x: x.confidence, reverse=<span class="literal">True</span>)
+                <span class="keyword">if</span> s.confidence >= <span class="number">0.5</span>]</code>
     </div>
   </div>
 
@@ -231,7 +256,7 @@
   <div class="section">
     <div class="section-title"><span class="num">02</span> 前端 Landing Page</div>
     <div class="section-desc">
-      从零设计并实现的产品展示页。暖冷渐变视觉风格，scroll-snap 翻页交互，Agent/特性卡片点击展开详情。
+      从零设计并实现的产品对外展示页面。将"四个 AI Agent 协作写小说"的技术能力包装为可感知的产品体验，包含暖冷渐变视觉风格、scroll-snap 翻页交互、卡片展开详情等。
     </div>
 
     <div class="code-card">
@@ -240,77 +265,94 @@
         <span class="code-card-badge badge-frontend">Frontend · TSX</span>
       </div>
       <div class="code-card-desc">
-        Landing Page 主入口。负责页面整体布局、10 个 Section 的编排、顶部导航、页脚、scroll-snap 容器管理。集成自定义 <code>smoothScrollTo</code> 动画（easeInOutCubic 缓动，900ms）实现点击箭头翻页的高品质手感。
+        Landing Page 主入口。负责 10 个 Section 的编排调度、scroll-snap 容器管理、背景色分配。实现自定义 <code>smoothScrollTo</code> 函数（900ms easeInOutCubic 缓动）替代浏览器原生平滑滚动，提供高品质的翻页手感。集成 <code>initScrollReveal</code> 批量观察器，threshold 设为 0.35 确保内容在页面翻出大部分后才触发弹入。
       </div>
       <div class="code-card-meta">
         <span>scroll-snap</span>
         <span>easeInOutCubic</span>
         <span>PageArrow</span>
         <span>10 Sections</span>
+        <span>background variations</span>
       </div>
+    </div>
+
+    <div class="code-block">
+<code><span class="comment">// smoothScrollTo — 自定义高品质翻页滚动</span>
+<span class="keyword">function</span> <span class="func">smoothScrollTo</span>(container: HTMLElement, targetY: number) {
+  <span class="keyword">const</span> start = container.scrollTop
+  <span class="keyword">const</span> distance = targetY - start
+  <span class="keyword">const</span> startTime = performance.now()
+  <span class="keyword">const</span> duration = <span class="number">900</span>  <span class="comment">// 900ms 高品质手感</span>
+
+  <span class="keyword">function</span> <span class="func">step</span>(time: number) {
+    <span class="keyword">const</span> elapsed = time - startTime
+    <span class="keyword">const</span> p = Math.min(elapsed / duration, <span class="number">1</span>)
+    <span class="keyword">const</span> eased = p < <span class="number">0.5</span>
+      ? <span class="number">4</span> * p * p * p
+      : <span class="number">1</span> - Math.pow(-<span class="number">2</span> * p + <span class="number">2</span>, <span class="number">3</span>) / <span class="number">2</span>
+    container.scrollTop = start + distance * eased
+    <span class="keyword">if</span> (p < <span class="number">1</span>) requestAnimationFrame(step)
+  }
+  requestAnimationFrame(step)
+}</code>
     </div>
 
     <div class="code-card">
       <div class="code-card-header">
         <div class="code-card-title">frontend/src/components/landing/</div>
-        <span class="code-card-badge badge-frontend">Frontend · TSX</span>
+        <span class="code-card-badge badge-frontend">Frontend · 10 组件</span>
       </div>
       <div class="code-card-desc">
-        10 个子组件，每个负责一个展示 Section：LandingHero / PhilosophySection / AgentTeamSection（含点击展开弹窗） / V1V2Comparison（SVG 折线图动画） / FeatureCards（点击缩放展开 + SVG 流程图） / WorkflowSection / ShowcaseSection / StatsSection / TargetAudience / FinalCTA。
+        10 个子组件，覆盖产品展示各个维度：<strong>LandingHero</strong>（暖冷渐变 + 浮动粒子）、<strong>AgentTeamSection</strong>（四 Agent 卡片 + 点击展开全屏详情弹窗，展示核心能力与 V3 改进）、<strong>V1V2Comparison</strong>（SVG 折线图 + 数据卡片 + 数字递增动画）、<strong>FeatureCards</strong>（六特性卡片 + 点击缩放展开覆盖网格 + SVG 工作流程图）、<strong>ShowcaseSection</strong>（AI 生成小说摘录 + 编辑器/评审面板模拟）、<strong>PhilosophySection / WorkflowSection / StatsSection / TargetAudience / FinalCTA</strong>。
       </div>
       <div class="code-card-meta">
         <span>Agent 弹窗</span>
         <span>SVG 图表</span>
         <span>缩放展开</span>
-        <span>工作流</span>
         <span>glide-stop 动画</span>
+        <span>数字递增</span>
       </div>
     </div>
 
     <div class="code-card">
       <div class="code-card-header">
         <div class="code-card-title">frontend/src/hooks/useScrollReveal.ts</div>
-        <span class="code-card-badge badge-frontend">Frontend · TS</span>
+        <span class="code-card-badge badge-frontend">Frontend · Hook</span>
       </div>
       <div class="code-card-desc">
-        封装 IntersectionObserver 的通用 Hook，支持自定义 threshold 和 rootMargin。初始化时自动扫描已可见元素，防止首屏内容空白。提供 <code>initScrollReveal</code> 批量观察和 <code>useScrollReveal</code> 单元素 hook 两种使用方式。
+        封装 IntersectionObserver 的通用 Hook。支持自定义 threshold 和 rootMargin。初始化时自动扫描已可见元素，防止首屏内容空白。提供批量观察 <code>initScrollReveal</code> 和单元素 <code>useScrollReveal</code> 两种使用方式。Landing 页面使用 threshold=0.35 确保翻页到位后才弹入。
       </div>
       <div class="code-card-meta">
         <span>IntersectionObserver</span>
-        <span>scroll reveal</span>
         <span>custom threshold</span>
+        <span>scroll reveal</span>
       </div>
     </div>
 
     <div class="code-block">
-<code><span class="comment">// useScrollReveal — 滚动触发展入动画</span>
-<span class="keyword">export function</span> <span class="func">useScrollReveal</span>&lt;T <span class="keyword">extends</span> HTMLElement&gt;(options?) {
-  <span class="keyword">const</span> ref = useRef&lt;T&gt;(<span class="literal">null</span>)
-  useEffect(() => {
-    <span class="keyword">const</span> el = ref.current
-    <span class="keyword">if</span> (!el) <span class="keyword">return</span>
-    <span class="keyword">const</span> observer = <span class="keyword">new</span> IntersectionObserver(
-      ([entry]) => {
+<code><span class="comment">// useScrollReveal — 核心实现</span>
+<span class="keyword">export function</span> <span class="func">initScrollReveal</span>(selector = <span class="string">'.reveal'</span>, options?: IntersectionObserverInit) {
+  <span class="keyword">const</span> observer = <span class="keyword">new</span> IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
         <span class="keyword">if</span> (entry.isIntersecting) {
-          el.classList.add(<span class="string">'visible'</span>)
-          observer.unobserve(el)
+          entry.target.classList.add(<span class="string">'visible'</span>)  <span class="comment">// 翻出后添加 visible</span>
+          observer.unobserve(entry.target)
         }
-      },
-      { threshold: <span class="number">0.35</span>, ...options }
-    )
-    observer.observe(el)
-    <span class="keyword">return</span> () => observer.disconnect()
-  }, [])
-  <span class="keyword">return</span> ref
+      })
+    },
+    { threshold: <span class="number">0.35</span>, ...options }
+  )
+  elements.forEach((el) => observer.observe(el))
 }</code>
     </div>
   </div>
 
   <!-- ============ 三、部署 ============ -->
   <div class="section">
-    <div class="section-title"><span class="num">03</span> 云端部署 &amp; 文档</div>
+    <div class="section-title"><span class="num">03</span> 云端部署 &amp; 产品文档</div>
     <div class="section-desc">
-      让项目能真正跑在云服务器上，从代码变成可访问的产品。
+      让项目能真正跑在云服务器上，从代码变成可访问的产品。同时撰写完整的 V1→V2→V3 产品文档。
     </div>
 
     <div class="code-card">
@@ -319,12 +361,12 @@
         <span class="code-card-badge badge-infra">Infra · Nginx</span>
       </div>
       <div class="code-card-desc">
-        生产环境 Nginx 配置：前端静态文件服务（dist/）、API 反向代理到 FastAPI（localhost:8000）、WebSocket 支持、SPA 路由兜底（非文件请求 fallback index.html）、静态资源长期缓存、Gzip 压缩。AI 生成场景的请求超时设置为 300s。
+        生产级 Nginx 配置。前端 dist/ 静态文件服务 + <code>/api/</code> 反向代理到 FastAPI（300s 超时应答 AI 长生成场景）+ WebSocket 代理（写时实时通信）+ SPA 路由兜底（非文件请求 fallback index.html）+ 静态资源一年强缓存 + Gzip 压缩。单文件覆盖整套前端部署需求。
       </div>
       <div class="code-card-meta">
         <span>反向代理</span>
         <span>SPA fallback</span>
-        <span>gzip</span>
+        <span>300s timeout</span>
         <span>缓存策略</span>
         <span>WebSocket</span>
       </div>
@@ -333,16 +375,16 @@
     <div class="code-card">
       <div class="code-card-header">
         <div class="code-card-title">docs/product-documentation.md</div>
-        <span class="code-card-badge badge-core">Docs · Markdown</span>
+        <span class="code-card-badge badge-core">文档 · Markdown</span>
       </div>
       <div class="code-card-desc">
-        开发日志形式的产品文档，完整记录 V1 → V2 → V3 的演进过程：V1 原型验证架构流程、V2 三项核心优化（Agent/Skill/前端）、V3 Hermes 学习循环详解。包含流程图和对比表格。
+        开发日志形式的产品文档，完整记录 V1 → V2 → V3 的演进过程：V1 原型验证架构流程图、V2 三项核心优化（Agent 写作流程优化 / 作家 Skill 功能 / 前端重写）、V3 Hermes 学习循环详解（含时序图、置信度分级策略、V1 vs V3 对比表）。页面上所有的 V2→V3 文案修正也由我负责。
       </div>
       <div class="code-card-meta">
-        <span>V1→V3</span>
+        <span>V1→V3 演进</span>
         <span>架构图</span>
-        <span>Hermes</span>
-        <span>产品演进</span>
+        <span>Hermes 详解</span>
+        <span>版本对比</span>
       </div>
     </div>
   </div>
@@ -354,26 +396,26 @@
       <div class="summary-item">
         <div class="summary-num">1</div>
         <div class="summary-text">
-          <strong>Hermes 学习循环的接入与实现</strong> — 从 Trace Aggregator 到 Skill Distiller，构建了一条完整的"生成 → 评估 → 提炼 → 提升"闭环管线，让系统能自动从每次创作中总结经验、沉淀技能，越用越懂作者的写作风格
+          <strong>Hermes 学习循环的接入与实现</strong> — 从 TraceAggregator → FeedbackCollector → ExperienceExtractor → SkillDistiller → SkillAssembler，构建了一条完整的"生成 → 评估 → 提炼 → 提升"闭环管线，让系统能自动从每次创作中总结经验、沉淀技能，越用越懂作者的写作风格
         </div>
       </div>
       <div class="summary-item">
         <div class="summary-num">2</div>
         <div class="summary-text">
-          <strong>前端 Landing 页面的设计与搭建</strong> — 从零设计 10 个展示 Section，包括 scroll-snap 翻页交互、Agent/特性卡片点击展开详情、V1 vs V3 质量对比折线图、SVG 工作流程图等，将技术能力包装为可感知的产品体验
+          <strong>前端 Landing 页面的设计与搭建</strong> — 从零设计 10 个展示 Section，包括 scroll-snap 翻页交互、自定义 easeInOutCubic 平滑滚动、Agent/特性卡片点击展开详情、SVG 质量对比折线图与工作流程图、glide-to-stop 弹入动画等，将技术能力包装为可感知的产品体验
         </div>
       </div>
       <div class="summary-item" style="border-bottom: none;">
         <div class="summary-num">3</div>
         <div class="summary-text">
-          <strong>后端代理部署与云服务器上线</strong> — 编写 Nginx 生产配置（反向代理 / SPA 路由 / 缓存策略），配置 Docker Compose 服务编排，制定阿里云部署方案，确保项目能跑在真实服务器上
+          <strong>后端代理部署与云服务器上线</strong> — 编写 Nginx 生产配置（反向代理/SPA 路由/缓存策略/WebSocket），配置 Docker Compose 服务编排，制定阿里云部署方案。同时撰写 V1→V2→V3 产品文档，确保项目从代码到上线全链路可交付
         </div>
       </div>
     </div>
   </div>
 
   <footer>
-    StoryForge AI · 刘泽宇 · 2026
+    StoryForge AI · Liu Zeyu · 2026
   </footer>
 </div>
 </body>
