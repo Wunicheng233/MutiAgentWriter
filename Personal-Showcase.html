@@ -1,0 +1,1490 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>个人负责成果展示 · StoryForge AI</title>
+  <style>
+    :root {
+      --paper: #f8f2ea;
+      --paper-warm: #fffaf4;
+      --paper-mist: #eef4ef;
+      --ink: #3e342c;
+      --muted: #74685e;
+      --faint: #9d9288;
+      --pine: #5f876f;
+      --pine-dark: #456956;
+      --pine-soft: rgba(95, 135, 111, 0.14);
+      --orange: #df7f58;
+      --orange-soft: #fff0df;
+      --gold: #a38b5a;
+      --line: rgba(95, 135, 111, 0.22);
+      --line-warm: rgba(62, 52, 44, 0.14);
+      --white: #fffdf8;
+      --shadow: 0 28px 82px rgba(58, 46, 36, 0.13);
+      --shadow-soft: 0 14px 42px rgba(58, 46, 36, 0.08);
+      --font-serif: "Songti SC", "Noto Serif SC", "STSong", Georgia, serif;
+      --font-sans: "LXGW WenKai", -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+      --font-code: "SFMono-Regular", "Cascadia Code", Consolas, monospace;
+      --ease: cubic-bezier(.22, 1, .36, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      background:
+        linear-gradient(110deg, rgba(238, 244, 239, 0.7), transparent 34%),
+        linear-gradient(180deg, var(--paper-warm), var(--paper));
+      color: var(--ink);
+      font-family: var(--font-sans);
+      letter-spacing: 0;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: .33;
+      z-index: -1;
+      background-image:
+        radial-gradient(circle at 25% 12%, rgba(95, 135, 111, .14), transparent 26%),
+        radial-gradient(circle at 85% 8%, rgba(223, 127, 88, .08), transparent 22%),
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.88' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.12 0 0 0 0 0.1 0 0 0 0 0.08 0 0 0 .035 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .site-shell {
+      min-height: 100vh;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 72px;
+      padding: 0 clamp(20px, 4vw, 64px);
+      border-bottom: 1px solid rgba(95, 135, 111, .16);
+      background: rgba(255, 250, 244, .78);
+      backdrop-filter: blur(18px);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      font-family: var(--font-serif);
+      font-size: 22px;
+      color: var(--ink);
+      white-space: nowrap;
+    }
+
+    .brand-mark {
+      width: 34px;
+      height: 34px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      background: rgba(255, 253, 248, .84);
+      box-shadow: 0 8px 18px rgba(58, 46, 36, .06);
+    }
+
+    .brand-mark::before {
+      content: "";
+      width: 13px;
+      height: 18px;
+      border: 2px solid var(--pine);
+      border-left-width: 4px;
+      border-radius: 2px;
+    }
+
+    .nav {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .nav a {
+      padding: 9px 12px;
+      border-radius: 999px;
+      transition: color .2s var(--ease), background .2s var(--ease);
+    }
+
+    .nav a:hover,
+    .nav a.active {
+      color: var(--pine-dark);
+      background: var(--pine-soft);
+    }
+
+    .container {
+      width: min(1180px, calc(100vw - 40px));
+      margin: 0 auto;
+    }
+
+    .hero {
+      min-height: calc(100vh - 72px);
+      display: grid;
+      grid-template-columns: minmax(0, .94fr) minmax(420px, 1.06fr);
+      gap: clamp(32px, 6vw, 78px);
+      align-items: center;
+      padding: clamp(56px, 8vw, 100px) 0 82px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin: 0 0 22px;
+      color: var(--pine);
+      font-size: 13px;
+      font-weight: 650;
+      letter-spacing: .22em;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 34px;
+      height: 1px;
+      background: var(--pine);
+      opacity: .74;
+    }
+
+    h1,
+    h2,
+    h3 {
+      margin: 0;
+      font-family: var(--font-serif);
+      font-weight: 500;
+      letter-spacing: 0;
+      color: var(--ink);
+    }
+
+    h1 {
+      max-width: 720px;
+      font-size: clamp(54px, 7vw, 104px);
+      line-height: .98;
+    }
+
+    .hero-lead {
+      margin: 28px 0 0;
+      max-width: 620px;
+      color: var(--muted);
+      font-size: clamp(17px, 1.45vw, 21px);
+      line-height: 1.9;
+    }
+
+    .hero-actions {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin-top: 36px;
+    }
+
+    .button {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 14px 22px;
+      background: rgba(255, 253, 248, .72);
+      color: var(--ink);
+      font-size: 15px;
+      transition: transform .22s var(--ease), box-shadow .22s var(--ease), background .22s var(--ease);
+      cursor: pointer;
+    }
+
+    .button.primary {
+      background: var(--pine);
+      color: var(--white);
+      border-color: rgba(95, 135, 111, .28);
+      box-shadow: 0 16px 36px rgba(69, 105, 86, .22);
+    }
+
+    .button:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .scope-note {
+      margin-top: 28px;
+      padding: 16px 18px;
+      border: 1px solid rgba(223, 127, 88, .26);
+      border-radius: 14px;
+      background: rgba(255, 240, 223, .58);
+      color: #7a513f;
+      line-height: 1.75;
+      font-size: 14px;
+      max-width: 620px;
+    }
+
+    .hero-board {
+      position: relative;
+      min-height: 670px;
+      perspective: 1200px;
+    }
+
+    .product-wall {
+      position: absolute;
+      inset: 10px 0 0;
+      border: 1px solid var(--line);
+      border-radius: 30px;
+      background: rgba(255, 253, 248, .54);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      transform: rotateY(-5deg) rotateX(2deg);
+    }
+
+    .product-wall::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(100deg, rgba(255,255,255,.62), transparent 26%, transparent 70%, rgba(255,255,255,.36)),
+        radial-gradient(circle at 42% 22%, rgba(95,135,111,.16), transparent 24%);
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .wall-grid {
+      display: grid;
+      height: 100%;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr 1fr;
+      gap: 1px;
+      background: var(--line);
+    }
+
+    .wall-shot {
+      position: relative;
+      overflow: hidden;
+      background: var(--paper);
+    }
+
+    .wall-shot img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transform: scale(1.03);
+      filter: saturate(.94) contrast(.98);
+    }
+
+    .wall-shot.large {
+      grid-row: span 2;
+    }
+
+    .floating-card {
+      position: absolute;
+      z-index: 5;
+      border-radius: 22px;
+      border: 1px solid rgba(95, 135, 111, .22);
+      background: rgba(255, 253, 248, .9);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+    }
+
+    .metric-card {
+      left: -20px;
+      bottom: 52px;
+      width: 260px;
+      padding: 20px;
+    }
+
+    .metric-card strong {
+      display: block;
+      font-family: var(--font-serif);
+      font-size: 46px;
+      line-height: 1;
+      color: var(--pine-dark);
+    }
+
+    .metric-card span {
+      display: block;
+      margin-top: 10px;
+      color: var(--muted);
+      line-height: 1.65;
+      font-size: 14px;
+    }
+
+    .code-float {
+      right: -18px;
+      top: 72px;
+      width: min(430px, 82%);
+      padding: 18px;
+      font-family: var(--font-code);
+      font-size: 12px;
+      line-height: 1.7;
+      color: #4b4138;
+    }
+
+    .code-float .line {
+      display: block;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .code-float .green {
+      color: var(--pine-dark);
+    }
+
+    .section {
+      padding: 104px 0;
+      scroll-margin-top: 86px;
+    }
+
+    .section-header {
+      display: grid;
+      grid-template-columns: minmax(0, .9fr) minmax(300px, .55fr);
+      gap: 46px;
+      align-items: end;
+      margin-bottom: 48px;
+    }
+
+    .section-kicker {
+      margin: 0 0 14px;
+      color: var(--pine);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .22em;
+      text-transform: uppercase;
+    }
+
+    .section h2 {
+      font-size: clamp(38px, 5vw, 68px);
+      line-height: 1.04;
+    }
+
+    .section-desc {
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.85;
+      margin: 0;
+    }
+
+    .workflow-strip {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .flow-card {
+      position: relative;
+      min-height: 190px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(255, 253, 248, .66);
+      padding: 18px;
+      overflow: hidden;
+      transition: transform .24s var(--ease), box-shadow .24s var(--ease), border-color .24s var(--ease);
+    }
+
+    .flow-card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(95, 135, 111, .42);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .flow-card::after {
+      content: attr(data-index);
+      position: absolute;
+      right: 12px;
+      bottom: -20px;
+      font-family: var(--font-serif);
+      font-size: 86px;
+      color: rgba(95, 135, 111, .09);
+    }
+
+    .flow-card h3 {
+      font-size: 24px;
+      line-height: 1.18;
+      margin-bottom: 12px;
+    }
+
+    .flow-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.75;
+      position: relative;
+      z-index: 2;
+    }
+
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 22px;
+    }
+
+    .feature-card {
+      position: relative;
+      min-height: 360px;
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      background: rgba(255, 253, 248, .7);
+      box-shadow: 0 18px 54px rgba(58, 46, 36, .07);
+      overflow: hidden;
+    }
+
+    .feature-card.wide {
+      grid-column: span 2;
+      min-height: 430px;
+    }
+
+    .feature-copy {
+      position: relative;
+      z-index: 3;
+      padding: 30px;
+      max-width: 520px;
+    }
+
+    .feature-copy h3 {
+      font-size: 34px;
+      margin-bottom: 14px;
+    }
+
+    .feature-copy p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.86;
+    }
+
+    .feature-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 18px;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      height: 28px;
+      padding: 0 11px;
+      border: 1px solid rgba(95, 135, 111, .25);
+      border-radius: 999px;
+      background: rgba(238, 244, 239, .66);
+      color: var(--pine-dark);
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .feature-shot {
+      position: absolute;
+      right: -22px;
+      bottom: -16px;
+      width: 62%;
+      border: 1px solid rgba(95, 135, 111, .22);
+      border-radius: 18px;
+      overflow: hidden;
+      background: var(--white);
+      box-shadow: var(--shadow);
+      transform: rotate(-2deg);
+    }
+
+    .feature-card:nth-child(2) .feature-shot,
+    .feature-card:nth-child(4) .feature-shot {
+      right: -42px;
+      width: 68%;
+      transform: rotate(2deg);
+    }
+
+    .feature-card.wide .feature-shot {
+      width: 58%;
+      right: 26px;
+      bottom: 28px;
+      transform: rotate(0deg);
+    }
+
+    .feature-shot img {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    .spotlight-layout {
+      display: grid;
+      grid-template-columns: minmax(340px, .75fr) minmax(0, 1.25fr);
+      gap: 24px;
+      align-items: stretch;
+    }
+
+    .module-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .module-button {
+      border: 1px solid var(--line);
+      border-radius: 17px;
+      padding: 18px;
+      background: rgba(255, 253, 248, .62);
+      text-align: left;
+      color: var(--ink);
+      cursor: pointer;
+      transition: background .2s var(--ease), transform .2s var(--ease), border-color .2s var(--ease);
+    }
+
+    .module-button:hover,
+    .module-button.active {
+      background: rgba(238, 244, 239, .82);
+      border-color: rgba(95, 135, 111, .42);
+      transform: translateX(4px);
+    }
+
+    .module-button strong {
+      display: block;
+      font-family: var(--font-serif);
+      font-size: 25px;
+      font-weight: 500;
+    }
+
+    .module-button span {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.65;
+    }
+
+    .spotlight-panel {
+      border: 1px solid var(--line);
+      border-radius: 26px;
+      background: rgba(255, 253, 248, .72);
+      box-shadow: var(--shadow-soft);
+      overflow: hidden;
+    }
+
+    .spotlight-visual {
+      position: relative;
+      height: 390px;
+      background: linear-gradient(140deg, var(--paper-mist), var(--paper-warm));
+      overflow: hidden;
+    }
+
+    .spotlight-visual img {
+      position: absolute;
+      right: -6%;
+      bottom: -4%;
+      width: 82%;
+      border: 1px solid rgba(95, 135, 111, .2);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      transition: opacity .22s var(--ease), transform .22s var(--ease);
+    }
+
+    .spotlight-label {
+      position: absolute;
+      left: 28px;
+      top: 28px;
+      max-width: 360px;
+      z-index: 2;
+    }
+
+    .spotlight-label h3 {
+      font-size: 42px;
+      line-height: 1.05;
+      margin-bottom: 14px;
+    }
+
+    .spotlight-label p {
+      color: var(--muted);
+      line-height: 1.72;
+      margin: 0;
+    }
+
+    .spotlight-detail {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      border-top: 1px solid var(--line);
+    }
+
+    .detail-cell {
+      min-height: 126px;
+      padding: 18px 20px;
+      border-right: 1px solid var(--line);
+    }
+
+    .detail-cell:last-child {
+      border-right: 0;
+    }
+
+    .detail-cell .label {
+      color: var(--pine);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+
+    .detail-cell p {
+      margin: 10px 0 0;
+      color: var(--muted);
+      line-height: 1.65;
+      font-size: 14px;
+    }
+
+    .code-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .code-card {
+      border: 1px solid rgba(95, 135, 111, .24);
+      border-radius: 20px;
+      background: rgba(255, 253, 248, .8);
+      overflow: hidden;
+      box-shadow: 0 14px 36px rgba(58, 46, 36, .06);
+    }
+
+    .code-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      padding: 15px 18px;
+      border-bottom: 1px solid rgba(95, 135, 111, .18);
+      background: rgba(238, 244, 239, .64);
+    }
+
+    .code-title {
+      font-family: var(--font-serif);
+      font-size: 22px;
+    }
+
+    .code-path {
+      color: var(--muted);
+      font-family: var(--font-code);
+      font-size: 11px;
+      word-break: break-all;
+      text-align: right;
+    }
+
+    pre {
+      margin: 0;
+      padding: 19px;
+      overflow: auto;
+      color: #463b32;
+      font-family: var(--font-code);
+      font-size: 12px;
+      line-height: 1.75;
+      background:
+        linear-gradient(90deg, rgba(95, 135, 111, .08) 0 3px, transparent 3px),
+        rgba(255, 253, 248, .48);
+    }
+
+    code .hl {
+      color: var(--pine-dark);
+      font-weight: 700;
+    }
+
+    .demo-band {
+      position: relative;
+      display: grid;
+      grid-template-columns: minmax(0, .8fr) minmax(440px, 1.2fr);
+      gap: 34px;
+      align-items: center;
+      min-height: 520px;
+      border: 1px solid var(--line);
+      border-radius: 32px;
+      background: rgba(255, 253, 248, .68);
+      box-shadow: var(--shadow-soft);
+      overflow: hidden;
+      padding: 42px;
+    }
+
+    .demo-band::after {
+      content: "";
+      position: absolute;
+      inset: auto -10% -38% 36%;
+      height: 70%;
+      background: radial-gradient(circle, rgba(95, 135, 111, .18), transparent 64%);
+      pointer-events: none;
+    }
+
+    .demo-copy {
+      position: relative;
+      z-index: 2;
+    }
+
+    .demo-copy h2 {
+      font-size: clamp(42px, 5vw, 74px);
+      line-height: 1.02;
+      margin-bottom: 22px;
+    }
+
+    .demo-copy p {
+      color: var(--muted);
+      line-height: 1.86;
+      font-size: 16px;
+    }
+
+    .demo-stack {
+      position: relative;
+      z-index: 2;
+      min-height: 410px;
+    }
+
+    .demo-frame {
+      position: absolute;
+      border: 1px solid rgba(95, 135, 111, .23);
+      border-radius: 22px;
+      overflow: hidden;
+      background: var(--white);
+      box-shadow: var(--shadow);
+    }
+
+    .demo-frame.main {
+      right: 0;
+      top: 18px;
+      width: 78%;
+    }
+
+    .demo-frame.side {
+      left: 0;
+      bottom: 0;
+      width: 48%;
+      transform: rotate(-4deg);
+    }
+
+    .demo-frame img {
+      display: block;
+      width: 100%;
+    }
+
+    .timeline {
+      display: grid;
+      gap: 12px;
+    }
+
+    .timeline-row {
+      display: grid;
+      grid-template-columns: 160px minmax(0, 1fr);
+      gap: 18px;
+      padding: 20px 0;
+      border-bottom: 1px solid var(--line-warm);
+    }
+
+    .timeline-row:last-child {
+      border-bottom: 0;
+    }
+
+    .timeline-date {
+      color: var(--pine-dark);
+      font-weight: 700;
+    }
+
+    .timeline-row h3 {
+      margin-bottom: 8px;
+      font-size: 27px;
+    }
+
+    .timeline-row p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.75;
+    }
+
+    .boundary {
+      margin-top: 36px;
+      border: 1px dashed rgba(223, 127, 88, .45);
+      border-radius: 22px;
+      background: rgba(255, 240, 223, .48);
+      padding: 24px;
+      color: #765242;
+      line-height: 1.85;
+    }
+
+    .footer {
+      padding: 64px 0 80px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .footer strong {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--ink);
+      font-family: var(--font-serif);
+      font-size: 34px;
+      font-weight: 500;
+    }
+
+    .reveal {
+      opacity: 0;
+      transform: translateY(26px);
+      transition: opacity .62s var(--ease), transform .62s var(--ease);
+    }
+
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: .01ms !important;
+      }
+    }
+
+    @media (max-width: 1060px) {
+      .hero,
+      .section-header,
+      .spotlight-layout,
+      .demo-band {
+        grid-template-columns: 1fr;
+      }
+
+      .hero-board {
+        min-height: 560px;
+      }
+
+      .workflow-strip {
+        grid-template-columns: repeat(3, 1fr);
+      }
+
+      .feature-card,
+      .feature-card.wide {
+        grid-column: span 2;
+      }
+
+      .code-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .topbar {
+        height: auto;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 16px 20px;
+        flex-direction: column;
+      }
+
+      .nav {
+        width: 100%;
+        overflow-x: auto;
+        padding-bottom: 2px;
+      }
+
+      .container {
+        width: min(100% - 28px, 1180px);
+      }
+
+      .hero {
+        padding-top: 52px;
+      }
+
+      h1 {
+        font-size: clamp(44px, 14vw, 70px);
+      }
+
+      .hero-board {
+        min-height: 470px;
+      }
+
+      .product-wall {
+        transform: none;
+      }
+
+      .code-float {
+        display: none;
+      }
+
+      .metric-card {
+        left: 14px;
+        right: 14px;
+        bottom: 22px;
+        width: auto;
+      }
+
+      .workflow-strip,
+      .feature-grid,
+      .spotlight-detail {
+        grid-template-columns: 1fr;
+      }
+
+      .feature-card,
+      .feature-card.wide {
+        grid-column: span 1;
+        min-height: 520px;
+      }
+
+      .feature-shot,
+      .feature-card:nth-child(2) .feature-shot,
+      .feature-card:nth-child(4) .feature-shot,
+      .feature-card.wide .feature-shot {
+        right: 16px;
+        bottom: 18px;
+        width: calc(100% - 32px);
+        transform: none;
+      }
+
+      .spotlight-visual {
+        height: 500px;
+      }
+
+      .spotlight-visual img {
+        width: 108%;
+        right: -40%;
+      }
+
+      .detail-cell {
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .detail-cell:last-child {
+        border-bottom: 0;
+      }
+
+      .demo-band {
+        padding: 26px;
+      }
+
+      .demo-stack {
+        min-height: 330px;
+      }
+
+      .timeline-row {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="site-shell">
+    <header class="topbar">
+      <a class="brand" href="#top" aria-label="返回顶部">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span>StoryForge AI · 个人负责成果</span>
+      </a>
+      <nav class="nav" aria-label="页面导航">
+        <a href="#workflow">工作流</a>
+        <a href="#features">产品体验</a>
+        <a href="#code">代码证据</a>
+        <a href="#demo">Demo</a>
+        <a href="#boundary">边界说明</a>
+      </nav>
+    </header>
+
+    <main id="top">
+      <section class="hero container">
+        <div class="hero-copy reveal">
+          <p class="eyebrow">Personal Contribution</p>
+          <h1>把小说生成，做成真正可用的创作产品。</h1>
+          <p class="hero-lead">
+            我负责的核心工作集中在创作工作流、作家风格 Skill 注入、字数与质量控制、前端创作体验，以及最终 Demo 表达。目标不是让系统“能生成”，而是让它能被稳定演示、被用户理解、被创作者顺手使用。
+          </p>
+          <div class="hero-actions">
+            <a class="button primary" href="#workflow">查看负责模块</a>
+            <a class="button" href="#code">查看核心代码</a>
+          </div>
+          <div class="scope-note">
+            归属说明：Hermes 自我进化机制属于项目整体扩展能力，不计入本页个人负责成果。本页只展示我实际参与和负责推进的模块。
+          </div>
+        </div>
+
+        <div class="hero-board reveal">
+          <div class="product-wall" aria-label="真实产品界面截图墙">
+            <div class="wall-grid">
+              <div class="wall-shot large"><img src="tools/demo-video/public/stills/editor.png" alt="编辑器界面"></div>
+              <div class="wall-shot"><img src="tools/demo-video/public/stills/create-brief.png" alt="创建项目界面"></div>
+              <div class="wall-shot"><img src="tools/demo-video/public/stills/reader.png" alt="阅读器界面"></div>
+              <div class="wall-shot"><img src="tools/demo-video/public/stills/quality.png" alt="质量分析界面"></div>
+              <div class="wall-shot"><img src="tools/demo-video/public/stills/versions.png" alt="历史版本界面"></div>
+            </div>
+          </div>
+
+          <div class="floating-card code-float">
+            <span class="line green">Writer → Guardrails → Critic → Revise</span>
+            <span class="line">waiting_confirm: chapter review checkpoint</span>
+            <span class="line">Skill Layer: single author style + helper constraints</span>
+            <span class="line green">Budgeted Scene Plan: target words by beat</span>
+          </div>
+
+          <div class="floating-card metric-card">
+            <strong>5+</strong>
+            <span>核心产品模块落地：工作流、Skill、字数控制、编辑器、阅读器、历史版本、Demo 视频。</span>
+          </div>
+        </div>
+      </section>
+
+      <section id="workflow" class="section container">
+        <div class="section-header reveal">
+          <div>
+            <p class="section-kicker">Workflow</p>
+            <h2>从“一章文本”到“逐章共创闭环”。</h2>
+          </div>
+          <p class="section-desc">
+            我重点修正和完善了当前系统最核心的小说创作流程：让策划确认和逐章共创真的能停下来、等用户看、带反馈继续，而不是生成一章就错误完成。
+          </p>
+        </div>
+
+        <div class="workflow-strip">
+          <article class="flow-card reveal" data-index="01">
+            <h3>创建配置</h3>
+            <p>新建项目不再重复填写项目名和小说名，改为围绕作品本身填写类型、题材、Brief、章节范围、目标字数和 Skill。</p>
+          </article>
+          <article class="flow-card reveal" data-index="02">
+            <h3>策划确认</h3>
+            <p>Planner 输出设定圣经和大纲后进入确认态，用户可以通过或驳回重策划，避免跳过关键规划。</p>
+          </article>
+          <article class="flow-card reveal" data-index="03">
+            <h3>逐章生成</h3>
+            <p>按章节范围推进，生成第 N 章后保存内容、评分、产物，再进入人工确认，不会直接标记完成。</p>
+          </article>
+          <article class="flow-card reveal" data-index="04">
+            <h3>反馈重写</h3>
+            <p>章节不通过时，用户反馈被保存为 FeedbackItem 和反馈文件，下一轮任务读取后重写当前章节。</p>
+          </article>
+          <article class="flow-card reveal" data-index="05">
+            <h3>质量闸门</h3>
+            <p>Critic 评分、系统防护、字数检测共同决定是否通过；问题进入定向修订，而不是简单重写全文。</p>
+          </article>
+          <article class="flow-card reveal" data-index="06">
+            <h3>阅读交付</h3>
+            <p>生成完成后可在阅读器、编辑器、质量分析、导出分享之间流转，形成可演示的完整产品路径。</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="features" class="section container">
+        <div class="section-header reveal">
+          <div>
+            <p class="section-kicker">Product Experience</p>
+            <h2>把复杂能力，收进简洁的创作界面。</h2>
+          </div>
+          <p class="section-desc">
+            除了后端流程，我还集中修正了前端信息架构和交互体验：创建项目、Skill 选择、阅读器、编辑器、章节切换、确认弹窗、历史版本和主题细节。
+          </p>
+        </div>
+
+        <div class="feature-grid">
+          <article class="feature-card reveal">
+            <div class="feature-copy">
+              <h3>作家风格 Skill 注入</h3>
+              <p>创建项目时就能选择作家风格，并限制主作家风格只能选择一个。它作为 Writer / Reviser 的风格主线，而不是多个风格同时争夺文风。</p>
+              <div class="feature-tags">
+                <span class="tag">创建时选择</span>
+                <span class="tag">单主风格</span>
+                <span class="tag">Prompt 注入</span>
+              </div>
+            </div>
+            <div class="feature-shot"><img src="tools/demo-video/public/stills/create-brief.png" alt="创建项目选择 Skill"></div>
+          </article>
+
+          <article class="feature-card reveal">
+            <div class="feature-copy">
+              <h3>字数与质量控制</h3>
+              <p>补齐“目标字数不是参考值”的工程约束：按章节生成预算拍点，生成后检测 85%-120% 区间，并触发定向扩写或压缩。</p>
+              <div class="feature-tags">
+                <span class="tag">Budgeted Scene Plan</span>
+                <span class="tag">质量优先</span>
+                <span class="tag">最终闸门</span>
+              </div>
+            </div>
+            <div class="feature-shot"><img src="tools/demo-video/public/stills/quality.png" alt="质量分析界面"></div>
+          </article>
+
+          <article class="feature-card wide reveal">
+            <div class="feature-copy">
+              <h3>编辑器与阅读器</h3>
+              <p>补齐阅读器，修复编辑器无法打开、章节切换缺失、文本不分段、左侧导航和确认体验不顺等问题。编辑器支持 AI 选区润色，阅读器支持更沉浸的分页阅读。</p>
+              <div class="feature-tags">
+                <span class="tag">AI 选区润色</span>
+                <span class="tag">章节切换</span>
+                <span class="tag">阅读器</span>
+                <span class="tag">分页阅读</span>
+              </div>
+            </div>
+            <div class="feature-shot"><img src="tools/demo-video/public/stills/editor.png" alt="编辑器与 AI 选区"></div>
+          </article>
+
+          <article class="feature-card reveal">
+            <div class="feature-copy">
+              <h3>历史版本</h3>
+              <p>每次章节编辑自动保存版本，支持对比和恢复。恢复前检查生成任务状态，避免正在生成时回滚造成数据冲突。</p>
+              <div class="feature-tags">
+                <span class="tag">版本保留</span>
+                <span class="tag">对比查看</span>
+                <span class="tag">安全恢复</span>
+              </div>
+            </div>
+            <div class="feature-shot"><img src="tools/demo-video/public/stills/versions.png" alt="历史版本界面"></div>
+          </article>
+
+          <article class="feature-card reveal">
+            <div class="feature-copy">
+              <h3>主题与视觉修正</h3>
+              <p>修复浅色、深色、Deep Dark 下的状态标签、按钮、文本对比度和导航收起问题，让演示时视觉一致且不再出现白底白字。</p>
+              <div class="feature-tags">
+                <span class="tag">状态色系统</span>
+                <span class="tag">对比度</span>
+                <span class="tag">沉浸感</span>
+              </div>
+            </div>
+            <div class="feature-shot"><img src="tools/demo-video/public/stills/dashboard.png" alt="书架界面"></div>
+          </article>
+        </div>
+      </section>
+
+      <section id="spotlight" class="section container">
+        <div class="section-header reveal">
+          <div>
+            <p class="section-kicker">Module Spotlight</p>
+            <h2>核心模块拆开展示。</h2>
+          </div>
+          <p class="section-desc">
+            这一部分适合现场讲解：点击左侧模块，可以切换对应负责内容、产出价值和 Demo 展示点。
+          </p>
+        </div>
+
+        <div class="spotlight-layout reveal">
+          <div class="module-list" role="tablist" aria-label="负责模块">
+            <button class="module-button active" data-module="workflow" type="button">
+              <strong>创作工作流</strong>
+              <span>策划确认、逐章共创、反馈重写和状态持久化。</span>
+            </button>
+            <button class="module-button" data-module="skill" type="button">
+              <strong>Skill 注入层</strong>
+              <span>作家风格选择、单主风格限制和 Agent 注入。</span>
+            </button>
+            <button class="module-button" data-module="words" type="button">
+              <strong>字数控制</strong>
+              <span>目标字数、预算拍点、最终检测和修订策略。</span>
+            </button>
+            <button class="module-button" data-module="editor" type="button">
+              <strong>创作界面</strong>
+              <span>阅读器、编辑器、AI 选区、历史版本和主题体验。</span>
+            </button>
+          </div>
+
+          <div class="spotlight-panel">
+            <div class="spotlight-visual">
+              <div class="spotlight-label">
+                <h3 id="spotlight-title">创作工作流</h3>
+                <p id="spotlight-desc">让系统真正按“策划确认 → 逐章生成 → 人工确认 → 带反馈继续”的流程运转，解决生成一章就完成、章节确认跳错页面等关键问题。</p>
+              </div>
+              <img id="spotlight-image" src="tools/demo-video/public/stills/overview.png" alt="模块展示截图">
+            </div>
+            <div class="spotlight-detail">
+              <div class="detail-cell">
+                <div class="label">Problem</div>
+                <p id="spotlight-problem">生成流程容易跳步，章节确认和任务状态不同步。</p>
+              </div>
+              <div class="detail-cell">
+                <div class="label">Solution</div>
+                <p id="spotlight-solution">补齐 waiting_confirm 状态、确认弹窗、反馈落库和 continue task。</p>
+              </div>
+              <div class="detail-cell">
+                <div class="label">Value</div>
+                <p id="spotlight-value">Demo 可稳定展示，用户能真实参与每一章的共创。</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="code" class="section container">
+        <div class="section-header reveal">
+          <div>
+            <p class="section-kicker">Code Evidence</p>
+            <h2>不是包装页，是有代码支撑的产品改造。</h2>
+          </div>
+          <p class="section-desc">
+            这里展示的是我负责模块的核心实现片段。代码只摘关键部分，完整文件可在项目仓库中查看。
+          </p>
+        </div>
+
+        <div class="code-grid">
+          <article class="code-card reveal">
+            <div class="code-head">
+              <div class="code-title">逐章确认状态</div>
+              <div class="code-path">backend/tasks/writing_tasks.py</div>
+            </div>
+            <pre><code>except WaitingForConfirmationError as e:
+    sync_chapter_file_to_db(..., status=<span class="hl">"generated"</span>)
+    record_chapter_draft_artifact(..., source=<span class="hl">"agent"</span>)
+
+    task_record.status = <span class="hl">"waiting_confirm"</span>
+    task_record.current_step = f"第{e.chapter_index}章生成完成，等待你审阅确认"
+    task_record.current_chapter = e.chapter_index
+
+    update_workflow_run_status(
+        task_status=<span class="hl">"waiting_confirm"</span>,
+        current_step_key=<span class="hl">"waiting_confirm"</span>,
+    )</code></pre>
+          </article>
+
+          <article class="code-card reveal">
+            <div class="code-head">
+              <div class="code-title">单主风格 Skill</div>
+              <div class="code-path">backend/core/skill_runtime/skill_assembler.py</div>
+            </div>
+            <pre><code>selected_author_style = False
+
+for entry in self._enabled_skill_entries(project_config):
+    skill = self.registry.load_skill(skill_id)
+    if is_author_style_skill(skill):
+        if <span class="hl">selected_author_style</span>:
+            continue
+        selected_author_style = True
+
+    trimmed = strength_trimmer.trim_by_strength(raw_content, strength=strength)
+    rendered = safety_filter.filter_unsafe_content(trimmed, mode=mode)</code></pre>
+          </article>
+
+          <article class="code-card reveal">
+            <div class="code-head">
+              <div class="code-title">字数质量闸门</div>
+              <div class="code-path">backend/core/word_count_policy.py</div>
+            </div>
+            <pre><code>def evaluate(self, content: str, target_word_count: int):
+    actual = count_story_words(content)
+    min_count, max_count = self.target_range(target_word_count)
+
+    if actual &lt; min_count:
+        return <span class="hl">under_target_issue</span>
+    if actual &gt; max_count:
+        return <span class="hl">over_target_issue</span>
+    return <span class="hl">passed</span></code></pre>
+          </article>
+
+          <article class="code-card reveal">
+            <div class="code-head">
+              <div class="code-title">预算拍点</div>
+              <div class="code-path">backend/core/budgeted_scene_plan.py</div>
+            </div>
+            <pre><code>return {
+    "artifact_type": <span class="hl">"budgeted_scene_plan"</span>,
+    "chapter_index": int(chapter_index),
+    "target_word_count": int(target_word_count),
+    "min_word_count": min_word_count,
+    "max_word_count": max_word_count,
+    "beats": beats,
+}</code></pre>
+          </article>
+
+          <article class="code-card reveal">
+            <div class="code-head">
+              <div class="code-title">AI 选区润色</div>
+              <div class="code-path">frontend/src/utils/selectionAI.ts</div>
+            </div>
+            <pre><code>export const RewriteMode = {
+  POLISH: <span class="hl">'polish'</span>,
+  EXPAND: <span class="hl">'expand'</span>,
+  SHORTEN: <span class="hl">'shorten'</span>,
+  MORE_DRAMATIC: <span class="hl">'more_dramatic'</span>,
+} as const
+
+parts.push(`需要修改的文本：`)
+parts.push(`"${ctx.selectedText}"`)
+parts.push(`要求：${modeInstructions[ctx.mode]}`)</code></pre>
+          </article>
+
+          <article class="code-card reveal">
+            <div class="code-head">
+              <div class="code-title">历史版本恢复</div>
+              <div class="code-path">backend/api/chapters.py</div>
+            </div>
+            <pre><code>running_task = db.query(GenerationTask).filter(
+    GenerationTask.project_id == project_id,
+    GenerationTask.status.in_(<span class="hl">ACTIVE_TASK_STATUSES</span>),
+    GenerationTask.current_chapter == chapter_index,
+).first()
+
+if running_task:
+    raise HTTPException(status_code=<span class="hl">409</span>)
+
+chapter.content = version.content
+chapter.status = <span class="hl">"edited"</span></code></pre>
+          </article>
+        </div>
+      </section>
+
+      <section id="demo" class="section container">
+        <div class="demo-band reveal">
+          <div class="demo-copy">
+            <p class="section-kicker">Demo Video</p>
+            <h2>把技术成果，讲成一个产品故事。</h2>
+            <p>
+              最终 Demo 不只是录屏拼接，而是用 Remotion 重新组织真实 UI 素材：产品镜头、鼠标运动、局部放大、节奏压缩和视觉一致性，让评委先感受到“这是一个完整产品”，再理解背后的多智能体工作流。
+            </p>
+            <div class="feature-tags">
+              <span class="tag">真实 UI 静帧</span>
+              <span class="tag">Remotion 动画</span>
+              <span class="tag">产品宣传片</span>
+              <span class="tag">Vibe Writing</span>
+            </div>
+          </div>
+          <div class="demo-stack">
+            <div class="demo-frame main"><img src="tools/demo-video/public/stills/reader.png" alt="Demo 阅读器镜头"></div>
+            <div class="demo-frame side"><img src="tools/demo-video/public/stills/export.png" alt="Demo 导出镜头"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="boundary" class="section container">
+        <div class="section-header reveal">
+          <div>
+            <p class="section-kicker">Contribution Boundary</p>
+            <h2>个人负责范围，说清楚才高级。</h2>
+          </div>
+          <p class="section-desc">
+            小组项目展示里，最好既体现整体协作，也准确说明个人贡献。本页刻意把“项目整体能力”和“个人负责成果”分开，避免把队友工作写到自己名下。
+          </p>
+        </div>
+
+        <div class="timeline reveal">
+          <div class="timeline-row">
+            <div class="timeline-date">我负责展示</div>
+            <div>
+              <h3>核心创作链路与产品体验</h3>
+              <p>包括逐章共创、策划确认、Skill 注入、字数控制、阅读器、编辑器、AI 选区润色、历史版本、主题细节和 Demo 视频表达。</p>
+            </div>
+          </div>
+          <div class="timeline-row">
+            <div class="timeline-date">团队整体能力</div>
+            <div>
+              <h3>Hermes 自我进化机制</h3>
+              <p>Hermes 是项目非常重要的创新方向，但不放入本页个人负责模块。讲解时可以作为系统未来成长能力提及，而不是作为我的个人代码亮点。</p>
+            </div>
+          </div>
+          <div class="timeline-row">
+            <div class="timeline-date">展示口径</div>
+            <div>
+              <h3>从“我做了什么”到“它带来什么价值”</h3>
+              <p>每个模块都对应竞赛评分维度：完整闭环、Demo 稳定、AI 使用深度、创新表达和工程可维护性。</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="boundary reveal">
+          推荐讲法：我主要负责把多智能体小说生成从技术 Demo 打磨成可交互、可确认、可修订、可阅读、可展示的产品体验；同时补齐作家风格 Skill 注入和字数质量控制，让 AI 创作不只是“生成一段文字”，而是进入可持续共创的工作流。
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer container">
+      <strong>Vibe Coding? Vibe Writing!</strong>
+      更高效，更沉浸，更有灵魂。
+    </footer>
+  </div>
+
+  <script>
+    const revealObserver = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+          revealObserver.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.12 });
+
+    document.querySelectorAll('.reveal').forEach((el) => revealObserver.observe(el));
+
+    const sections = [...document.querySelectorAll('section[id]')];
+    const navLinks = [...document.querySelectorAll('.nav a')];
+    const navObserver = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        navLinks.forEach((link) => {
+          link.classList.toggle('active', link.getAttribute('href') === `#${entry.target.id}`);
+        });
+      });
+    }, { rootMargin: '-40% 0px -52% 0px' });
+    sections.forEach((section) => navObserver.observe(section));
+
+    const moduleData = {
+      workflow: {
+        title: '创作工作流',
+        desc: '让系统真正按“策划确认 → 逐章生成 → 人工确认 → 带反馈继续”的流程运转，解决生成一章就完成、章节确认跳错页面等关键问题。',
+        img: 'tools/demo-video/public/stills/overview.png',
+        problem: '生成流程容易跳步，章节确认和任务状态不同步。',
+        solution: '补齐 waiting_confirm 状态、确认弹窗、反馈落库和 continue task。',
+        value: 'Demo 可稳定展示，用户能真实参与每一章的共创。',
+      },
+      skill: {
+        title: 'Skill 注入层',
+        desc: '把作家风格从大纲页后置管理，前移到创建项目阶段，并约束为唯一主风格，保证风格注入清晰、可解释、可控。',
+        img: 'tools/demo-video/public/stills/create-brief.png',
+        problem: '风格选择入口太晚，多 Skill 同时选择会造成文风冲突。',
+        solution: '创建阶段选择 Skill，后端限制单主作家风格，辅助 Skill 只补方法论。',
+        value: '让“作家灵魂注入”成为项目最容易理解的创新点之一。',
+      },
+      words: {
+        title: '字数控制',
+        desc: '把目标字数从模糊提示升级为工程约束：生成前拆预算拍点，生成后进入字数检测和最终质量闸门。',
+        img: 'tools/demo-video/public/stills/quality.png',
+        problem: '只靠 prompt 很难稳定满足每章字数要求。',
+        solution: 'WordCountPolicy + Budgeted Scene Plan + 定向扩写/压缩。',
+        value: '在质量优先的前提下，提高章节长度稳定性。',
+      },
+      editor: {
+        title: '创作界面',
+        desc: '补齐阅读器和编辑器核心能力：章节切换、文本分段、分页阅读、AI 选区润色、历史版本和主题一致性。',
+        img: 'tools/demo-video/public/stills/editor.png',
+        problem: '原先页面之间逻辑割裂，编辑与阅读体验不完整。',
+        solution: '重整导航、确认弹窗、编辑器辅助面板、阅读器和版本页。',
+        value: '让系统从后端流程变成真正能被创作者使用的产品。',
+      },
+    };
+
+    const moduleButtons = [...document.querySelectorAll('.module-button')];
+    const spotlightTitle = document.getElementById('spotlight-title');
+    const spotlightDesc = document.getElementById('spotlight-desc');
+    const spotlightImage = document.getElementById('spotlight-image');
+    const spotlightProblem = document.getElementById('spotlight-problem');
+    const spotlightSolution = document.getElementById('spotlight-solution');
+    const spotlightValue = document.getElementById('spotlight-value');
+
+    moduleButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        const key = button.dataset.module;
+        const item = moduleData[key];
+        if (!item) return;
+
+        moduleButtons.forEach((candidate) => candidate.classList.toggle('active', candidate === button));
+        spotlightImage.style.opacity = '0';
+        spotlightImage.style.transform = 'translateY(8px) scale(.985)';
+        setTimeout(() => {
+          spotlightTitle.textContent = item.title;
+          spotlightDesc.textContent = item.desc;
+          spotlightProblem.textContent = item.problem;
+          spotlightSolution.textContent = item.solution;
+          spotlightValue.textContent = item.value;
+          spotlightImage.src = item.img;
+          spotlightImage.alt = `${item.title}展示截图`;
+          spotlightImage.style.opacity = '1';
+          spotlightImage.style.transform = 'translateY(0) scale(1)';
+        }, 140);
+      });
+    });
+  </script>
+</body>
+</html>

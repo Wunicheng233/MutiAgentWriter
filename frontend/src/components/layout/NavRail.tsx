@@ -209,7 +209,7 @@ export const NavRail: React.FC<NavRailProps> = React.memo(({ collapsed, onToggle
 
   return (
     <nav
-      className={`h-full flex flex-col justify-between items-center py-4 bg-[var(--bg-secondary)] border-r border-[var(--border-default)] rounded-tr-[var(--radius-lg)] rounded-br-[var(--radius-lg)] transition-all duration-200 ease-out nav-rail ${collapsed ? 'nav-collapsed' : 'nav-expanded'}`}
+      className={`non-essential-ui h-full flex flex-col justify-between items-center py-4 bg-[var(--bg-secondary)] border-r border-[var(--border-default)] rounded-tr-[var(--radius-lg)] rounded-br-[var(--radius-lg)] transition-all duration-200 ease-out nav-rail ${collapsed ? 'nav-collapsed' : 'nav-expanded'}`}
       style={{ width: navWidth }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}

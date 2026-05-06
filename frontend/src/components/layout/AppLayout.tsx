@@ -119,7 +119,7 @@ export const AppLayout = () => {
         <button
           type="button"
           onClick={toggleNavCollapsed}
-          className="fixed left-3 bottom-5 z-50 h-10 w-10 flex items-center justify-center rounded-full bg-[var(--bg-secondary)] text-[var(--text-secondary)] border border-[var(--border-default)] shadow-[var(--shadow-default)] transition-all duration-150 hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)] focus:ring-opacity-50"
+          className="non-essential-ui fixed left-3 bottom-5 z-50 h-10 w-10 flex items-center justify-center rounded-full bg-[var(--bg-secondary)] text-[var(--text-secondary)] border border-[var(--border-default)] shadow-[var(--shadow-default)] transition-all duration-150 hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)] focus:ring-opacity-50"
           title="展开侧边栏"
           aria-label="展开侧边栏"
           data-testid="nav-rail-reopen"
@@ -144,7 +144,7 @@ export const AppLayout = () => {
       {/* Right AI Panel */}
       {rightPanelOpen && (
         <div
-          className="h-full right-panel-container"
+          className="non-essential-ui h-full right-panel-container"
           style={{
             width: `${rightPanelWidth}px`,
             minWidth: `${rightPanelWidth}px`,

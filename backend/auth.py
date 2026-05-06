@@ -6,9 +6,10 @@ JWT 认证工具
 from __future__ import annotations
 
 import base64
+import copy
 import hashlib
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Any, Mapping, Optional
 from cryptography.fernet import Fernet, InvalidToken
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -81,6 +82,71 @@ def clear_user_api_key(user: User) -> None:
     set_user_api_key(user, None)
 
 
+def reset_user_llm_settings(user: User) -> None:
+    """Return a user to the deployment's default model route."""
+    user.llm_provider = "system"
+    user.llm_base_url = None
+    user.llm_model = None
+    clear_user_api_key(user)
+
+
+def build_user_llm_config(user: User | None) -> dict[str, Any]:
+    """Build a project_config-compatible LLM route from account settings."""
+    if user is None:
+        return {}
+
+    provider = (user.llm_provider or "system").strip() or "system"
+    api_key = get_user_api_key(user)
+    base_url = (user.llm_base_url or "").strip()
+    model = (user.llm_model or "").strip()
+
+    if provider == "system" and not api_key and not base_url and not model:
+        return {}
+
+    provider_id = "openai_compatible" if provider == "system" else provider
+    provider_config: dict[str, Any] = {}
+    if api_key:
+        provider_config["api_key"] = api_key
+    if base_url:
+        provider_config["base_url"] = base_url
+    if model:
+        provider_config["model"] = model
+
+    return {
+        "default_provider": provider_id,
+        "providers": {
+            provider_id: provider_config,
+        },
+    }
+
+
+def merge_user_llm_config(project_config: Mapping[str, Any] | None, user: User | None) -> dict[str, Any]:
+    """Merge account-level model settings into project config.
+
+    Project-level `config.llm` remains the more specific override. Account
+    settings only provide defaults for projects that do not define their own
+    provider route.
+    """
+    merged = copy.deepcopy(dict(project_config or {}))
+    user_llm = build_user_llm_config(user)
+    if not user_llm:
+        return merged
+
+    project_llm = merged.get("llm") if isinstance(merged.get("llm"), Mapping) else {}
+    merged["llm"] = _deep_merge_dicts(user_llm, project_llm)
+    return merged
+
+
+def _deep_merge_dicts(base: Mapping[str, Any], override: Mapping[str, Any]) -> dict[str, Any]:
+    result = copy.deepcopy(dict(base))
+    for key, value in dict(override).items():
+        if isinstance(value, Mapping) and isinstance(result.get(key), Mapping):
+            result[key] = _deep_merge_dicts(result[key], value)
+        else:
+            result[key] = copy.deepcopy(value)
+    return result
+
+
 def build_user_response(user: User) -> UserResponse:
     """Serialize a User into the public response shape while still exposing a masked API key."""
     return UserResponse(
@@ -88,6 +154,9 @@ def build_user_response(user: User) -> UserResponse:
         username=user.username,
         email=user.email,
         api_key=get_user_api_key(user),
+        llm_provider=user.llm_provider or "system",
+        llm_base_url=user.llm_base_url,
+        llm_model=user.llm_model,
         is_active=user.is_active,
         created_at=user.created_at,
     )

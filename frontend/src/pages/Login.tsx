@@ -35,7 +35,7 @@ export const Login: React.FC = () => {
 
   return (
     <PublicLayout>
-      <div className="max-w-md w-full mx-auto px-4">
+      <div className="max-w-lg w-full mx-auto px-4">
         <Card>
           <h1 className="text-center text-3xl mb-6 font-medium">用户登录</h1>
           <form onSubmit={handleSubmit} className="space-y-4">

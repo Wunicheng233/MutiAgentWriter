@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { useNavigate } from 'react-router-dom'
 import { useProjectStore } from '../../store/useProjectStore'
 import { useLayoutStore } from '../../store/useLayoutStore'
@@ -14,8 +15,16 @@ const statusConfig: Record<string, { variant: 'secondary' | 'success' | 'warning
 
 export const ProjectHeader: React.FC = () => {
   const navigate = useNavigate()
-  const { currentProjectName, projectStatus, progressPercent, clearCurrentProject } = useProjectStore()
-  const { headerCollapsed, toggleHeader } = useLayoutStore()
+  const { currentProjectName, projectStatus, progressPercent, clearCurrentProject } = useProjectStore(useShallow(state => ({
+    currentProjectName: state.currentProjectName,
+    projectStatus: state.projectStatus,
+    progressPercent: state.progressPercent,
+    clearCurrentProject: state.clearCurrentProject,
+  })))
+  const { headerCollapsed, toggleHeader } = useLayoutStore(useShallow(state => ({
+    headerCollapsed: state.headerCollapsed,
+    toggleHeader: state.toggleHeader,
+  })))
   const [isHoverPreview, setIsHoverPreview] = useState(false)
 
   const handleBack = () => {
@@ -54,7 +63,7 @@ export const ProjectHeader: React.FC = () => {
   return (
     <header
       data-testid="project-header"
-      className={`flex items-center px-6 border-b border-[var(--border-default)] bg-[var(--bg-primary)]
+      className={`non-essential-ui flex items-center px-6 border-b border-[var(--border-default)] bg-[var(--bg-primary)]
         ${headerCollapsed ? 'header-collapsed' : 'header-expanded'}
         ${headerCollapsed ? 'cursor-pointer' : 'cursor-default'}
         transition-[height,background-color,border-color] ease-out`}

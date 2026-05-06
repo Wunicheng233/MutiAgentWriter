@@ -2,6 +2,7 @@
 简单的内存速率限制器
 支持基于 IP 地址或用户 ID 的请求频率限制
 """
+from __future__ import annotations
 
 import time
 import threading

@@ -1,6 +1,8 @@
 """
 系统层防护 (System-Level Guardrails)
 纯代码实现，不依赖LLM，在Writer输出后、Critic评审前执行。
+from __future__ import annotations
+
 快速拦截基础格式与合规问题，降低LLM调用成本，提升系统稳定性。
 
 遵循设计文档: 01-System-Level Guardrails Specification

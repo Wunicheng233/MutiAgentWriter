@@ -1,6 +1,8 @@
 """
 Agent 实例池
 StoryForge AI 精简架构 - 仅保留 4 个核心 Agent:
+from __future__ import annotations
+
 1. Planner - 故事架构师（生成设定圣经和分章大纲）
 2. Writer - 叙事作家（生成章节初稿）
 3. Critic - 章节评审员（输出JSON问题清单）

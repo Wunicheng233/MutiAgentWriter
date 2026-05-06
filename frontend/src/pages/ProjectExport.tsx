@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
 
@@ -60,7 +61,10 @@ export const ProjectExport: React.FC = () => {
   const [newCollaboratorUsername, setNewCollaboratorUsername] = useState('')
   const [addingCollaborator, setAddingCollaborator] = useState(false)
 
-  const { autoExpandHeaderInProject, setHeaderCollapsed } = useLayoutStore()
+  const { autoExpandHeaderInProject, setHeaderCollapsed } = useLayoutStore(useShallow(state => ({
+    autoExpandHeaderInProject: state.autoExpandHeaderInProject,
+    setHeaderCollapsed: state.setHeaderCollapsed,
+  })))
 
   useEffect(() => {
     if (id && autoExpandHeaderInProject) {

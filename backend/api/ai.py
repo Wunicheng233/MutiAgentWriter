@@ -1,6 +1,8 @@
 """
 AI Assistant API Router
 
+from __future__ import annotations
+
 Extensibility Points:
 - /ai/chat/stream: SSE streaming for typing effect (Phase 4)
 - /ai/conversations: Conversation history management (Phase 4)

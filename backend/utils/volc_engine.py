@@ -2,6 +2,9 @@ import openai
 import time
 from backend.utils.logger import logger
 from backend.utils.file_utils import load_prompt
+from backend.core.llm.model_registry import ModelRoute, resolve_model_route
+from backend.core.llm.router import LLMRouter
+from backend.core.llm.types import LLMRequest
 
 # LLM API 调用超时设置（秒）
 LLM_API_TIMEOUT = 180  # 3分钟，对于长文本生成应该足够
@@ -15,6 +18,7 @@ except ImportError:
     USE_NEW_CONFIG = False
 
 _client_cache: dict[str, openai.OpenAI] = {}
+_runtime_router = LLMRouter()
 
 def _get_client(agent_role: str) -> openai.OpenAI:
     """获取或创建OpenAI客户端"""
@@ -91,6 +95,7 @@ def call_volc_api(
     logger.info(f"开始调用 {agent_role} Agent...")
     logger.debug(f"{agent_role} Agent输入：{user_input[:200]}...")
 
+    route = _resolve_model_route(agent_role, project_config)
     remaining_retries = max_retries
     while remaining_retries > 0:
         # 每次重试都重新加载 prompt，确保 context 等参数正确
@@ -103,31 +108,26 @@ def call_volc_api(
             project_config=project_config,
             chapter_context=chapter_context,
         )
-        if client is None:
-            client = _get_client(agent_role)
-
         try:
-            if USE_NEW_CONFIG:
-                model = settings.get_model_for_agent(agent_role)
-            else:
-                model = MODELS.get(agent_role, MODELS.get("default", ""))
-
-            response = client.chat.completions.create(
-                model=model,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_input}
-                ],
-                temperature=temperature,
-                max_tokens=max_tokens,
-                timeout=LLM_API_TIMEOUT,
+            response = _runtime_router.complete(
+                LLMRequest(
+                    agent_role=agent_role,
+                    system_prompt=system_prompt,
+                    user_input=user_input,
+                    model=route.model,
+                    provider=route.provider,
+                    api_key=route.api_key,
+                    base_url=route.base_url,
+                    client=client,
+                    max_retries=1,
+                    retry_delay_seconds=0,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                    timeout=LLM_API_TIMEOUT,
+                ),
+                sleep=lambda _: None,
             )
-            # 防御性检查：choices 可能为空，content 可能为 None（如拒绝服务、内容过滤等）
-            if not response.choices:
-                result = " "  # API 异常返回，确保下游不崩溃
-            else:
-                message_content = response.choices[0].message.content or ""
-                result = message_content.strip() or " "
+            result = response.content
             logger.info(f"{agent_role} Agent调用成功")
             logger.debug(f"{agent_role} Agent输出：{result[:200]}...")
 
@@ -136,27 +136,27 @@ def call_volc_api(
                 try:
                     from backend.database import SessionLocal
                     from backend.models import TokenUsage
-                    usage = getattr(response, 'usage', None)
+                    usage = response.usage
                     if usage is None:
                         logger.debug("Token usage omitted by provider for %s; skip usage recording", agent_role)
                         return result
 
-                    prompt_tokens = getattr(usage, "prompt_tokens", 0) or 0
-                    completion_tokens = getattr(usage, "completion_tokens", 0) or 0
-                    total_tokens = getattr(usage, "total_tokens", prompt_tokens + completion_tokens) or 0
+                    prompt_tokens = usage.prompt_tokens
+                    completion_tokens = usage.completion_tokens
+                    total_tokens = usage.total_tokens
 
                     db = SessionLocal()
                     try:
-                        usage = TokenUsage(
+                        usage_record = TokenUsage(
                             user_id=user_id,
                             project_id=project_id,
                             agent_name=agent_role,
-                            model=model,
+                            model=route.model,
                             prompt_tokens=prompt_tokens,
                             completion_tokens=completion_tokens,
                             total_tokens=total_tokens,
                         )
-                        db.add(usage)
+                        db.add(usage_record)
                         db.commit()
                         logger.debug(f"Token usage recorded: {total_tokens} tokens for {agent_role}")
                     except Exception:
@@ -174,7 +174,21 @@ def call_volc_api(
             # 连接出错时清除缓存，下次重新创建
             if agent_role in _client_cache:
                 del _client_cache[agent_role]
+            _runtime_router.reset_provider_cache(route.provider, route.api_key, route.base_url)
             if remaining_retries <= 0:
                 logger.error(f"{agent_role} Agent已重试{max_retries}次仍失败，放弃重试")
                 raise RuntimeError(f"{agent_role} Agent调用失败，已达到最大重试次数: {e}") from e
             time.sleep(2)
+
+
+def _resolve_model_route(agent_role: str, project_config: dict | None) -> ModelRoute:
+    if USE_NEW_CONFIG:
+        return resolve_model_route(agent_role, project_config=project_config)
+    return ModelRoute(
+        provider="openai_compatible",
+        model=MODELS.get(agent_role, MODELS.get("default", "")),
+        api_key=API_KEYS.get(agent_role, API_KEYS.get("default", "")),
+        base_url=BASE_URL,
+        prompt_price=0.0,
+        completion_price=0.0,
+    )

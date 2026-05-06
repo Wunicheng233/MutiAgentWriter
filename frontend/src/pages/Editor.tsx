@@ -528,11 +528,14 @@ export const Editor: React.FC = () => {
   }
 
   return (
-    <div className={`h-full ${inspectorOpen ? 'flex flex-col overflow-hidden' : ''}`}>
+    <div
+      className={`h-full ${inspectorOpen ? 'flex flex-col overflow-hidden' : ''}`}
+      data-editor-focus-mode={focusMode ? 'true' : 'false'}
+    >
       {/* Page content wrapped in container for proper scroll */}
-      <div className={`mx-auto w-full ${inspectorOpen ? 'flex flex-col h-full' : ''} transition-all duration-200 ${focusMode ? 'max-w-[900px]' : 'max-w-full'}`}>
+      <div className={`mx-auto w-full ${inspectorOpen ? 'flex flex-col h-full' : ''} transition-all duration-200 ${focusMode ? 'max-w-[980px]' : 'max-w-full'}`}>
             {/* Chapter Header Card */}
-            <Card className="mb-6 border-[var(--border-default)] bg-[var(--bg-secondary)] p-5 shadow-subtle flex-shrink-0">
+            <Card className="non-essential-ui editor-chrome mb-6 border-[var(--border-default)] bg-[var(--bg-secondary)] p-5 shadow-subtle flex-shrink-0">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div className="min-w-0">
                   <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -617,7 +620,7 @@ export const Editor: React.FC = () => {
 
             {/* Confirmation Banner */}
             {waitingConfirmChapter !== null && !showConfirmDialog && (
-              <div className="confirmation-banner mb-6 rounded-comfortable border border-[var(--accent-warm)] bg-[var(--accent-warm)]/10 p-5 flex-shrink-0">
+              <div className="non-essential-ui editor-chrome confirmation-banner mb-6 rounded-comfortable border border-[var(--accent-warm)] bg-[var(--accent-warm)]/10 p-5 flex-shrink-0">
                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                   <div className="flex items-start gap-3">
                     <span className="badge-pulse w-3 h-3 rounded-full bg-[var(--accent-warm)] mt-0.5"></span>
@@ -643,7 +646,7 @@ export const Editor: React.FC = () => {
             <div className={`grid grid-cols-1 gap-6 transition-all duration-300 ${inspectorOpen ? 'flex-1 overflow-hidden lg:grid-cols-2' : 'lg:grid-cols-1'}`}>
               {/* Inspector Panel - 固定高度的滚动容器 */}
               {inspectorOpen && (
-                <aside className={`order-last lg:order-first flex flex-col gap-5 ${inspectorOpen ? 'overflow-hidden' : 'min-h-[62vh]'}`}>
+                <aside className={`non-essential-ui editor-chrome order-last lg:order-first flex flex-col gap-5 ${inspectorOpen ? 'overflow-hidden' : 'min-h-[62vh]'}`}>
                   <Card className="inspector-card p-5 border-[var(--border-default)] flex-shrink-0">
                     <p className="font-medium text-xs uppercase tracking-[0.24em] text-[var(--text-secondary)]">Run Context</p>
                     <h2 className="mt-2 text-xl font-medium text-[var(--text-primary)]">{runSummary.headline}</h2>
@@ -679,18 +682,21 @@ export const Editor: React.FC = () => {
 
               {/* Editor Area - 双栏模式固定高度，单栏模式自然滚动 */}
               <div className={`flex flex-col ${inspectorOpen ? 'h-full overflow-hidden' : ''} ${inspectorOpen ? 'opacity-85' : ''} transition-opacity duration-200`}>
-                <div className={`editor-container pb-12 ${inspectorOpen ? 'flex-1 overflow-y-auto min-h-0' : 'min-h-[62vh] overflow-y-auto'} rounded-comfortable border border-[var(--border-default)] bg-[var(--bg-secondary)] editor-paper transition-all duration-200 hover:border-[var(--border-strong)]`}>
+                <div
+                  className={`editor-container pb-12 ${focusMode ? 'editor-container-focus' : ''} ${inspectorOpen ? 'flex-1 overflow-y-auto min-h-0' : 'h-[70vh] min-h-[500px] overflow-y-auto'} rounded-comfortable border border-[var(--border-default)] bg-[var(--bg-secondary)] editor-paper transition-all duration-200 hover:border-[var(--border-strong)]`}
+                  data-editor-scroll-container="true"
+                >
                   {editor && (
                     <EditorContent
                       editor={editor}
                       className={`prose-novel mx-auto px-6 pt-8 pb-16 focus:outline-none md:px-12`}
                       style={{
-                        maxWidth: focusMode ? '900px' : (inspectorOpen ? '500px' : '860px'),
+                        maxWidth: focusMode ? '760px' : (inspectorOpen ? '500px' : '860px'),
                       }}
                     />
                   )}
                 </div>
-                <div className={`mt-4 flex flex-col gap-3 rounded-comfortable border border-[var(--border-default)] bg-[var(--bg-secondary)] px-5 py-4 flex-shrink-0 ${
+                <div className={`non-essential-ui editor-chrome mt-4 flex flex-col gap-3 rounded-comfortable border border-[var(--border-default)] bg-[var(--bg-secondary)] px-5 py-4 flex-shrink-0 ${
                     !inspectorOpen && 'md:flex-row md:items-center md:justify-between'
                   }`}>
                   <div className="text-sm text-[var(--text-secondary)] flex items-center gap-2">

@@ -27,6 +27,9 @@ class UserLogin(BaseModel):
 class UserResponse(UserBase):
     id: int
     api_key: Optional[str] = None
+    llm_provider: str = "system"
+    llm_base_url: Optional[str] = None
+    llm_model: Optional[str] = None
     is_active: bool
     created_at: datetime
 

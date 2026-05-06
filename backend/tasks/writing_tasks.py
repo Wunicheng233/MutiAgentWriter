@@ -18,7 +18,7 @@ from typing import Optional, Dict
 
 from celery_app import celery_app
 from backend.chapter_sync import sync_chapter_file_to_db
-from backend.auth import get_user_api_key
+from backend.auth import get_user_api_key, merge_user_llm_config
 from backend.core.orchestrator import GenerationCancelledError, NovelOrchestrator, WaitingForConfirmationError
 from backend.core.config import settings
 from backend.utils.runtime_context import (
@@ -570,6 +570,7 @@ def generate_novel_task(
                 perspective_strength = project.perspective_strength if project.perspective_strength is not None else 0.7
                 use_perspective_critic = project.use_perspective_critic if project.use_perspective_critic is not None else True
                 project_config = project.config or {}
+        project_config = merge_user_llm_config(project_config, user)
 
         orchestrator_kwargs = {
             "project_dir": project_dir,

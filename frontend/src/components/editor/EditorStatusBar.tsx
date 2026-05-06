@@ -14,7 +14,9 @@ const ModeToggle: React.FC<ModeToggleProps> = ({
   onClick,
 }) => (
   <button
+    type="button"
     onClick={onClick}
+    aria-pressed={active}
     className={`flex items-center gap-1 px-2 py-1 rounded text-sm transition-colors ${
       active
         ? 'bg-[var(--accent-primary)] text-white'
@@ -58,6 +60,7 @@ export const EditorStatusBar: React.FC = () => {
       </div>
 
       <button
+        type="button"
         onClick={() => setCommandPaletteOpen(true)}
         className="flex items-center gap-1 px-2 py-1 rounded text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] transition-colors"
         data-testid="cmd-k-button"

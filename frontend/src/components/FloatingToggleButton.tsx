@@ -1,4 +1,5 @@
 import React from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { useLayoutStore } from '../store/useLayoutStore'
 
 const ChatIcon = () => (
@@ -8,14 +9,19 @@ const ChatIcon = () => (
 )
 
 export const FloatingToggleButton: React.FC = () => {
-  const { rightPanelOpen, setRightPanelOpen } = useLayoutStore()
+  const { rightPanelOpen, setRightPanelOpen } = useLayoutStore(
+    useShallow((state) => ({
+      rightPanelOpen: state.rightPanelOpen,
+      setRightPanelOpen: state.setRightPanelOpen,
+    }))
+  )
 
   return (
     <button
       data-testid="floating-toggle-button"
       onClick={() => setRightPanelOpen(true)}
       aria-label="Open AI Assistant"
-      className={`fixed bottom-6 right-6 z-50 w-12 h-12 rounded-full bg-[var(--accent-primary)] text-white shadow-lg hover:shadow-xl flex items-center justify-center transition-all duration-200 ease-out hover:scale-105 ${
+      className={`non-essential-ui fixed bottom-6 right-6 z-50 w-12 h-12 rounded-full bg-[var(--accent-primary)] text-white shadow-lg hover:shadow-xl flex items-center justify-center transition-all duration-200 ease-out hover:scale-105 ${
         rightPanelOpen ? 'opacity-0 pointer-events-none' : 'opacity-100 pointer-events-auto'
       }`}
       title="Open AI Assistant"

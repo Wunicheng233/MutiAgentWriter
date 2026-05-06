@@ -18,6 +18,7 @@ interface SelectMockProps {
 
 interface SelectValueMockProps {
   placeholder?: string
+  children?: React.ReactNode
 }
 
 interface SelectItemMockProps {
@@ -62,7 +63,7 @@ vi.mock('../components/v2', () => ({
     <div data-testid="select">{children}</div>
   ),
   SelectTrigger: ({ children }: SelectMockProps) => <div>{children}</div>,
-  SelectValue: ({ placeholder }: SelectValueMockProps) => <span>{placeholder}</span>,
+  SelectValue: ({ placeholder, children }: SelectValueMockProps) => <span>{children || placeholder}</span>,
   SelectContent: ({ children }: SelectMockProps) => <div>{children}</div>,
   SelectItem: ({ value, children }: SelectItemMockProps) => <div data-value={value}>{children}</div>,
 }))
@@ -91,7 +92,14 @@ vi.mock('../components/settings/ShortcutList', () => ({
 
 vi.mock('../store/useAuthStore', () => ({
   useAuthStore: () => ({
-    user: { username: 'testuser', email: 'test@example.com', api_key: 'test-key' },
+    user: {
+      username: 'testuser',
+      email: 'test@example.com',
+      api_key: 'test-key',
+      llm_provider: 'deepseek',
+      llm_base_url: 'https://api.deepseek.com',
+      llm_model: 'deepseek-chat',
+    },
     setUser: vi.fn(),
   }),
 }))
@@ -161,5 +169,16 @@ describe('Settings Page', () => {
     fireEvent.click(screen.getByTestId('settings-tab-ai'))
 
     expect(screen.getByText('选区 AI 默认重写模式')).toBeTruthy()
+  })
+
+  it('ai tab should expose model provider settings to users', () => {
+    render(<Settings />)
+    fireEvent.click(screen.getByTestId('settings-tab-ai'))
+
+    expect(screen.getAllByText('模型供应商').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('DeepSeek').length).toBeGreaterThan(0)
+    expect(screen.getByText('API Base URL')).toBeTruthy()
+    expect(screen.getByDisplayValue('https://api.deepseek.com')).toBeTruthy()
+    expect(screen.getByDisplayValue('deepseek-chat')).toBeTruthy()
   })
 })

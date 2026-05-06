@@ -2,6 +2,8 @@
 StoryForge AI 精简架构 - 小说生成流程编排器
 遵循设计文档 00-DESIGN.md
 
+from __future__ import annotations
+
 精简流程：
 Planner (设定圣经+大纲) → 逐章循环 Writer → Guardrails → Critic → (Revise → Critic复评) → 保存
 - 每章最多 2-3 次 LLM 调用
@@ -180,7 +182,7 @@ class NovelOrchestrator:
         初始化编排器
         :param project_dir: 项目输出根目录，如果为None则从user_requirements读取书名创建
         :param progress_callback: 进度回调 f(percent: int, message: str) -> None
-        :param user_api_key: 用户自己的火山引擎 API Key，如果为 None 则使用系统配置
+        :param user_api_key: 用户自己的模型 API Key，如果为 None 则使用系统配置
         :param writer_perspective: 选定的作家视角 ID
         :param perspective_strength: 视角强度 (0.0-1.0)，默认 0.7
         :param use_perspective_critic: 是否同时在 Critic 评审中使用视角
@@ -207,7 +209,7 @@ class NovelOrchestrator:
         api_key = user_api_key or settings.get_api_key_for_agent("default")
         if not api_key or not api_key.strip():
             raise ValueError(
-                "API Key 为空！请先在前端设置页面输入你的火山引擎 API Key，"
+                "模型 API Key 为空！请先在前端设置页面输入你的模型供应商 API Key，"
                 "或者在 .env 文件中配置 UNIFIED_API_KEY 环境变量。"
             )
 

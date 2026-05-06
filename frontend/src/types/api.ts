@@ -50,8 +50,18 @@ export interface User {
   username: string
   email: string
   api_key?: string
+  llm_provider?: string
+  llm_base_url?: string | null
+  llm_model?: string | null
   is_active: boolean
   created_at: string
+}
+
+export interface UpdateLLMSettingsPayload {
+  provider: string
+  base_url?: string | null
+  model?: string | null
+  api_key?: string
 }
 
 export interface Token {

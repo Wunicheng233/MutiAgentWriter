@@ -17,7 +17,7 @@ export const NavBar: React.FC = () => {
   }
 
   return (
-    <nav className="sticky top-0 z-50 bg-[var(--bg-primary)] bg-opacity-90 backdrop-blur-lg border-b border-[var(--border-default)]">
+    <nav className="non-essential-ui sticky top-0 z-50 bg-[var(--bg-primary)] bg-opacity-90 backdrop-blur-lg border-b border-[var(--border-default)]">
       <div className="max-w-6xl mx-auto px-6 h-[64px] flex items-center justify-between">
         <Link to="/dashboard" className="flex items-center gap-2">
           <span className="font-medium text-sm uppercase tracking-[0.24em] text-[var(--text-secondary)]">

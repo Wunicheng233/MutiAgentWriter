@@ -3,6 +3,7 @@ import api from './api'
 import type {
   User,
   Token,
+  UpdateLLMSettingsPayload,
   Project,
   ArtifactDetail,
   ArtifactListResponse,
@@ -51,6 +52,16 @@ export async function clearApiKey(): Promise<User> {
 
 export async function updateApiKey(apiKey: string): Promise<User> {
   const res = await api.put<User>('/auth/api-key', { api_key: apiKey })
+  return res.data
+}
+
+export async function updateLLMSettings(data: UpdateLLMSettingsPayload): Promise<User> {
+  const res = await api.put<User>('/auth/llm-settings', data)
+  return res.data
+}
+
+export async function resetLLMSettings(): Promise<User> {
+  const res = await api.delete<User>('/auth/llm-settings')
   return res.data
 }
 

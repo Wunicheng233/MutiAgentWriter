@@ -1,6 +1,8 @@
 """
 Evaluation harness v1 for chapter-level quality checks.
 
+from __future__ import annotations
+
 The current production flow still uses the legacy Critic agent tuple:
     (passed, score, dimensions, issues)
 

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useLocation, useParams } from 'react-router-dom'
 
@@ -279,7 +280,10 @@ export const ProjectOverview: React.FC = () => {
     enabled: isValidProjectId && !!data,
   })
 
-  const { autoExpandHeaderInProject, setHeaderCollapsed } = useLayoutStore()
+  const { autoExpandHeaderInProject, setHeaderCollapsed } = useLayoutStore(useShallow(state => ({
+    autoExpandHeaderInProject: state.autoExpandHeaderInProject,
+    setHeaderCollapsed: state.setHeaderCollapsed,
+  })))
 
   // 获取策划预览内容（需要在 data 加载后才启用）
   const isWaitingConfirm = data?.current_generation_task?.status === 'waiting_confirm'

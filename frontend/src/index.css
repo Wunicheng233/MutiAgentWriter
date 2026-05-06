@@ -310,12 +310,24 @@
 
 /* Focus Mode Styles */
 .focus-mode-active .non-essential-ui {
-  opacity: 0.1;
-  transition: opacity 200ms ease-out;
+  opacity: 0.18;
+  transition: opacity 200ms ease-out, filter 200ms ease-out, transform 200ms ease-out;
+  filter: saturate(0.75);
 }
 
-.focus-mode-active .non-essential-ui:hover {
+.focus-mode-active .non-essential-ui:hover,
+.focus-mode-active .non-essential-ui:focus-within {
   opacity: 1;
+  filter: none;
+}
+
+.focus-mode-active .editor-chrome {
+  transform: translateY(-2px);
+}
+
+.editor-container-focus {
+  min-height: calc(100vh - 180px);
+  border-color: rgba(var(--accent-primary-rgb), 0.22);
 }
 
 /* Novel Editor - 纸张感正文排版 */
@@ -567,15 +579,15 @@
 }
 
 /* Fade Mode Styles */
-.fade-mode-active .ProseMirror p {
+.fade-mode-active .fade-mode-editor p {
   opacity: 0.5;
   transition: opacity 150ms ease-out;
 }
 
-.fade-mode-active .ProseMirror p.is-adjacent-paragraph {
+.fade-mode-active .fade-mode-editor p.is-adjacent-paragraph {
   opacity: 0.7;
 }
 
-.fade-mode-active .ProseMirror p.is-active-paragraph {
+.fade-mode-active .fade-mode-editor p.is-active-paragraph {
   opacity: 1;
 }

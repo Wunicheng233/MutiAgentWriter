@@ -1,6 +1,8 @@
 """
 任务状态查询路由
 获取Celery任务进度
+from __future__ import annotations
+
 """
 
 import logging

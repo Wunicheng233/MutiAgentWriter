@@ -33,7 +33,12 @@ export const SelectionToolbar: React.FC = () => {
       setInitialRewriteMode: state.setInitialRewriteMode,
     }))
   )
-  const { setRightPanelOpen, setRightPanelTab } = useLayoutStore()
+  const { setRightPanelOpen, setRightPanelTab } = useLayoutStore(
+    useShallow((state) => ({
+      setRightPanelOpen: state.setRightPanelOpen,
+      setRightPanelTab: state.setRightPanelTab,
+    }))
+  )
   const [showMore, setShowMore] = useState(false)
 
   const handleAction = (mode: RewriteMode) => {

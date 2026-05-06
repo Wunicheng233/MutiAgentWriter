@@ -37,7 +37,7 @@ export const Register: React.FC = () => {
 
   return (
     <PublicLayout>
-      <div className="max-w-md mx-auto mt-12">
+      <div className="max-w-lg w-full mx-auto mt-12 px-4">
         <Card>
           <h1 className="text-center text-3xl mb-6">用户注册</h1>
           <form onSubmit={handleSubmit} className="space-y-4">
