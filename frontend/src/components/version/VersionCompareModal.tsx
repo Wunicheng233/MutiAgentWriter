@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Button } from '../v2'
+import { Modal, ModalHeader, ModalContent, ModalFooter, Button } from '../v2'
 import { renderDiffHtml } from '../../utils/textDiff'
 import type { ChapterVersionInfo, ChapterVersionDetail } from '../../utils/endpoints'
 
@@ -30,45 +30,46 @@ export const VersionCompareModal: React.FC<VersionCompareModalProps> = ({
 
   // Initialize right version to latest when opening
   useEffect(() => {
-    if (isOpen && versions.length > 0 && !rightVersionId) {
+    if (isOpen && versions.length > 0) {
       setRightVersionId(versions[0].id)
     }
-  }, [isOpen, versions, rightVersionId])
+  }, [isOpen, versions])
 
-  // Load left version content
+  // Reset state when opening with a new initialLeftVersionId
   useEffect(() => {
-    if (!leftVersionId) {
+    if (isOpen) {
+      setLeftVersionId(initialLeftVersionId)
+    }
+  }, [isOpen, initialLeftVersionId])
+
+  // Load both versions with Promise.all to avoid loading race conditions
+  useEffect(() => {
+    if (!leftVersionId && !rightVersionId) {
       setLeftContent('')
-      return
-    }
-
-    const load = async () => {
-      setLoading(true)
-      try {
-        const detail = await getVersionDetail(leftVersionId)
-        setLeftContent(detail.content)
-      } catch (error) {
-        console.error('Failed to load version:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    load()
-  }, [leftVersionId, getVersionDetail])
-
-  // Load right version content
-  useEffect(() => {
-    if (!rightVersionId) {
       setRightContent('')
       return
     }
 
-    const load = async () => {
+    const loadVersions = async () => {
       setLoading(true)
       try {
-        const detail = await getVersionDetail(rightVersionId)
-        setRightContent(detail.content)
+        const promises: Promise<ChapterVersionDetail | null>[] = []
+
+        if (leftVersionId) {
+          promises.push(getVersionDetail(leftVersionId))
+        } else {
+          promises.push(Promise.resolve(null))
+        }
+
+        if (rightVersionId) {
+          promises.push(getVersionDetail(rightVersionId))
+        } else {
+          promises.push(Promise.resolve(null))
+        }
+
+        const [leftDetail, rightDetail] = await Promise.all(promises)
+        setLeftContent(leftDetail?.content ?? '')
+        setRightContent(rightDetail?.content ?? '')
       } catch (error) {
         console.error('Failed to load version:', error)
       } finally {
@@ -76,8 +77,8 @@ export const VersionCompareModal: React.FC<VersionCompareModalProps> = ({
       }
     }
 
-    load()
-  }, [rightVersionId, getVersionDetail])
+    loadVersions()
+  }, [leftVersionId, rightVersionId, getVersionDetail])
 
   // Reset state when closing
   const handleClose = () => {
@@ -94,25 +95,17 @@ export const VersionCompareModal: React.FC<VersionCompareModalProps> = ({
   const rightVersion = versions.find(v => v.id === rightVersionId)
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" data-testid="version-compare-modal">
-      <div className="w-full max-w-6xl max-h-[90vh] bg-[var(--bg-primary)] rounded-lg border border-[var(--border-default)] shadow-lg flex flex-col overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-[var(--border-default)]">
-          <h2 className="text-lg font-medium text-[var(--text-primary)]">版本对比</h2>
-          <button
-            onClick={handleClose}
-            className="p-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] rounded-md transition-colors"
-            aria-label="关闭"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M18 6L6 18"/>
-              <path d="M6 6l12 12"/>
-            </svg>
-          </button>
-        </div>
+    <Modal
+      isOpen={isOpen}
+      onClose={handleClose}
+      size="xl"
+      data-testid="version-compare-modal"
+    >
+      <ModalHeader>版本对比</ModalHeader>
 
+      <ModalContent>
         {/* Version Selectors */}
-        <div className="grid grid-cols-2 gap-4 p-4 border-b border-[var(--border-default)]">
+        <div className="grid grid-cols-2 gap-4 mb-6">
           <div>
             <label className="block text-sm text-[var(--text-secondary)] mb-2">旧版本</label>
             <select
@@ -146,43 +139,40 @@ export const VersionCompareModal: React.FC<VersionCompareModalProps> = ({
         </div>
 
         {/* Diff Content */}
-        <div className="flex-1 overflow-y-auto p-4 min-h-0">
+        <div className="max-h-[50vh] overflow-y-auto">
           {loading ? (
             <div className="text-center py-8 text-[var(--text-secondary)]">加载中...</div>
           ) : leftContent && rightContent ? (
-            <div>
-              <div
-                className="p-4 bg-[var(--bg-tertiary)] rounded-lg text-sm leading-relaxed"
-                dangerouslySetInnerHTML={{ __html: renderDiffHtml(leftContent, rightContent) }}
-              />
-            </div>
+            <div
+              className="p-4 bg-[var(--bg-tertiary)] rounded-lg text-sm leading-relaxed"
+              dangerouslySetInnerHTML={{ __html: renderDiffHtml(leftContent, rightContent) }}
+            />
           ) : (
             <div className="text-center py-8 text-[var(--text-secondary)]">
               请选择左右两个版本进行对比
             </div>
           )}
         </div>
+      </ModalContent>
 
-        {/* Footer Actions */}
-        <div className="flex justify-end gap-3 p-4 border-b border-[var(--border-default)]">
-          {leftVersion && (
-            <Button
-              variant="secondary"
-              onClick={() => {
-                onRestore(leftVersion.id)
-                handleClose()
-              }}
-              disabled={isRestoring}
-            >
-              恢复到 V{leftVersion.version_number}
-            </Button>
-          )}
-          <Button variant="primary" onClick={handleClose}>
-            关闭
+      <ModalFooter>
+        {leftVersion && (
+          <Button
+            variant="secondary"
+            onClick={() => {
+              onRestore(leftVersion.id)
+              handleClose()
+            }}
+            disabled={isRestoring}
+          >
+            恢复到 V{leftVersion.version_number}
           </Button>
-        </div>
-      </div>
-    </div>
+        )}
+        <Button variant="primary" onClick={handleClose}>
+          关闭
+        </Button>
+      </ModalFooter>
+    </Modal>
   )
 }
 
