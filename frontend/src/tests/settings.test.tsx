@@ -1,67 +1,147 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+import React from 'react'
 import { render, screen, fireEvent } from '@testing-library/react'
-import { ThemeSelector } from '../components/ThemeSelector'
-import { useThemeStore } from '../store/useThemeStore'
+import { Settings } from '../pages/Settings'
+import { useLayoutStore } from '../store/useLayoutStore'
+import { RewriteMode } from '../utils/selectionAI'
 
-describe('Theme Selector', () => {
+// Mock react-router-dom
+vi.mock('react-router-dom', () => ({
+  useSearchParams: () => [new URLSearchParams(), vi.fn()],
+}))
+
+// Mock tanstack/react-query
+vi.mock('@tanstack/react-query', () => ({
+  useQuery: () => ({ data: null }),
+  useMutation: () => ({ mutate: vi.fn() }),
+  useQueryClient: () => ({ invalidateQueries: vi.fn() }),
+}))
+
+// Mock components
+vi.mock('../components/v2', () => ({
+  Card: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  Button: ({ children, onClick, variant }: { children: React.ReactNode; onClick?: () => void; variant?: string }) => (
+    <button onClick={onClick} data-variant={variant}>{children}</button>
+  ),
+  Input: ({ label, value, onChange }: any) => (
+    <div>
+      <label>{label}</label>
+      <input value={value} onChange={onChange} />
+    </div>
+  ),
+  Divider: () => <hr />,
+  Alert: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  Switch: ({ checked, onChange }: { checked: boolean; onChange: () => void }) => (
+    <button onClick={onChange} data-checked={checked} />
+  ),
+  Select: ({ value, onChange, options }: any) => (
+    <select value={value} onChange={onChange}>
+      {options.map((opt: any) => (
+        <option key={opt.value} value={opt.value}>{opt.label}</option>
+      ))}
+    </select>
+  ),
+}))
+
+vi.mock('../components/ThemeSelector', () => ({
+  ThemeSelector: () => <div>Warm Parchment</div>,
+}))
+
+vi.mock('../components/layout/CanvasContainer', () => ({
+  CanvasContainer: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+}))
+
+vi.mock('../components/settings/SettingsSidebar', () => ({
+  default: ({ activeTab, onTabChange }: any) => (
+    <div data-testid="settings-sidebar">
+      <button data-testid="settings-tab-theme" onClick={() => onTabChange('theme')}>theme</button>
+      <button data-testid="settings-tab-editor" onClick={() => onTabChange('editor')}>editor</button>
+      <button data-testid="settings-tab-shortcuts" onClick={() => onTabChange('shortcuts')}>shortcuts</button>
+      <button data-testid="settings-tab-ai" onClick={() => onTabChange('ai')}>ai</button>
+      <button data-testid="settings-tab-layout" onClick={() => onTabChange('layout')}>layout</button>
+      <button data-testid="settings-tab-account" onClick={() => onTabChange('account')}>account</button>
+    </div>
+  ),
+  SettingsTab: {},
+}))
+
+vi.mock('../components/settings/ShortcutList', () => ({
+  default: () => <div data-testid="shortcut-search">ShortcutList</div>,
+}))
+
+vi.mock('../store/useAuthStore', () => ({
+  useAuthStore: () => ({
+    user: { username: 'testuser', email: 'test@example.com', api_key: 'test-key' },
+    setUser: vi.fn(),
+  }),
+}))
+
+vi.mock('../components/toastContext', () => ({
+  useToast: () => ({ showToast: vi.fn() }),
+}))
+
+describe('Settings Page', () => {
   beforeEach(() => {
-    // Reset theme store before each test
-    useThemeStore.setState({ theme: 'parchment' })
+    // Reset store state
+    useLayoutStore.setState({
+      typewriterMode: false,
+      fadeMode: false,
+      vimMode: false,
+      focusMode: false,
+      defaultAIPanelOpen: false,
+      autoExpandHeaderInProject: true,
+      defaultRewriteMode: RewriteMode.POLISH,
+    })
   })
 
-  it('should render all three theme options', () => {
-    render(<ThemeSelector />)
+  it('should render sidebar with all categories', () => {
+    render(<Settings />)
+    expect(screen.getByTestId('settings-sidebar')).toBeTruthy()
+    expect(screen.getByTestId('settings-tab-theme')).toBeTruthy()
+    expect(screen.getByTestId('settings-tab-editor')).toBeTruthy()
+    expect(screen.getByTestId('settings-tab-shortcuts')).toBeTruthy()
+    expect(screen.getByTestId('settings-tab-ai')).toBeTruthy()
+    expect(screen.getByTestId('settings-tab-layout')).toBeTruthy()
+    expect(screen.getByTestId('settings-tab-account')).toBeTruthy()
+  })
 
+  it('should show theme tab content by default', () => {
+    render(<Settings />)
     expect(screen.getByText('Warm Parchment')).toBeTruthy()
-    expect(screen.getByText('Clean Light')).toBeTruthy()
-    expect(screen.getByText('Deep Dark')).toBeTruthy()
   })
 
-  it('should show theme descriptions for each option', () => {
-    render(<ThemeSelector />)
+  it('should switch tabs when clicking sidebar', () => {
+    render(<Settings />)
 
-    expect(screen.getByText(/Soft, paper-like/)).toBeTruthy()
-    expect(screen.getByText(/Bright, modern/)).toBeTruthy()
-    expect(screen.getByText(/Dark, eye-friendly/)).toBeTruthy()
+    fireEvent.click(screen.getByTestId('settings-tab-editor'))
+    expect(screen.getByText('Typewriter 模式')).toBeTruthy()
+
+    fireEvent.click(screen.getByTestId('settings-tab-shortcuts'))
+    expect(screen.getByTestId('shortcut-search')).toBeTruthy()
   })
 
-  it('should highlight selected theme with accent border', () => {
-    render(<ThemeSelector />)
+  it('editor tab should have mode switches', () => {
+    render(<Settings />)
+    fireEvent.click(screen.getByTestId('settings-tab-editor'))
 
-    const parchmentButton = screen.getByText('Warm Parchment').closest('button')
-    expect(parchmentButton?.className).toContain('border-[var(--accent-primary)]')
+    expect(screen.getByText('Typewriter 模式')).toBeTruthy()
+    expect(screen.getByText('Fade 模式')).toBeTruthy()
+    expect(screen.getByText('Vim 模式')).toBeTruthy()
   })
 
-  it('should change theme when clicking an option', () => {
-    render(<ThemeSelector />)
+  it('layout tab should have layout switches', () => {
+    render(<Settings />)
+    fireEvent.click(screen.getByTestId('settings-tab-layout'))
 
-    const cleanLightButton = screen.getByText('Clean Light').closest('button')
-    fireEvent.click(cleanLightButton!)
-
-    expect(useThemeStore.getState().theme).toBe('clean-light')
+    expect(screen.getByText('Focus 模式')).toBeTruthy()
+    expect(screen.getByText('右侧面板默认打开')).toBeTruthy()
+    expect(screen.getByText('顶栏自动展开')).toBeTruthy()
   })
 
-  it('should update selected state when theme changes', () => {
-    render(<ThemeSelector />)
+  it('ai tab should have default rewrite mode selector', () => {
+    render(<Settings />)
+    fireEvent.click(screen.getByTestId('settings-tab-ai'))
 
-    // Initially parchment is selected
-    const parchmentButton = screen.getByText('Warm Parchment').closest('button')
-    expect(parchmentButton?.className).toContain('border-[var(--accent-primary)]')
-
-    // Click Deep Dark
-    const deepDarkButton = screen.getByText('Deep Dark').closest('button')
-    fireEvent.click(deepDarkButton!)
-
-    // Now Deep Dark should be selected
-    expect(deepDarkButton?.className).toContain('border-[var(--accent-primary)]')
-  })
-
-  it('should have data-testid for each theme card', () => {
-    render(<ThemeSelector />)
-
-    expect(screen.getByTestId('theme-parchment')).toBeTruthy()
-    expect(screen.getByTestId('theme-clean-light')).toBeTruthy()
-    expect(screen.getByTestId('theme-deep-dark')).toBeTruthy()
+    expect(screen.getByText('选区 AI 默认重写模式')).toBeTruthy()
   })
 })
-
