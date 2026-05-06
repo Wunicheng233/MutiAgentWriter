@@ -1,4 +1,4 @@
-import { renderHook } from '@testing-library/react'
+import { renderHook, fireEvent } from '@testing-library/react'
 import { BrowserRouter } from 'react-router-dom'
 import { useKeyboardShortcuts } from './useKeyboardShortcuts'
 import { useLayoutStore } from '../store/useLayoutStore'
@@ -13,6 +13,10 @@ const mockToggleHeader = vi.fn()
 const mockSetRightPanelOpen = vi.fn()
 const mockToggleRightPanel = vi.fn()
 const mockToggleFocusMode = vi.fn()
+const mockToggleTypewriterMode = vi.fn()
+const mockToggleFadeMode = vi.fn()
+const mockToggleVimMode = vi.fn()
+const mockSetCommandPaletteOpen = vi.fn()
 
 describe('useKeyboardShortcuts', () => {
   beforeEach(() => {
@@ -23,6 +27,10 @@ describe('useKeyboardShortcuts', () => {
       setRightPanelOpen: mockSetRightPanelOpen,
       toggleRightPanel: mockToggleRightPanel,
       toggleFocusMode: mockToggleFocusMode,
+      toggleTypewriterMode: mockToggleTypewriterMode,
+      toggleFadeMode: mockToggleFadeMode,
+      toggleVimMode: mockToggleVimMode,
+      setCommandPaletteOpen: mockSetCommandPaletteOpen,
     })
   })
 
@@ -135,5 +143,47 @@ describe('useKeyboardShortcuts', () => {
     expect(mockToggleNavCollapsed).not.toHaveBeenCalled()
 
     document.body.removeChild(input)
+  })
+})
+
+describe('useKeyboardShortcuts - new mode shortcuts', () => {
+  it('should toggle typewriter mode on Cmd+Shift+T', () => {
+    renderHook(() => useKeyboardShortcuts(), {
+      wrapper: BrowserRouter,
+    })
+
+    fireEvent.keyDown(window, { key: 'T', metaKey: true, shiftKey: true })
+
+    expect(mockToggleTypewriterMode).toHaveBeenCalled()
+  })
+
+  it('should toggle fade mode on Cmd+Shift+G', () => {
+    renderHook(() => useKeyboardShortcuts(), {
+      wrapper: BrowserRouter,
+    })
+
+    fireEvent.keyDown(window, { key: 'G', metaKey: true, shiftKey: true })
+
+    expect(mockToggleFadeMode).toHaveBeenCalled()
+  })
+
+  it('should toggle vim mode on Cmd+Shift+V', () => {
+    renderHook(() => useKeyboardShortcuts(), {
+      wrapper: BrowserRouter,
+    })
+
+    fireEvent.keyDown(window, { key: 'V', metaKey: true, shiftKey: true })
+
+    expect(mockToggleVimMode).toHaveBeenCalled()
+  })
+
+  it('should open command palette on Cmd+K', () => {
+    renderHook(() => useKeyboardShortcuts(), {
+      wrapper: BrowserRouter,
+    })
+
+    fireEvent.keyDown(window, { key: 'K', metaKey: true })
+
+    expect(mockSetCommandPaletteOpen).toHaveBeenCalledWith(true)
   })
 })

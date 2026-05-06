@@ -5,7 +5,17 @@ import { useLayoutStore } from '../store/useLayoutStore'
 export const useKeyboardShortcuts = () => {
   const navigate = useNavigate()
   const location = useLocation()
-  const { toggleNavCollapsed, toggleRightPanel, toggleFocusMode, toggleHeader, setRightPanelOpen } = useLayoutStore()
+  const {
+    toggleNavCollapsed,
+    toggleRightPanel,
+    toggleFocusMode,
+    toggleHeader,
+    setRightPanelOpen,
+    toggleTypewriterMode,
+    toggleFadeMode,
+    toggleVimMode,
+    setCommandPaletteOpen,
+  } = useLayoutStore()
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -59,6 +69,38 @@ export const useKeyboardShortcuts = () => {
         return
       }
 
+      // Command/Ctrl + Shift + T: Toggle Typewriter mode
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 't') {
+        e.preventDefault()
+        e.stopPropagation()
+        toggleTypewriterMode()
+        return
+      }
+
+      // Command/Ctrl + Shift + G: Toggle Fade mode
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'g') {
+        e.preventDefault()
+        e.stopPropagation()
+        toggleFadeMode()
+        return
+      }
+
+      // Command/Ctrl + Shift + V: Toggle Vim mode
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'v') {
+        e.preventDefault()
+        e.stopPropagation()
+        toggleVimMode()
+        return
+      }
+
+      // Command/Ctrl + K: Open command palette
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k' && !e.shiftKey) {
+        e.preventDefault()
+        e.stopPropagation()
+        setCommandPaletteOpen(true)
+        return
+      }
+
       // Command/Ctrl + 1-4: Navigate to pages
       if ((e.metaKey || e.ctrlKey) && /^[1-4]$/.test(e.key) && !e.shiftKey) {
         e.preventDefault()
@@ -82,7 +124,7 @@ export const useKeyboardShortcuts = () => {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [location.pathname, navigate, toggleNavCollapsed, toggleHeader, setRightPanelOpen, toggleRightPanel, toggleFocusMode])
+  }, [location.pathname, navigate, toggleNavCollapsed, toggleHeader, setRightPanelOpen, toggleRightPanel, toggleFocusMode, toggleTypewriterMode, toggleFadeMode, toggleVimMode, setCommandPaletteOpen])
 }
 
 export default useKeyboardShortcuts
