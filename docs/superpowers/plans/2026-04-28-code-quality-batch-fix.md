@@ -1168,22 +1168,22 @@ git push origin main
 ## Self-Review
 
 **1. Spec coverage:**
-- ✅ Phase 1 Git/依赖: 全覆盖（5 个任务）
-- ✅ Phase 2 后端代码质量: f-string、未使用变量、nonlocal、重复导入、未使用导入 全覆盖
-- ✅ Phase 3 前端/测试: any 类型、hook 优化、Toast 测试、skip 测试、测试 any 清理、覆盖率工具、hook 测试、pip-audit 全覆盖
+-  Phase 1 Git/依赖: 全覆盖（5 个任务）
+-  Phase 2 后端代码质量: f-string、未使用变量、nonlocal、重复导入、未使用导入 全覆盖
+-  Phase 3 前端/测试: any 类型、hook 优化、Toast 测试、skip 测试、测试 any 清理、覆盖率工具、hook 测试、pip-audit 全覆盖
 - **无遗漏**
 
 **2. Placeholder scan:**
-- ✅ 所有步骤都有完整的代码块和命令
-- ✅ 所有文件路径精确
-- ✅ 所有预期输出明确
-- ✅ 没有模糊描述或 TBD
+-  所有步骤都有完整的代码块和命令
+-  所有文件路径精确
+-  所有预期输出明确
+-  没有模糊描述或 TBD
 - **无占位符**
 
 **3. Type consistency:**
-- ✅ ApiError 接口定义和使用一致
-- ✅ vi.Mock 类型建议符合 Vitest 最佳实践
-- ✅ 所有测试文件命名符合现有模式
+-  ApiError 接口定义和使用一致
+-  vi.Mock 类型建议符合 Vitest 最佳实践
+-  所有测试文件命名符合现有模式
 - **无不一致**
 
 ---

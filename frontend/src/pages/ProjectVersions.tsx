@@ -6,6 +6,7 @@ import VersionCard from '../components/version/VersionCard'
 import VersionCompareModal from '../components/version/VersionCompareModal'
 import { useVersions } from '../hooks/useVersions'
 import { listChapters } from '../utils/endpoints'
+import type { Chapter } from '../types/api'
 
 export const ProjectVersions: React.FC = () => {
   const { id } = useParams<{ id: string }>()
@@ -72,7 +73,7 @@ export const ProjectVersions: React.FC = () => {
             className="w-full max-w-md h-10 rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--bg-secondary)] px-3 text-sm text-[var(--text-primary)] focus:border-[var(--accent-primary)] focus:outline-none"
             data-testid="chapter-selector"
           >
-            {chapters.map((chapter: any) => (
+            {chapters.map((chapter: Chapter) => (
               <option key={chapter.chapter_index} value={chapter.chapter_index}>
                 第 {chapter.chapter_index} 章 · {chapter.title || '未命名'}
               </option>

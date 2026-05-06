@@ -8,7 +8,6 @@ describe('EditorStatusBar', () => {
       typewriterMode: false,
       fadeMode: false,
       focusMode: false,
-      vimMode: false,
     })
   })
 
@@ -17,7 +16,6 @@ describe('EditorStatusBar', () => {
     expect(screen.getByText(/Typewriter/i)).toBeInTheDocument()
     expect(screen.getByText(/Fade/i)).toBeInTheDocument()
     expect(screen.getByText(/Focus/i)).toBeInTheDocument()
-    expect(screen.getByText(/Vim/i)).toBeInTheDocument()
   })
 
   it('should toggle typewriter mode on click', () => {

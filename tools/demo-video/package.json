@@ -4,6 +4,8 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "capture:real-ui": "node scripts/capture-real-ui.mjs",
+    "capture:stills": "node scripts/capture-real-ui-stills.mjs",
     "preview": "remotion studio src/index.ts",
     "typecheck": "tsc --noEmit",
     "render": "remotion render src/index.ts StoryForgeDemo out/storyforge-demo.mp4",
@@ -19,6 +21,7 @@
     "@types/node": "24.12.2",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
+    "playwright": "1.57.0",
     "typescript": "6.0.2"
   }
 }

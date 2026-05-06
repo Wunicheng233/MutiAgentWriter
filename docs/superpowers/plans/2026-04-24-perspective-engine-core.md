@@ -1011,8 +1011,8 @@ class PerspectiveEndToEndTests(unittest.TestCase):
             # 应该包含原始 prompt 的核心内容
             self.assertIn("Role", result)  # 原始 prompt 开头有 Role
 
-            print(f"✅ 刘慈欣视角注入成功，最终 prompt 长度: {len(result)} 字符")
-            print(f"✅ 包含表达风格适配部分")
+            print(f" 刘慈欣视角注入成功，最终 prompt 长度: {len(result)} 字符")
+            print(f" 包含表达风格适配部分")
 
         except Exception as e:
             self.fail(f"刘慈欣视角加载失败: {e}")
@@ -1037,7 +1037,7 @@ class PerspectiveEndToEndTests(unittest.TestCase):
         self.assertIn("经典句式参考", full_strength)
         # 低强度 (0.2) 应该没有例句
         if "经典句式参考" in low_strength:
-            print("⚠️ 低强度仍然有例句，可能需要调整裁剪逻辑")
+            print(" 低强度仍然有例句，可能需要调整裁剪逻辑")
 ```
 
 - [ ] **Step 2: 运行端到端测试**
@@ -1058,27 +1058,27 @@ git commit -m "test: add end-to-end perspective integration tests"
 
 ---
 
-## 计划自检 ✅
+## 计划自检
 
 ### Spec 覆盖检查
 
 对照规格文档，本计划覆盖了：
-- ✅ PerspectiveEngine 核心类设计
-- ✅ 4 个注入点（Planner/Writer/Critic/Revise）
-- ✅ 强度参数支持
-- ✅ load_prompt 集成
-- ✅ 内置视角 YAML 格式
-- ✅ 静默失败/优雅降级
-- ✅ 完整的测试覆盖
+-  PerspectiveEngine 核心类设计
+-  4 个注入点（Planner/Writer/Critic/Revise）
+-  强度参数支持
+-  load_prompt 集成
+-  内置视角 YAML 格式
+-  静默失败/优雅降级
+-  完整的测试覆盖
 
 ### 占位符检查
 
 搜索整个计划文档，没有发现：
-- ❌ "TBD" / "TODO"
-- ❌ "implement later"
-- ❌ "Add appropriate error handling"
-- ❌ "Write tests for the above"
-- ❌ "Similar to Task N"
+-  "TBD" / "TODO"
+-  "implement later"
+-  "Add appropriate error handling"
+-  "Write tests for the above"
+-  "Similar to Task N"
 
 所有步骤都有完整的代码和精确的命令。
 

@@ -303,10 +303,10 @@ export default function ComponentShowcase() {
             已完成 4 个核心组件，31 个单元测试，设计令牌系统已就绪
           </p>
           <div className="flex items-center justify-center gap-3">
-            <Badge variant="success">Button ✓</Badge>
-            <Badge variant="success">Card ✓</Badge>
-            <Badge variant="success">Input ✓</Badge>
-            <Badge variant="success">Badge ✓</Badge>
+            <Badge variant="success">Button 完成</Badge>
+            <Badge variant="success">Card 完成</Badge>
+            <Badge variant="success">Input 完成</Badge>
+            <Badge variant="success">Badge 完成</Badge>
           </div>
         </Card>
       </div>

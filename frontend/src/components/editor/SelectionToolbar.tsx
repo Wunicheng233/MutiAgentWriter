@@ -1,5 +1,7 @@
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { useSelectionStore } from '../../store/useSelectionStore'
+import { useLayoutStore } from '../../store/useLayoutStore'
 import { RewriteMode } from '../../utils/selectionAI'
 import { Button } from '../v2'
 import { Popover, PopoverTrigger, PopoverContent } from '../v2/Popover/Popover'
@@ -8,15 +10,9 @@ import {
   ExpandIcon,
   ShortenIcon,
   DramaticIcon,
-  ForeshadowIcon,
-  ContinuityIcon,
   CloseIcon,
   ChevronDownIcon,
 } from './icons'
-
-interface SelectionToolbarProps {
-  onAction: (mode: RewriteMode) => void
-}
 
 const quickActions = [
   { mode: RewriteMode.POLISH, label: '润色', Icon: PolishIcon },
@@ -26,19 +22,35 @@ const quickActions = [
 
 const moreActions = [
   { mode: RewriteMode.MORE_DRAMATIC, label: '增强戏剧张力', Icon: DramaticIcon },
-  { mode: RewriteMode.ADD_FORESHADOWING, label: '植入伏笔', Icon: ForeshadowIcon },
-  { mode: RewriteMode.CHECK_CONTINUITY, label: '检查连续性', Icon: ContinuityIcon },
 ]
 
-export const SelectionToolbar: React.FC<SelectionToolbarProps> = ({ onAction }) => {
-  const { isToolbarVisible, toolbarPosition, hideToolbar } = useSelectionStore()
+export const SelectionToolbar: React.FC = () => {
+  const { isToolbarVisible, toolbarPosition, hideToolbar, setInitialRewriteMode } = useSelectionStore(
+    useShallow((state) => ({
+      isToolbarVisible: state.isToolbarVisible,
+      toolbarPosition: state.toolbarPosition,
+      hideToolbar: state.hideToolbar,
+      setInitialRewriteMode: state.setInitialRewriteMode,
+    }))
+  )
+  const { setRightPanelOpen, setRightPanelTab } = useLayoutStore()
   const [showMore, setShowMore] = useState(false)
 
-  // Reset dropdown state when toolbar is hidden
+  const handleAction = (mode: RewriteMode) => {
+    setInitialRewriteMode(mode)
+    setRightPanelTab('selection')
+    setRightPanelOpen(true)
+    hideToolbar()
+  }
+
+  // Reset dropdown state when toolbar is hidden (using useRef to avoid cascading renders
+  const prevToolbarVisibleRef = useRef(isToolbarVisible)
+
   React.useEffect(() => {
-    if (!isToolbarVisible) {
+    if (prevToolbarVisibleRef.current && !isToolbarVisible) {
       setShowMore(false)
     }
+    prevToolbarVisibleRef.current = isToolbarVisible
   }, [isToolbarVisible])
 
   if (!isToolbarVisible || !toolbarPosition) {
@@ -59,7 +71,7 @@ export const SelectionToolbar: React.FC<SelectionToolbarProps> = ({ onAction }) 
           key={action.mode}
           variant="tertiary"
           size="sm"
-          onClick={() => onAction(action.mode)}
+          onClick={() => handleAction(action.mode)}
           className="text-sm"
         >
           <action.Icon className="w-4 h-4 mr-1" />
@@ -76,21 +88,22 @@ export const SelectionToolbar: React.FC<SelectionToolbarProps> = ({ onAction }) 
             <ChevronDownIcon className="w-3 h-3 ml-1" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent align="start" side="bottom">
-          <div className="flex flex-col gap-1 p-2 min-w-[160px]">
+        <PopoverContent align="start" side="bottom" className="p-2">
+          <div className="flex flex-col gap-1 w-[150px] text-left">
             {moreActions.map(action => (
               <Button
                 key={action.mode}
                 variant="tertiary"
                 size="sm"
-                className="justify-start"
+                fullWidth
+                className="!justify-start !text-left"
                 onClick={() => {
-                  onAction(action.mode)
+                  handleAction(action.mode)
                   setShowMore(false)
                 }}
-                leftIcon={<action.Icon className="w-4 h-4" />}
+                leftIcon={<action.Icon className="w-4 h-4 flex-shrink-0" />}
               >
-                {action.label}
+                <span className="text-left">{action.label}</span>
               </Button>
             ))}
           </div>

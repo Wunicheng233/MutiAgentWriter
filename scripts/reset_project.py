@@ -45,13 +45,13 @@ def reset_project_to_draft(project_id: int = 1):
 
         # 提交更改
         db.commit()
-        print("\n✅ 重置完成！项目现在是草稿状态，可以重新开始生成了。")
+        print("\n重置完成！项目现在是草稿状态，可以重新开始生成了。")
 
         return True
 
     except Exception as e:
         db.rollback()
-        print(f"❌ 重置失败: {str(e)}")
+        print(f"重置失败: {str(e)}")
         import traceback
         traceback.print_exc()
         return False

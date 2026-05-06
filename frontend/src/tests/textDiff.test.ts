@@ -46,5 +46,17 @@ describe('textDiff', () => {
       expect(html).toContain('background-color: rgba(0, 180, 0')
       expect(html).toContain('beautiful')
     })
+
+    it('should escape source text before rendering HTML', () => {
+      const html = renderDiffHtml(
+        '<img src=x onerror=alert(1)>',
+        '<script>alert(1)</script>'
+      )
+
+      expect(html).not.toContain('<img')
+      expect(html).not.toContain('<script>')
+      expect(html).toContain('&lt;')
+      expect(html).toContain('&gt;')
+    })
   })
 })

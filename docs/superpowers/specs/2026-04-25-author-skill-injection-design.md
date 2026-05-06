@@ -31,10 +31,10 @@
 
 | Agent | 是否注入 | 注入目的 | 理由 |
 |-------|----------|----------|------|
-| **Planner** | ✅ 注入 | 世界观构建、叙事结构、思想实验设计 | 从源头决定故事的灵魂气质 |
-| **Writer** | ✅ 注入 | 文风、句式、词汇、节奏、表达 DNA | 最核心的风格注入点 |
-| **Revise** | ✅ 注入 | 修订时遵循同一风格规则 | 避免修订"写坏"风格 |
-| **Critic** | ❌ 不注入 | 保持通用质量标尺 | **关键设计决策**：避免 Critic 被作家个人偏好带偏，质量标准保持中立 |
+| **Planner** |  注入 | 世界观构建、叙事结构、思想实验设计 | 从源头决定故事的灵魂气质 |
+| **Writer** |  注入 | 文风、句式、词汇、节奏、表达 DNA | 最核心的风格注入点 |
+| **Revise** |  注入 | 修订时遵循同一风格规则 | 避免修订"写坏"风格 |
+| **Critic** |  不注入 | 保持通用质量标尺 | **关键设计决策**：避免 Critic 被作家个人偏好带偏，质量标准保持中立 |
 
 ### 2.2 注入位置统一约定
 
@@ -123,14 +123,14 @@ strength_recommended: 0.7
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| `name` | string | ✅ | 作家中文名称 |
-| `description` | string | ✅ | 一句话简介（UI 展示用） |
-| `version` | string | ✅ | 语义化版本号 |
-| `created_date` | string | ✅ | 创建日期 |
-| `activation_pattern` | string[] | ❌ | 触发关键词数组 |
-| `safety_tags` | string[] | ❌ | 安全标签（如 `controversy`） |
-| `genre` | string | ✅ | 题材分类 |
-| `strength_recommended` | float | ✅ | 推荐注入强度 0.0-1.0 |
+| `name` | string |  | 作家中文名称 |
+| `description` | string |  | 一句话简介（UI 展示用） |
+| `version` | string |  | 语义化版本号 |
+| `created_date` | string |  | 创建日期 |
+| `activation_pattern` | string[] |  | 触发关键词数组 |
+| `safety_tags` | string[] |  | 安全标签（如 `controversy`） |
+| `genre` | string |  | 题材分类 |
+| `strength_recommended` | float |  | 推荐注入强度 0.0-1.0 |
 
 ---
 
@@ -423,19 +423,19 @@ class StrengthTrimmer:
         sections = style_layer.split("\n\n### ")
 
         if strength <= 0.3:
-            # 🔴 低强度：只保留词汇、禁忌、句式
+            #  低强度：只保留词汇、禁忌、句式
             allowed_keywords = {"词汇", "禁忌", "句式", "语言", "Do", "DON'T"}
             filtered = [s for s in sections if any(k in s for k in allowed_keywords)]
             return "\n\n### ".join(filtered)
 
         elif strength <= 0.7:
-            # 🟡 中强度：保留表达类 + 结构类
+            #  中强度：保留表达类 + 结构类
             blocked_keywords = {"心智模型", "思维框架", "创作哲学"}
             filtered = [s for s in sections if not any(k in s for k in blocked_keywords)]
             return "\n\n### ".join(filtered)
 
         else:
-            # 🟢 高强度：完整注入
+            #  高强度：完整注入
             return style_layer
 ```
 
@@ -630,21 +630,21 @@ tests/test_author_skill_integration.py
 
 ## 十、迭代路线图
 
-### Phase 1 ✅（本规范）：基础 Skill 注入
+### Phase 1 （本规范）：基础 Skill 注入
 
 - [ ] SkillLoader / StyleExtractor / StrengthTrimmer 实现
 - [ ] 集成到 load_prompt()
 - [ ] 前端选择器 + API
 - [ ] style_only 安全模式
 
-### Phase 2 🚧（规划中）：结构化 StyleProfile
+### Phase 2 （规划中）：结构化 StyleProfile
 
 - [ ] 将 skill 从 Markdown 编译成结构化 JSON
 - [ ] StyleProfile schema：voice / lexicon / dos_donts / rhythm / metaphor
 - [ ] Prompt 拼装只引用 JSON 字段，更可控
 - [ ] 支持 skill 混搭（60% 罗琳 + 40% 刘慈欣）
 
-### Phase 3 🔮（构想中）：高级特性
+### Phase 3 （构想中）：高级特性
 
 - [ ] Agent-specific skill：不同 Agent 用不同 skill（Writer 文风，Critic 该作家式审美）
 - [ ] 风格一致性评分模型：定量评估输出与目标风格的匹配度
@@ -657,16 +657,16 @@ tests/test_author_skill_integration.py
 
 | 位置 | 改动类型 | 说明 |
 |------|----------|------|
-| `skills/authors/*.md` | ✅ 新增 | 作家 skill 资产目录 |
-| `core/skill_runtime/__init__.py` | ✅ 新增 | 运行时模块入口 |
-| `core/skill_runtime/skill_loader.py` | ✅ 新增 | Skill 加载解析 |
-| `core/skill_runtime/style_extractor.py` | ✅ 新增 | 安全内容提取 |
-| `core/skill_runtime/strength_trimmer.py` | ✅ 新增 | 强度裁剪 |
-| `utils/file_utils.py` | 🔧 修改 | load_prompt 集成 style layer |
-| `core/orchestrator.py` | 🔧 修改 | 读取 skill 配置并传递 |
-| `backend/api/author_skills.py` | ✅ 新增 | Skill 列表 API |
-| `frontend/src/pages/ProjectSettings.tsx` | 🔧 修改 | 新增风格选择下拉框 |
-| `tests/test_skill_runtime/` | ✅ 新增 | 运行时单元测试 |
+| `skills/authors/*.md` |  新增 | 作家 skill 资产目录 |
+| `core/skill_runtime/__init__.py` |  新增 | 运行时模块入口 |
+| `core/skill_runtime/skill_loader.py` |  新增 | Skill 加载解析 |
+| `core/skill_runtime/style_extractor.py` |  新增 | 安全内容提取 |
+| `core/skill_runtime/strength_trimmer.py` |  新增 | 强度裁剪 |
+| `utils/file_utils.py` |  修改 | load_prompt 集成 style layer |
+| `core/orchestrator.py` |  修改 | 读取 skill 配置并传递 |
+| `backend/api/author_skills.py` |  新增 | Skill 列表 API |
+| `frontend/src/pages/ProjectSettings.tsx` |  修改 | 新增风格选择下拉框 |
+| `tests/test_skill_runtime/` |  新增 | 运行时单元测试 |
 
 ---
 

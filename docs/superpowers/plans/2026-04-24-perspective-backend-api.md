@@ -59,7 +59,7 @@ class ModelFieldTests(unittest.TestCase):
         self.assertTrue(hasattr(Project, 'perspective_strength'))
         self.assertTrue(hasattr(Project, 'perspective_mix'))
 
-        print("✅ Project 模型包含所有视角相关字段")
+        print(" Project 模型包含所有视角相关字段")
 ```
 
 - [ ] **Step 2: 运行测试验证失败**
@@ -179,7 +179,7 @@ class PerspectiveAPITests(unittest.TestCase):
         self.assertEqual(liu_cixin['name'], '刘慈欣')
         self.assertEqual(liu_cixin['genre'], '科幻')
 
-        print(f"✅ 获取到 {len(perspectives)} 个视角")
+        print(f" 获取到 {len(perspectives)} 个视角")
 
     def test_get_perspective_detail(self):
         """GET /perspectives/{id} 应该返回视角详情"""
@@ -388,7 +388,7 @@ class WriterAgentPerspectiveTests(unittest.TestCase):
         self.assertIn('perspective', params)
         self.assertIn('perspective_strength', params)
 
-        print("✅ generate_chapter 接受 perspective 和 perspective_strength 参数")
+        print(" generate_chapter 接受 perspective 和 perspective_strength 参数")
 
     def test_writer_agent_perspective_effect(self):
         """传入 perspective 应该影响生成的 prompt"""
@@ -405,7 +405,7 @@ class WriterAgentPerspectiveTests(unittest.TestCase):
         self.assertIn('perspective', source)
         self.assertIn('perspective_strength', source)
 
-        print("✅ generate_chapter 内部使用 perspective 参数")
+        print(" generate_chapter 内部使用 perspective 参数")
 ```
 
 - [ ] **Step 2: 运行测试验证失败**
@@ -516,7 +516,7 @@ def generate_plan(
     context["perspective"] = perspective
     context["perspective_strength"] = perspective_strength
 
-    logger.info(f"📝 顶层策划Agent正在生成{content_type}方案...")
+    logger.info(f" 顶层策划Agent正在生成{content_type}方案...")
     return call_volc_api("planner", user_input, content_type=content_type, context=context, client=client)
 ```
 
@@ -604,7 +604,7 @@ class AllAgentsPerspectiveTests(unittest.TestCase):
                 f"{module_name}.{func_name} 缺少 perspective_strength 参数"
             )
 
-            print(f"✅ {module_name}.{func_name} 接受 perspective 参数")
+            print(f" {module_name}.{func_name} 接受 perspective 参数")
 ```
 
 - [ ] **Step 5: 运行所有 agent 测试**
@@ -674,18 +674,18 @@ def run_generation_task(project_id: int):
 
 ---
 
-## 计划自检 ✅
+## 计划自检
 
 ### Spec 覆盖检查
 
 对照规格文档，本计划覆盖了：
-- ✅ Project 表 4 个新增字段
-- ✅ Alembic 数据迁移
-- ✅ 视角列表 API (`GET /perspectives/`)
-- ✅ 视角详情 API (`GET /perspectives/{id}`)
-- ✅ 项目视角配置 API (`PUT /perspectives/project/{id}`)
-- ✅ 所有 4 个 Agent 的 perspective 参数透传
-- ✅ 完整的集成测试覆盖
+-  Project 表 4 个新增字段
+-  Alembic 数据迁移
+-  视角列表 API (`GET /perspectives/`)
+-  视角详情 API (`GET /perspectives/{id}`)
+-  项目视角配置 API (`PUT /perspectives/project/{id}`)
+-  所有 4 个 Agent 的 perspective 参数透传
+-  完整的集成测试覆盖
 
 ### 后续工作说明
 

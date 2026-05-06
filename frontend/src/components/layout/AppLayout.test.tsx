@@ -200,7 +200,7 @@ describe('AppLayout', () => {
     renderWithRouter(<AppLayout />)
 
     expect(screen.getByTestId('right-panel')).toBeInTheDocument()
-    expect(screen.getByTestId('ai-chat-panel')).toBeInTheDocument()
+    expect(screen.getByTestId('ai-panel')).toBeInTheDocument()
   })
 
   it('does not render right AI panel when rightPanelOpen is false', async () => {

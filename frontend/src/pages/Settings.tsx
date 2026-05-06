@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Button, Input, Divider, Alert, Switch, Select } from '../components/v2'
+import { Button, Input, Divider, Alert, Switch, Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/v2'
 import { ThemeSelector } from '../components/ThemeSelector'
-import { CanvasContainer } from '../components/layout/CanvasContainer'
 import SettingsSidebar from '../components/settings/SettingsSidebar'
 import type { SettingsTab } from '../components/settings/SettingsSidebar'
 import ShortcutList from '../components/settings/ShortcutList'
@@ -31,14 +30,12 @@ export const Settings: React.FC = () => {
   const {
     typewriterMode,
     fadeMode,
-    vimMode,
     focusMode,
     defaultAIPanelOpen,
     autoExpandHeaderInProject,
     defaultRewriteMode,
     toggleTypewriterMode,
     toggleFadeMode,
-    toggleVimMode,
     toggleFocusMode,
     setDefaultAIPanelOpen,
     setAutoExpandHeaderInProject,
@@ -58,15 +55,14 @@ export const Settings: React.FC = () => {
     queryFn: getUserMonthlyTokenStats,
   })
 
-  useEffect(() => {
+  const handleTabChange = (tab: SettingsTab) => {
+    setActiveTab(tab)
+    setSearchParams({ tab })
+  }
+
+  React.useEffect(() => {
     setSearchParams({ tab: activeTab })
   }, [activeTab, setSearchParams])
-
-  useEffect(() => {
-    if (tabFromUrl && tabFromUrl !== activeTab) {
-      setActiveTab(tabFromUrl)
-    }
-  }, [tabFromUrl])
 
   const clearMutation = useMutation({
     mutationFn: clearApiKey,
@@ -131,7 +127,7 @@ export const Settings: React.FC = () => {
         <p className="text-sm text-[var(--text-primary)]">{label}</p>
         {description && <p className="text-xs text-[var(--text-muted)] mt-0.5">{description}</p>}
       </div>
-      <div className="flex-shrink-0">{children}</div>
+      <div className="flex-shrink-0 w-[120px] flex justify-end">{children}</div>
     </div>
   )
 
@@ -160,9 +156,6 @@ export const Settings: React.FC = () => {
             <SettingItem label="Fade 模式" description="淡化非当前段落，聚焦当前编辑内容">
               <Switch checked={fadeMode} onChange={toggleFadeMode} />
             </SettingItem>
-            <SettingItem label="Vim 模式" description="启用 Vim 键绑定，需刷新页面生效">
-              <Switch checked={vimMode} onChange={toggleVimMode} />
-            </SettingItem>
           </SettingSection>
         )
 
@@ -177,9 +170,19 @@ export const Settings: React.FC = () => {
                 <div className="w-48">
                   <Select
                     value={defaultRewriteMode}
-                    onChange={(e) => setDefaultRewriteMode(e.target.value as RewriteMode)}
-                    options={rewriteModeOptions}
-                  />
+                    onValueChange={(value) => setDefaultRewriteMode(value as RewriteMode)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="选择模式" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {rewriteModeOptions.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </SettingItem>
             </SettingSection>
@@ -187,9 +190,9 @@ export const Settings: React.FC = () => {
             <Divider className="border-[var(--border-subtle)]" />
 
             <SettingSection title="API Key">
-              <div className="flex items-center justify-between py-3">
-                <span className="text-sm text-[var(--text-secondary)]">当前 Key</span>
-                <code className="text-sm font-mono text-[var(--text-body)]">{displayApiKey()}</code>
+              <div className="flex items-center py-3">
+                <span className="text-sm text-[var(--text-secondary)] flex-1">当前 Key</span>
+                <code className="text-sm font-mono text-[var(--text-body)] w-[120px] text-right">{displayApiKey()}</code>
               </div>
               <div className="space-y-3 pt-2">
                 <Input
@@ -230,13 +233,13 @@ export const Settings: React.FC = () => {
         return (
           <div className="space-y-8">
             <SettingSection title="账户信息">
-              <div className="flex items-center justify-between py-3">
-                <span className="text-sm text-[var(--text-secondary)]">用户名</span>
-                <span className="text-sm text-[var(--text-body)]">{user?.username}</span>
+              <div className="flex items-center py-3">
+                <span className="text-sm text-[var(--text-secondary)] flex-1">用户名</span>
+                <span className="text-sm text-[var(--text-body)] w-[120px] text-right">{user?.username}</span>
               </div>
-              <div className="flex items-center justify-between py-3">
-                <span className="text-sm text-[var(--text-secondary)]">邮箱</span>
-                <span className="text-sm text-[var(--text-body)]">{user?.email}</span>
+              <div className="flex items-center py-3">
+                <span className="text-sm text-[var(--text-secondary)] flex-1">邮箱</span>
+                <span className="text-sm text-[var(--text-body)] w-[120px] text-right">{user?.email}</span>
               </div>
             </SettingSection>
 
@@ -244,21 +247,21 @@ export const Settings: React.FC = () => {
               <>
                 <Divider className="border-[var(--border-subtle)]" />
                 <SettingSection title={`本月使用统计 (${monthlyStats.month})`}>
-                  <div className="flex items-center justify-between py-3">
-                    <span className="text-sm text-[var(--text-secondary)]">总 Token</span>
-                    <span className="text-sm text-[var(--text-body)] font-mono">{monthlyStats.total_tokens.toLocaleString()}</span>
+                  <div className="flex items-center py-3">
+                    <span className="text-sm text-[var(--text-secondary)] flex-1">总 Token</span>
+                    <span className="text-sm text-[var(--text-body)] font-mono w-[120px] text-right">{monthlyStats.total_tokens.toLocaleString()}</span>
                   </div>
-                  <div className="flex items-center justify-between py-3">
-                    <span className="text-sm text-[var(--text-secondary)]">Prompt</span>
-                    <span className="text-sm text-[var(--text-body)] font-mono">{monthlyStats.total_prompt_tokens.toLocaleString()}</span>
+                  <div className="flex items-center py-3">
+                    <span className="text-sm text-[var(--text-secondary)] flex-1">Prompt</span>
+                    <span className="text-sm text-[var(--text-body)] font-mono w-[120px] text-right">{monthlyStats.total_prompt_tokens.toLocaleString()}</span>
                   </div>
-                  <div className="flex items-center justify-between py-3">
-                    <span className="text-sm text-[var(--text-secondary)]">Completion</span>
-                    <span className="text-sm text-[var(--text-body)] font-mono">{monthlyStats.total_completion_tokens.toLocaleString()}</span>
+                  <div className="flex items-center py-3">
+                    <span className="text-sm text-[var(--text-secondary)] flex-1">Completion</span>
+                    <span className="text-sm text-[var(--text-body)] font-mono w-[120px] text-right">{monthlyStats.total_completion_tokens.toLocaleString()}</span>
                   </div>
-                  <div className="flex items-center justify-between py-3">
-                    <span className="text-sm text-[var(--text-secondary)]">估算费用</span>
-                    <span className="text-sm text-[var(--text-body)] font-mono">${monthlyStats.estimated_cost_usd.toFixed(4)}</span>
+                  <div className="flex items-center py-3">
+                    <span className="text-sm text-[var(--text-secondary)] flex-1">估算费用</span>
+                    <span className="text-sm text-[var(--text-body)] font-mono w-[120px] text-right">${monthlyStats.estimated_cost_usd.toFixed(4)}</span>
                   </div>
                 </SettingSection>
               </>
@@ -304,25 +307,25 @@ export const Settings: React.FC = () => {
   }
 
   return (
-    <CanvasContainer maxWidth={860}>
-      <h1 className="text-[clamp(1.5rem,3vw,2rem)] font-medium text-[var(--text-primary)] mb-8">设置</h1>
+    <div className="w-[700px] mx-auto">
+        <h1 className="text-[clamp(1.5rem,3vw,2rem)] font-medium text-[var(--text-primary)] mb-8">设置</h1>
 
-      {alert && (
-        <Alert variant={alert.variant} className="mb-6">
-          {alert.message}
-        </Alert>
-      )}
+        {alert && (
+          <Alert variant={alert.variant} className="mb-6">
+            {alert.message}
+          </Alert>
+        )}
 
-      <div className="flex gap-16">
-        <div className="w-40 flex-shrink-0">
-          <SettingsSidebar activeTab={activeTab} onTabChange={setActiveTab} />
+        <div className="flex">
+          <div className="w-40 flex-shrink-0 mr-16">
+            <SettingsSidebar activeTab={activeTab} onTabChange={handleTabChange} />
+          </div>
+
+          <div className="w-[488px] flex-shrink-0 h-[550px] overflow-y-auto overflow-x-hidden">
+            {renderTabContent()}
+          </div>
         </div>
-
-        <div className="flex-1 min-w-0">
-          {renderTabContent()}
-        </div>
-      </div>
-    </CanvasContainer>
+    </div>
   )
 }
 

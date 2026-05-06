@@ -1,4 +1,5 @@
-import React, { useState } from 'react'
+import React, { useState, useCallback, useRef } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { useSelectionStore } from '../../store/useSelectionStore'
 import { RewriteMode, buildRewritePrompt } from '../../utils/selectionAI'
 import { renderDiffHtml } from '../../utils/textDiff'
@@ -9,17 +10,15 @@ import {
   ExpandIcon,
   ShortenIcon,
   DramaticIcon,
-  ForeshadowIcon,
-  PencilIcon,
-  CloseIcon,
   SpinnerIcon,
   CharacterIcon,
 } from './icons'
 
 interface SelectionAIPanelProps {
   isOpen: boolean
-  onApply: (newText: string) => void
-  onClose: () => void
+  onApply?: (newText: string) => void
+  onClose?: () => void
+  initialMode?: RewriteMode | null
   characters?: Array<{ name: string; personality?: string }>
 }
 
@@ -28,55 +27,98 @@ const actionButtons = [
   { mode: RewriteMode.EXPAND, label: '扩写', Icon: ExpandIcon },
   { mode: RewriteMode.SHORTEN, label: '缩写', Icon: ShortenIcon },
   { mode: RewriteMode.MORE_DRAMATIC, label: '增强张力', Icon: DramaticIcon },
-  { mode: RewriteMode.ADD_FORESHADOWING, label: '植入伏笔', Icon: ForeshadowIcon },
 ]
 
 export const SelectionAIPanel: React.FC<SelectionAIPanelProps> = ({
   isOpen,
   onApply,
-  onClose,
+  initialMode: externalInitialMode,
   characters = [],
 }) => {
-  const { selectedText } = useSelectionStore()
+  const { selectedText, initialRewriteMode: storeInitialMode, setInitialRewriteMode, setPendingRewriteResult } = useSelectionStore(
+    useShallow((state) => ({
+      selectedText: state.selectedText,
+      initialRewriteMode: state.initialRewriteMode,
+      setInitialRewriteMode: state.setInitialRewriteMode,
+      setPendingRewriteResult: state.setPendingRewriteResult,
+    }))
+  )
   const [isLoading, setIsLoading] = useState(false)
-  const [result, setResult] = useState<string | null>(null)
-  const [currentMode, setCurrentMode] = useState<RewriteMode | null>(null)
+  const [rewriteResult, setRewriteResult] = useState<{ sourceText: string; content: string } | null>(null)
+  const lastAutoRunKeyRef = useRef<string | null>(null)
 
-  const handleAction = async (mode: RewriteMode) => {
+  const initialMode = externalInitialMode ?? storeInitialMode
+  const result = rewriteResult?.sourceText === selectedText ? rewriteResult.content : null
+
+  const handleAction = useCallback(async (mode: RewriteMode, characterName?: string) => {
     if (!selectedText) return
 
     setIsLoading(true)
-    setCurrentMode(mode)
-    setResult(null)
+    setRewriteResult(null)
 
     try {
       const prompt = buildRewritePrompt({
         selectedText,
         mode,
         characters,
+        characterName,
       })
 
       const response = await aiChat({
         user_input: prompt,
       })
 
-      setResult(response.content)
+      setRewriteResult({
+        sourceText: selectedText,
+        content: response.content,
+      })
     } catch (error) {
       console.error('AI rewrite failed:', error)
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [selectedText, characters])
+
+  // Auto-trigger action when initialMode is set (called from toolbar)
+  React.useEffect(() => {
+    if (!initialMode || !isOpen || !selectedText || isLoading || result) return
+
+    const autoRunKey = `${initialMode}:${selectedText}`
+    if (lastAutoRunKeyRef.current === autoRunKey) return
+    lastAutoRunKeyRef.current = autoRunKey
+
+    if (!externalInitialMode) {
+      setInitialRewriteMode(null)
+    }
+
+    void handleAction(initialMode)
+  }, [
+    externalInitialMode,
+    handleAction,
+    initialMode,
+    isLoading,
+    isOpen,
+    result,
+    selectedText,
+    setInitialRewriteMode,
+  ])
 
   const handleApply = () => {
     if (result) {
-      onApply(result)
-      setResult(null)
+      if (onApply) {
+        onApply(result)
+      } else {
+        // Use store for global communication when no callback provided
+        setPendingRewriteResult(result)
+      }
+      setRewriteResult(null)
+      setInitialRewriteMode(null)
     }
   }
 
   const handleCancel = () => {
-    setResult(null)
+    setRewriteResult(null)
+    setInitialRewriteMode(null)
   }
 
   if (!isOpen) return null
@@ -84,22 +126,8 @@ export const SelectionAIPanel: React.FC<SelectionAIPanelProps> = ({
   return (
     <div
       data-selection-panel
-      className="h-full flex flex-col border-l border-[var(--border-default)] bg-[var(--bg-primary)]"
+      className="h-full flex flex-col bg-[var(--bg-primary)]"
     >
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border-default)]">
-        <h3 className="font-medium text-[var(--text-primary)] flex items-center gap-2">
-          <PencilIcon className="w-4 h-4" />
-          选区智能操作
-        </h3>
-        <button
-          onClick={onClose}
-          className="text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-        >
-          <CloseIcon className="w-4 h-4" />
-        </button>
-      </div>
-
       {/* Selected text preview */}
       <div className="px-4 py-3 border-b border-[var(--border-default)]">
         <p className="text-xs text-[var(--text-muted)] mb-1">选中的文本：</p>
@@ -137,7 +165,7 @@ export const SelectionAIPanel: React.FC<SelectionAIPanelProps> = ({
                 key={char.name}
                 variant="tertiary"
                 size="sm"
-                onClick={() => handleAction(RewriteMode.CHARACTER_VOICE)}
+                onClick={() => handleAction(RewriteMode.CHARACTER_VOICE, char.name)}
                 disabled={isLoading || !selectedText}
               >
                 {char.name}
@@ -164,7 +192,7 @@ export const SelectionAIPanel: React.FC<SelectionAIPanelProps> = ({
           </div>
         ) : (
           <div className="text-center py-8 text-sm text-[var(--text-muted)]">
-            选择一个操作开始
+            {selectedText ? '选择一个操作开始' : '请在编辑器中选中一段文本'}
           </div>
         )}
       </div>

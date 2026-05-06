@@ -193,10 +193,10 @@ describe('Slider', () => {
   it('calls onChange when value changes', async () => {
     const onChange = vi.fn()
     render(<Slider value={30} onChange={onChange} />)
-    
+
     const slider = screen.getByRole('slider')
     fireEvent.change(slider, { target: { value: '70' } })
-    
+
     expect(onChange).toHaveBeenCalledWith(70)
   })
 
@@ -431,12 +431,12 @@ const dataSource: TestData[] = [
 describe('Table', () => {
   it('renders table with headers and data correctly', () => {
     render(<Table columns={columns} dataSource={dataSource} rowKey="id" />)
-    
+
     // Headers
     expect(screen.getByText('ID')).toBeInTheDocument()
     expect(screen.getByText('名称')).toBeInTheDocument()
     expect(screen.getByText('状态')).toBeInTheDocument()
-    
+
     // Data
     expect(screen.getByText('项目一')).toBeInTheDocument()
     expect(screen.getByText('项目二')).toBeInTheDocument()
@@ -456,9 +456,9 @@ describe('Table', () => {
         render: (value: string) => <span className="custom-status">{value}</span>,
       },
     ]
-    
+
     render(<Table columns={customColumns} dataSource={dataSource} rowKey="id" />)
-    
+
     // The rendered content should be findable
     expect(screen.getByText('进行中')).toBeInTheDocument()
   })
@@ -725,11 +725,11 @@ import { Pagination } from './Pagination'
 describe('Pagination', () => {
   it('renders page buttons correctly', () => {
     render(<Pagination current={1} total={50} pageSize={10} />)
-    
+
     // Should show 1-5 buttons
     expect(screen.getByText('1')).toBeInTheDocument()
     expect(screen.getByText('5')).toBeInTheDocument()
-    
+
     // Prev/Next buttons
     expect(screen.getByLabelText('上一页')).toBeInTheDocument()
     expect(screen.getByLabelText('下一页')).toBeInTheDocument()
@@ -750,7 +750,7 @@ describe('Pagination', () => {
   it('calls onChange when page is clicked', async () => {
     const onChange = vi.fn()
     render(<Pagination current={1} total={50} pageSize={10} onChange={onChange} />)
-    
+
     await fireEvent.click(screen.getByText('3'))
     expect(onChange).toHaveBeenCalledWith(3)
   })
@@ -1018,7 +1018,7 @@ describe('Empty', () => {
 
   it('renders with custom title and description', () => {
     render(<Empty title="没有项目" description="点击按钮创建第一个项目" />)
-    
+
     expect(screen.getByText('没有项目')).toBeInTheDocument()
     expect(screen.getByText('点击按钮创建第一个项目')).toBeInTheDocument()
   })
@@ -1030,17 +1030,17 @@ describe('Empty', () => {
         action={<button type="button">创建</button>}
       />
     )
-    
+
     expect(screen.getByRole('button', { name: '创建' })).toBeInTheDocument()
   })
 
   it('renders with different icon types', () => {
     const { rerender } = render(<Empty icon="document" />)
     // Document icon should render
-    
+
     rerender(<Empty icon="folder" />)
     // Folder icon should render
-    
+
     rerender(<Empty icon="list" />)
     // List icon should render
   })
@@ -1400,7 +1400,7 @@ export const AgentCard: React.FC<AgentCardProps> = ({
           <Badge variant={statusColors[status]}>{statusLabels[status]}</Badge>
         </div>
       </div>
-      
+
       {progress !== undefined && (
         <div className="mt-3">
           <div className="w-full h-1 bg-[var(--bg-tertiary)] rounded-full overflow-hidden">
@@ -1411,7 +1411,7 @@ export const AgentCard: React.FC<AgentCardProps> = ({
           </div>
         </div>
       )}
-      
+
       {currentStep && (
         <p className="mt-2 text-sm text-[var(--text-secondary)] truncate">
           {currentStep}
@@ -1497,4 +1497,4 @@ Expected: Server starts without errors
 
 ---
 
-**Plan Complete!** 🎉
+**Plan Complete!**

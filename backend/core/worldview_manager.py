@@ -56,7 +56,7 @@ class WorldviewManager:
         """从本地JSON文件加载世界观状态，文件不存在则初始化默认值"""
         self._update_file_path()
         if not self.file_path.exists():
-            logger.info("⚠️ 未找到世界观状态文件，初始化全新世界观")
+            logger.info(" 未找到世界观状态文件，初始化全新世界观")
             initial_state = copy.deepcopy(self.default_state)
             self._save_state(initial_state)
             return initial_state
@@ -64,16 +64,16 @@ class WorldviewManager:
         try:
             with open(self.file_path, "r", encoding="utf-8") as f:
                 state = json.load(f)
-            logger.info("✅ 世界观状态加载成功")
+            logger.info(" 世界观状态加载成功")
             return state
         except json.JSONDecodeError as e:
-            logger.error(f"❌ 世界观状态JSON解析失败，使用默认值：{str(e)}")
+            logger.error(f" 世界观状态JSON解析失败，使用默认值：{str(e)}")
             return copy.deepcopy(self.default_state)
         except OSError as e:
-            logger.error(f"❌ 世界观状态文件读取失败，使用默认值：{str(e)}")
+            logger.error(f" 世界观状态文件读取失败，使用默认值：{str(e)}")
             return copy.deepcopy(self.default_state)
         except Exception as e:
-            logger.error(f"❌ 世界观状态加载失败，使用默认值：{str(e)}")
+            logger.error(f" 世界观状态加载失败，使用默认值：{str(e)}")
             return copy.deepcopy(self.default_state)
 
     def _save_state(self, state: dict):
@@ -85,17 +85,17 @@ class WorldviewManager:
             with open(self.file_path, "w", encoding="utf-8") as f:
                 json.dump(state, f, ensure_ascii=False, indent=4)
         except Exception as e:
-            logger.error(f"❌ 世界观状态保存失败：{str(e)}")
+            logger.error(f" 世界观状态保存失败：{str(e)}")
             raise
 
     def reset_worldview(self):
         """重置世界观，用于新建小说项目"""
-        logger.info("🔄 正在重置世界观（新建小说）")
+        logger.info(" 正在重置世界观（新建小说）")
         self._update_file_path()  # 重置时更新路径到当前小说输出目录
         self.state = copy.deepcopy(self.default_state)
         self._save_state(self.state)
-        logger.info("✅ 世界观重置完成")
-        logger.info(f"📁 世界观状态存储位置：{self.file_path}")
+        logger.info(" 世界观重置完成")
+        logger.info(f" 世界观状态存储位置：{self.file_path}")
 
     # ===================== 核心管控方法（生成前强制约束） =====================
     def get_generation_constraints(self, current_chapter: int) -> dict:
@@ -114,7 +114,7 @@ class WorldviewManager:
             "current_chapter": current_chapter,
             "forbidden": f"绝对不允许出现时间倒流、人设崩塌、违反世界观规则的内容，仅能使用第{current_chapter}章之前的已发生事件"
         }
-        logger.info(f"✅ 已生成第{current_chapter}章的强制约束清单")
+        logger.info(f" 已生成第{current_chapter}章的强制约束清单")
         return constraints
 
     # ===================== 状态更新方法（生成后自动同步） =====================
@@ -129,25 +129,25 @@ class WorldviewManager:
         # 更新当前推进时间
         self.state["timeline"]["current_time"] = new_time
         self._save_state(self.state)
-        logger.info(f"✅ 全局时间线已更新，当前推进至：{new_time}")
+        logger.info(f" 全局时间线已更新，当前推进至：{new_time}")
 
     def add_character(self, character_id: str, character_info: dict):
         """新增角色档案，角色ID唯一，不可重复"""
         if character_id in self.state["characters"]:
-            logger.warning(f"⚠️ 角色{character_id}已存在，跳过新增")
+            logger.warning(f" 角色{character_id}已存在，跳过新增")
             return
         self.state["characters"][character_id] = character_info
         self._save_state(self.state)
-        logger.info(f"✅ 角色{character_id}档案已存入世界观中枢")
+        logger.info(f" 角色{character_id}档案已存入世界观中枢")
 
     def update_character(self, character_id: str, update_info: dict):
         """更新角色状态，比如角色成长、关系变化，确保人设连贯"""
         if character_id not in self.state["characters"]:
-            logger.error(f"❌ 角色{character_id}不存在，无法更新")
+            logger.error(f" 角色{character_id}不存在，无法更新")
             return
         self.state["characters"][character_id].update(update_info)
         self._save_state(self.state)
-        logger.info(f"✅ 角色{character_id}档案已更新")
+        logger.info(f" 角色{character_id}档案已更新")
 
     def add_foreshadow(self, foreshadow_id: str, content: str, chapter_num: int, related_characters: list = None):
         """新增伏笔，自动追踪状态"""
@@ -159,7 +159,7 @@ class WorldviewManager:
             "related_characters": related_characters or []
         })
         self._save_state(self.state)
-        logger.info(f"✅ 新增伏笔{foreshadow_id}，已纳入追踪")
+        logger.info(f" 新增伏笔{foreshadow_id}，已纳入追踪")
 
     def finish_foreshadow(self, foreshadow_id: str, finish_chapter: int):
         """标记伏笔已回收，避免伏笔烂尾"""
@@ -168,9 +168,9 @@ class WorldviewManager:
                 foreshadow["status"] = "finished"
                 foreshadow["finish_chapter"] = finish_chapter
                 self._save_state(self.state)
-                logger.info(f"✅ 伏笔{foreshadow_id}已在第{finish_chapter}章回收")
+                logger.info(f" 伏笔{foreshadow_id}已在第{finish_chapter}章回收")
                 return
-        logger.warning(f"⚠️ 未找到伏笔{foreshadow_id}，无法标记完成")
+        logger.warning(f" 未找到伏笔{foreshadow_id}，无法标记完成")
 
 # ===================== 注意：不再提供模块级单例 =====================
 # 使用方应按需实例化 WorldviewManager(output_dir)

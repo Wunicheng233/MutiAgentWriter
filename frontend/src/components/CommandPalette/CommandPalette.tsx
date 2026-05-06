@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useLayoutStore } from '../../store/useLayoutStore'
 
@@ -16,7 +16,6 @@ export const CommandPalette: React.FC = () => {
     toggleTypewriterMode,
     toggleFadeMode,
     toggleFocusMode,
-    toggleVimMode,
     toggleRightPanel,
   } = useLayoutStore(
     useShallow((state) => ({
@@ -25,7 +24,6 @@ export const CommandPalette: React.FC = () => {
       toggleTypewriterMode: state.toggleTypewriterMode,
       toggleFadeMode: state.toggleFadeMode,
       toggleFocusMode: state.toggleFocusMode,
-      toggleVimMode: state.toggleVimMode,
       toggleRightPanel: state.toggleRightPanel,
     }))
   )
@@ -34,23 +32,25 @@ export const CommandPalette: React.FC = () => {
   const [selectedIndex, setSelectedIndex] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const commands: Command[] = [
+  const commands: Command[] = useMemo(() => [
     { id: 'typewriter', label: '切换 Typewriter 模式', shortcut: '⌘⇧T', action: toggleTypewriterMode },
     { id: 'fade', label: '切换 Fade 模式', shortcut: '⌘⇧G', action: toggleFadeMode },
     { id: 'focus', label: '切换 Focus 模式', shortcut: '⌘⇧F', action: toggleFocusMode },
-    { id: 'vim', label: '切换 Vim 模式', shortcut: '⌘⇧V', action: toggleVimMode },
     { id: 'ai-panel', label: '打开/关闭 AI 面板', shortcut: '⌘I', action: toggleRightPanel },
-  ]
+  ], [toggleFadeMode, toggleFocusMode, toggleRightPanel, toggleTypewriterMode])
 
-  const filteredCommands = commands.filter((cmd) =>
-    cmd.label.toLowerCase().includes(search.toLowerCase())
+  const filteredCommands = useMemo(
+    () => commands.filter((cmd) =>
+      cmd.label.toLowerCase().includes(search.toLowerCase())
+    ),
+    [commands, search]
   )
 
-  const executeCommand = (cmd: Command) => {
+  const executeCommand = useCallback((cmd: Command) => {
     cmd.action()
     setCommandPaletteOpen(false)
     setSearch('')
-  }
+  }, [setCommandPaletteOpen])
 
   // Close on Escape and handle arrow keys
   useEffect(() => {
@@ -84,7 +84,7 @@ export const CommandPalette: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [commandPaletteOpen, filteredCommands, selectedIndex, setCommandPaletteOpen])
+  }, [commandPaletteOpen, executeCommand, filteredCommands, selectedIndex, setCommandPaletteOpen])
 
   // Focus input when opened
   useEffect(() => {

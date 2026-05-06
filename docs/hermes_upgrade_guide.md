@@ -9,7 +9,7 @@
 ### 以前（v1.x）
 
 ```
-用户需求 → Planner → Writer → Guardian → Critic → Revise → ✅ 发布
+用户需求 → Planner → Writer → Guardian → Critic → Revise →  发布
                                                                    
 写完就完了，经验不沉淀。下次写下一章，跟第一次写一样——                                                                    
 同样的错误反复犯，用户反馈了的偏好也不会记住。
@@ -18,7 +18,7 @@
 ### 现在（v2.0）
 
 ```
-用户需求 → Planner → Writer → Guardian → Critic → Revise → ✅ 发布
+用户需求 → Planner → Writer → Guardian → Critic → Revise →  发布
                                                                ↓
                                                      【学习闭环自动触发】
                                                                ↓
@@ -35,7 +35,7 @@
 
 ## 二、新增模块详解
 
-### 1. 🎯 TraceAggregator —— 轨迹聚合器
+### 1.  TraceAggregator —— 轨迹聚合器
 
 **一句话**：不建新表，把已有的数据串起来。
 
@@ -44,7 +44,7 @@
 - 提供 `get_failed_chapters()` 自动找出评分低于阈值的"失败章节"
 - 提供 `get_user_modified_chapters()` 找出用户手动修改过的章节
 
-### 2. 📡 FeedbackCollector —— 统一信号管道
+### 2.  FeedbackCollector —— 统一信号管道
 
 **一句话**：把 Guardian、Critic、用户三种渠道的反馈统一成一个格式。
 
@@ -58,7 +58,7 @@
 - `is_actionable` 属性自动过滤低严重度信号
 - 证据提取：优先从 `evidence_span` 取原文，无则回退到 `location` 字段
 
-### 3. 🧠 ExperienceExtractor —— 经验提取器
+### 3.  ExperienceExtractor —— 经验提取器
 
 **一句话**：让 AI 分析失败原因，提炼成结构化经验。
 
@@ -67,7 +67,7 @@
 - 输出：`WritingExperience` 对象列表（问题类型、描述、根因、建议、证据）
 - 自动跳过信号不足的章节（无 medium+ 信号不提取）
 
-### 4. 🔬 SkillDistiller —— 技能蒸馏器
+### 4.  SkillDistiller —— 技能蒸馏器
 
 **一句话**：把经验变成 SKILL.md 文件，注册到技能系统。
 
@@ -91,7 +91,7 @@
 - `0.5 ~ 0.8`：低强度试用（strength=0.3）
 - `≥ 0.8`：正式推荐（strength=0.7）
 
-### 5. 📚 SkillRegistry 扩展 —— 动态注册
+### 5.  SkillRegistry 扩展 —— 动态注册
 
 **一句话**：技能不用手动创建，系统自动写 SKILL.md 到磁盘。
 
@@ -100,7 +100,7 @@
 - `get_skills_by_character()`：按角色检索技能
 - SKILL.md 新增元数据：`confidence`、`source_chapters`、`target`
 
-### 6. 🔍 ChromaDB 技能检索 —— 语义匹配
+### 6.  ChromaDB 技能检索 —— 语义匹配
 
 **一句话**：根据当前写的角色和剧情阶段，自动找到最相关的技能。
 
@@ -114,7 +114,7 @@
 2. 额外用 ChromaDB 根据 `ChapterContext`（角色+剧情阶段+章节类型）做语义匹配
 3. 排序：手动 > 自动生成，匹配当前角色 > 不匹配
 
-### 7. 🧬 NovelState v2 —— 角色记忆系统
+### 7.  NovelState v2 —— 角色记忆系统
 
 **一句话**：以前只记角色状态，现在开始记角色"怎么说话、怎么做事"。
 
@@ -149,7 +149,7 @@
 
 **向后兼容**：旧版字符串格式自动升级为新版字典格式，零迁移成本。
 
-### 8. ⚙️ 配置开关
+### 8.  配置开关
 
 ```python
 # backend/core/config.py 新增

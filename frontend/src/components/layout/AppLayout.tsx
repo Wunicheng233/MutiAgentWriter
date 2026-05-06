@@ -10,7 +10,6 @@ import { NavRail } from './NavRail'
 import { CanvasContainer } from './CanvasContainer'
 import { RightPanel } from './RightPanel'
 import { AIPanel } from '../ai/AIPanel'
-import SelectionAIPanel from '../editor/SelectionAIPanel'
 import { FloatingToggleButton } from '../FloatingToggleButton'
 import { NavBar } from '../NavBar'
 import { ProjectHeader } from './ProjectHeader'
@@ -35,7 +34,6 @@ export const AppLayout = () => {
     navCollapsed,
     rightPanelOpen,
     rightPanelWidth,
-    rightPanelTab,
     focusMode,
     setRightPanelWidth,
     setRightPanelOpen,
@@ -45,7 +43,6 @@ export const AppLayout = () => {
       navCollapsed: state.navCollapsed,
       rightPanelOpen: state.rightPanelOpen,
       rightPanelWidth: state.rightPanelWidth,
-      rightPanelTab: state.rightPanelTab,
       focusMode: state.focusMode,
       setRightPanelWidth: state.setRightPanelWidth,
       setRightPanelOpen: state.setRightPanelOpen,
@@ -98,7 +95,7 @@ export const AppLayout = () => {
         const hadProgress = notifiedStatusRef.current === 'generating' || notifiedStatusRef.current === 'waiting_confirm'
         if (hadProgress) {
           notifiedStatusRef.current = 'completed'
-          showToast('🎉 项目已全部生成完成！', 'success')
+          showToast('项目已全部生成完成', 'success')
         }
       }
 
@@ -160,11 +157,7 @@ export const AppLayout = () => {
             onResize={setRightPanelWidth}
             onClose={() => setRightPanelOpen(false)}
           >
-            {rightPanelTab === 'selection' ? (
-              <SelectionAIPanel isOpen={rightPanelOpen} />
-            ) : (
-              <AIPanel />
-            )}
+            <AIPanel />
           </RightPanel>
         </div>
       )}

@@ -15,7 +15,6 @@ const mockToggleRightPanel = vi.fn()
 const mockToggleFocusMode = vi.fn()
 const mockToggleTypewriterMode = vi.fn()
 const mockToggleFadeMode = vi.fn()
-const mockToggleVimMode = vi.fn()
 const mockSetCommandPaletteOpen = vi.fn()
 
 describe('useKeyboardShortcuts', () => {
@@ -29,7 +28,6 @@ describe('useKeyboardShortcuts', () => {
       toggleFocusMode: mockToggleFocusMode,
       toggleTypewriterMode: mockToggleTypewriterMode,
       toggleFadeMode: mockToggleFadeMode,
-      toggleVimMode: mockToggleVimMode,
       setCommandPaletteOpen: mockSetCommandPaletteOpen,
     })
   })
@@ -165,16 +163,6 @@ describe('useKeyboardShortcuts - new mode shortcuts', () => {
     fireEvent.keyDown(window, { key: 'G', metaKey: true, shiftKey: true })
 
     expect(mockToggleFadeMode).toHaveBeenCalled()
-  })
-
-  it('should toggle vim mode on Cmd+Shift+V', () => {
-    renderHook(() => useKeyboardShortcuts(), {
-      wrapper: BrowserRouter,
-    })
-
-    fireEvent.keyDown(window, { key: 'V', metaKey: true, shiftKey: true })
-
-    expect(mockToggleVimMode).toHaveBeenCalled()
   })
 
   it('should open command palette on Cmd+K', () => {

@@ -336,7 +336,7 @@ def generate_novel_task(
                     "chapter": current_chapter,
                 }
             )
-        elif "完成" in message and "🎉" in message:
+        elif "完成" in message and "" in message:
             workflow_step_key = "completed"
             self.update_state(
                 state="PROGRESS",

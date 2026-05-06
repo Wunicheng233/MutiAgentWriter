@@ -1,12 +1,14 @@
-export enum RewriteMode {
-  POLISH = 'polish',
-  EXPAND = 'expand',
-  SHORTEN = 'shorten',
-  CHARACTER_VOICE = 'character_voice',
-  MORE_DRAMATIC = 'more_dramatic',
-  ADD_FORESHADOWING = 'add_foreshadowing',
-  CHECK_CONTINUITY = 'check_continuity',
-}
+export const RewriteMode = {
+  POLISH: 'polish',
+  EXPAND: 'expand',
+  SHORTEN: 'shorten',
+  CHARACTER_VOICE: 'character_voice',
+  MORE_DRAMATIC: 'more_dramatic',
+  ADD_FORESHADOWING: 'add_foreshadowing',
+  CHECK_CONTINUITY: 'check_continuity',
+} as const
+
+export type RewriteMode = typeof RewriteMode[keyof typeof RewriteMode]
 
 export interface CharacterInfo {
   name: string

@@ -10,7 +10,7 @@
 
 ## 问题清单与修复方案
 
-### 🔴 高优先级问题（2个）
+###  高优先级问题（2个）
 
 #### 问题1: db_session() 缺少 @contextmanager 装饰器
 - **文件**: `backend/database.py`
@@ -28,7 +28,7 @@
 
 ---
 
-### 🟡 中优先级问题（7个）
+###  中优先级问题（7个）
 
 #### 问题3: 文件删除操作缺少异常处理
 - **文件**: `backend/api/projects.py`
@@ -102,7 +102,7 @@
 
 ---
 
-## 🟢 低优先级问题（本次跳过，共5个）
+##  低优先级问题（本次跳过，共5个）
 
 以下问题在后续迭代中处理：
 1. `ProjectOverview.tsx` - `dangerouslySetInnerHTML` XSS风险（内容来自内部API，风险较低）
@@ -116,11 +116,11 @@
 ## 测试验证
 
 ### 验收标准
-1. ✅ 所有Python语法检查通过
-2. ✅ 前端TypeScript构建通过（`npm run build`）
-3. ✅ 前端ESLint检查通过（`npm run lint`）
-4. ✅ 所有前端测试通过（326个用例）
-5. ✅ 现有功能无回归
+1.  所有Python语法检查通过
+2.  前端TypeScript构建通过（`npm run build`）
+3.  前端ESLint检查通过（`npm run lint`）
+4.  所有前端测试通过（326个用例）
+5.  现有功能无回归
 
 ### 测试范围
 - 前端单元测试：全部运行

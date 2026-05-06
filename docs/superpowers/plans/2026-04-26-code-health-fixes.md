@@ -335,21 +335,21 @@ Expected: No ESLint errors
 - [ ] **Step 5: Final summary verification**
 
 Verify all 4 issues are resolved:
-1. ✅ `backend/utils/__init__.py` exists
-2. ✅ `export_tasks.py` uses `export_format` instead of `format`
-3. ✅ Button spinner is inlined, no component creation during render
-4. ✅ Checkbox useMemo dependencies are corrected
+1.  `backend/utils/__init__.py` exists
+2.  `export_tasks.py` uses `export_format` instead of `format`
+3.  Button spinner is inlined, no component creation during render
+4.  Checkbox useMemo dependencies are corrected
 
 ---
 
 ## Self-Review Check
 
 **1. Spec coverage:**
-- ✅ Task 1 covers: backend/utils/__init__.py missing
-- ✅ Task 2 covers: format parameter naming conflict
-- ✅ Task 3 covers: Button Spinner created during render
-- ✅ Task 4 covers: Checkbox useMemo dependency mismatch
-- ✅ Task 5 covers: Final verification (tests, type check, ESLint)
+-  Task 1 covers: backend/utils/__init__.py missing
+-  Task 2 covers: format parameter naming conflict
+-  Task 3 covers: Button Spinner created during render
+-  Task 4 covers: Checkbox useMemo dependency mismatch
+-  Task 5 covers: Final verification (tests, type check, ESLint)
 - **No gaps**
 
 **2. Placeholder scan:**

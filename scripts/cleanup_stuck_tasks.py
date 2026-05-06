@@ -31,9 +31,9 @@ def cleanup_stuck_tasks(project_id: int = None):
 
         if stuck_tasks:
             db.commit()
-            print(f"\n✅ 已将 {len(stuck_tasks)} 个任务标记为失败，现在可以重新导出了")
+            print(f"\n已将 {len(stuck_tasks)} 个任务标记为失败，现在可以重新导出了")
         else:
-            print("\n✅ 没有找到卡住的任务")
+            print("\n没有找到卡住的任务")
     finally:
         db.close()
 

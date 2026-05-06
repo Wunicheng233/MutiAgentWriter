@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { RewriteMode } from '../utils/selectionAI'
 
 export type RightPanelTab = 'chat' | 'selection'
 
@@ -15,8 +16,8 @@ interface LayoutState {
   defaultAIPanelOpen: boolean
   typewriterMode: boolean
   fadeMode: boolean
-  vimMode: boolean
   commandPaletteOpen: boolean
+  defaultRewriteMode: RewriteMode
   toggleNavCollapsed: () => void
   toggleRightPanel: () => void
   toggleFocusMode: () => void
@@ -28,8 +29,10 @@ interface LayoutState {
   setAutoExpandHeaderInProject: (value: boolean) => void
   toggleTypewriterMode: () => void
   toggleFadeMode: () => void
-  toggleVimMode: () => void
   setCommandPaletteOpen: (open: boolean) => void
+  setDefaultRewriteMode: (mode: RewriteMode) => void
+  setDefaultAIPanelOpen: (open: boolean) => void
+  clearAllLocalState: () => void
 }
 
 export const useLayoutStore = create<LayoutState>()(
@@ -46,8 +49,8 @@ export const useLayoutStore = create<LayoutState>()(
       defaultAIPanelOpen: false,
       typewriterMode: false,
       fadeMode: false,
-      vimMode: false,
       commandPaletteOpen: false,
+      defaultRewriteMode: RewriteMode.POLISH,
       toggleNavCollapsed: () => set((state) => ({ navCollapsed: !state.navCollapsed })),
       toggleRightPanel: () => set((state) => ({ rightPanelOpen: !state.rightPanelOpen })),
       toggleFocusMode: () => set((state) => ({ focusMode: !state.focusMode })),
@@ -59,8 +62,29 @@ export const useLayoutStore = create<LayoutState>()(
       setAutoExpandHeaderInProject: (value: boolean) => set({ autoExpandHeaderInProject: value }),
       toggleTypewriterMode: () => set((state) => ({ typewriterMode: !state.typewriterMode })),
       toggleFadeMode: () => set((state) => ({ fadeMode: !state.fadeMode })),
-      toggleVimMode: () => set((state) => ({ vimMode: !state.vimMode })),
       setCommandPaletteOpen: (open: boolean) => set({ commandPaletteOpen: open }),
+      setDefaultRewriteMode: (mode: RewriteMode) => set({ defaultRewriteMode: mode }),
+      setDefaultAIPanelOpen: (open: boolean) => set({ defaultAIPanelOpen: open }),
+      clearAllLocalState: () => {
+        set({
+          navCollapsed: false,
+          rightPanelOpen: false,
+          rightPanelWidth: 320,
+          rightPanelTab: 'chat',
+          focusMode: false,
+          headerCollapsed: true,
+          autoExpandHeaderInProject: true,
+          defaultNavCollapsed: false,
+          defaultAIPanelOpen: false,
+          typewriterMode: false,
+          fadeMode: false,
+          commandPaletteOpen: false,
+          defaultRewriteMode: RewriteMode.POLISH,
+        })
+        if (typeof window !== 'undefined') {
+          localStorage.clear()
+        }
+      },
     }),
     {
       name: 'storyforge-layout-storage',

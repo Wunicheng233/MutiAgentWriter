@@ -28,7 +28,7 @@ describe('useSelectionStore', () => {
     expect(result.current.isToolbarVisible).toBe(true)
   })
 
-  it('should hide toolbar and clear selection', () => {
+  it('should hide toolbar but keep selection text for AI panel', () => {
     const { result } = renderHook(() => useSelectionStore())
 
     act(() => {
@@ -37,6 +37,20 @@ describe('useSelectionStore', () => {
     })
 
     expect(result.current.isToolbarVisible).toBe(false)
+    expect(result.current.selectedText).toBe('测试文本')
+  })
+
+  it('should reset all state including selection text', () => {
+    const { result } = renderHook(() => useSelectionStore())
+
+    act(() => {
+      result.current.setSelection('测试文本', 100, 200)
+      result.current.setInitialRewriteMode('polish')
+      result.current.reset()
+    })
+
+    expect(result.current.isToolbarVisible).toBe(false)
     expect(result.current.selectedText).toBe('')
+    expect(result.current.initialRewriteMode).toBe(null)
   })
 })

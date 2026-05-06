@@ -29,6 +29,5 @@ describe('CommandPalette', () => {
     expect(screen.getByText(/Typewriter/i)).toBeInTheDocument()
     expect(screen.getByText(/Fade/i)).toBeInTheDocument()
     expect(screen.getByText(/Focus/i)).toBeInTheDocument()
-    expect(screen.getByText(/Vim/i)).toBeInTheDocument()
   })
 })

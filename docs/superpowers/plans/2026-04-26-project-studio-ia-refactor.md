@@ -492,13 +492,13 @@ git commit -m "feat: auto expand header when entering project"
 ```tsx
 <div className="mb-6">
   <h3 className="text-lg font-medium mb-4 text-[var(--text-primary)]">布局偏好</h3>
-  
+
   <div className="space-y-4">
     <label className="flex items-center gap-3">
       <Checkbox checked={autoExpandHeaderInProject} onChange={(e) => setAutoExpandHeaderInProject(e.target.checked)} />
       <span className="text-[var(--text-body)]">进入项目时自动展开顶栏</span>
     </label>
-    
+
     {/* 其他布局选项 */}
   </div>
 </div>
@@ -733,11 +733,11 @@ cd frontend && npm run dev
 ```
 
 验证：
-- 书架 → 进入项目 → NavRail 变成项目内导航 ✓
-- 顶栏显示项目名称和状态 ✓
-- 点击"书架"返回书架页 ✓
-- 切换各个项目内页面正常 ✓
-- 所有现有功能正常工作 ✓
+- 书架 → 进入项目 → NavRail 变成项目内导航
+- 顶栏显示项目名称和状态
+- 点击"书架"返回书架页
+- 切换各个项目内页面正常
+- 所有现有功能正常工作
 
 - [ ] **Step 2: 运行完整测试套件**
 
@@ -831,6 +831,6 @@ git commit -m "feat: add nav micro-interactions"
 
 ---
 
-**计划完整！** 🎉
+**计划完整！**
 
 > 注：Phase 4 为增强体验，可在核心功能上线后迭代实施，不影响 Phase 1-3 的完整可用性。

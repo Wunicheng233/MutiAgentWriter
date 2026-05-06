@@ -10,7 +10,7 @@
 
 ---
 
-## ⚠️ 重要前置说明
+##  重要前置说明
 
 1. **必须在独立 worktree 中执行** — 这是大规模重构，建议新建分支或 worktree
 2. **每步提交** — 每个任务完成后立即 commit，便于回滚
@@ -772,7 +772,7 @@ git commit -m "refactor: final cleanup and structure confirmation"
 
 ---
 
-## 🚨 回滚策略
+##  回滚策略
 
 如果在任何步骤遇到不可解决的问题：
 
@@ -787,7 +787,7 @@ git commit -m "refactor: final cleanup and structure confirmation"
 
 ---
 
-## ✅ 验收标准
+##  验收标准
 
 重构完成后必须满足：
 

@@ -24,7 +24,7 @@
 
 ```
 StoryForge AI/
-├── backend/                          # ✅ 整个后端代码统一目录
+├── backend/                          #  整个后端代码统一目录
 │   ├── __init__.py
 │   ├── main.py                       # FastAPI 入口
 │   ├── config.py                     # 配置（从根目录 config.py 合并）
@@ -41,7 +41,7 @@ StoryForge AI/
 │   ├── evaluation_sync.py
 │   ├── guardrails_config.yaml        # 防护规则配置
 │   │
-│   ├── api/                          # ✅ FastAPI 路由
+│   ├── api/                          #  FastAPI 路由
 │   │   ├── __init__.py
 │   │   ├── auth.py
 │   │   ├── projects.py
@@ -51,7 +51,7 @@ StoryForge AI/
 │   │   ├── perspectives.py
 │   │   └── skills.py
 │   │
-│   ├── core/                         # ✅ 核心业务逻辑（从根目录移入）
+│   ├── core/                         #  核心业务逻辑（从根目录移入）
 │   │   ├── __init__.py
 │   │   ├── config.py                 # 配置模块
 │   │   ├── orchestrator.py
@@ -69,26 +69,26 @@ StoryForge AI/
 │   │   ├── worldview_manager.py
 │   │   └── workflow_optimization.py
 │   │
-│   ├── skill_runtime/                # ✅ 技能运行时系统（从 core/skill_runtime/ 移入）
+│   ├── skill_runtime/                #  技能运行时系统（从 core/skill_runtime/ 移入）
 │   │   ├── __init__.py
 │   │   ├── skill_registry.py
 │   │   ├── skill_assembler.py
 │   │   ├── skill_injector.py
 │   │   └── safety_filter.py
 │   │
-│   ├── agents/                       # ✅ Agent 实现（从根目录移入）
+│   ├── agents/                       #  Agent 实现（从根目录移入）
 │   │   ├── __init__.py
 │   │   ├── writer_agent.py
 │   │   ├── critic_agent.py
 │   │   ├── revise_agent.py
 │   │   └── planner_agent.py
 │   │
-│   ├── tasks/                        # ✅ Celery 任务（从根目录移入）
+│   ├── tasks/                        #  Celery 任务（从根目录移入）
 │   │   ├── __init__.py
 │   │   ├── writing_tasks.py
 │   │   └── export_tasks.py
 │   │
-│   ├── utils/                        # ✅ 工具函数（从根目录移入）
+│   ├── utils/                        #  工具函数（从根目录移入）
 │   │   ├── __init__.py
 │   │   ├── logger.py
 │   │   ├── file_utils.py
@@ -96,33 +96,33 @@ StoryForge AI/
 │   │   ├── runtime_context.py
 │   │   └── vector_db.py
 │   │
-│   ├── services/                     # ✅ 服务层（从根目录移入）
+│   ├── services/                     #  服务层（从根目录移入）
 │   │   ├── __init__.py
 │   │   └── export_service.py
 │   │
-│   ├── skills/                       # ✅ 技能包（从根目录移入）
+│   ├── skills/                       #  技能包（从根目录移入）
 │   │   ├── lu-xun-perspective/
 │   │   ├── liu-cixin-perspective/
 │   │   ├── haruki-murakami-perspective/
 │   │   └── ...
 │   │
-│   └── perspectives/                 # ✅ 视角配置（从根目录移入）
+│   └── perspectives/                 #  视角配置（从根目录移入）
 │       ├── _template.yaml
 │       └── liu-cixin.yaml
 │
-├── frontend/                         # ✅ 保持不动
+├── frontend/                         #  保持不动
 │   ├── src/
 │   ├── package.json
 │   └── ...
 │
-├── tests/                            # ✅ 保持不动，import 路径更新为 backend.*
+├── tests/                            #  保持不动，import 路径更新为 backend.*
 │   ├── __init__.py
 │   ├── base.py
 │   ├── test_skill_runtime_system.py
 │   ├── test_workflow_optimization.py
 │   └── ...
 │
-├── docs/                             # ✅ 文档目录
+├── docs/                             #  文档目录
 │   ├── superpowers/
 │   │   ├── specs/
 │   │   └── plans/
@@ -131,27 +131,27 @@ StoryForge AI/
 │   ├── detailed-workflow.md
 │   └── ...
 │
-├── scripts/                          # ✅ 脚本目录（新建）
+├── scripts/                          #  脚本目录（新建）
 │   ├── update_skills.py              # 从根目录移入
 │   ├── reset_project.py              # 从 debug/ 移入
 │   └── cleanup_stuck_tasks.py        # 从 debug/ 移入
 │
-├── data/                             # ✅ 数据目录
+├── data/                             #  数据目录
 │   ├── projects/                     # 用户项目数据
 │   └── references/                   # 参考小说文本（从 references/ 移入）
 │       ├── 十日终焉-开头.txt
 │       ├── 死去的新娘-开头.txt
 │       └── ...
 │
-├── logs/                             # ✅ 日志目录（保留最近2天）
-├── vector_db/                        # ✅ 向量数据库
-├── alembic/                          # ✅ 数据库迁移
-├── docker/                           # ✅ Docker 配置
-├── prompts/                          # ✅ Prompt 模板
+├── logs/                             #  日志目录（保留最近2天）
+├── vector_db/                        #  向量数据库
+├── alembic/                          #  数据库迁移
+├── docker/                           #  Docker 配置
+├── prompts/                          #  Prompt 模板
 │
 ├── alembic.ini
-├── celery_app.py                     # ✅ Celery 入口（import 路径更新）
-├── main.py                           # ✅ CLI 入口（import 路径更新）
+├── celery_app.py                     #  Celery 入口（import 路径更新）
+├── main.py                           #  CLI 入口（import 路径更新）
 ├── requirements.txt
 ├── .env
 ├── .gitignore

@@ -2,7 +2,7 @@
 
 **日期：** 2026-04-28
 **状态：** 待实现
-**优先级：** 🔴 严重（影响核心功能）
+**优先级：**  严重（影响核心功能）
 
 ## 1. 问题描述
 
@@ -18,15 +18,15 @@
 
 | Prompt 占位符 | 实际传递的 Key | 状态 | 影响 |
 |--------------|----------------|------|------|
-| `{{content_type}}` | ❌ 未传递 | 🔴 严重 | 无法根据 novel/short_story/script 模式切换输出结构 |
-| `{{user_requirements}}` | ❌ 未传递 | 🔴 严重 | 用户核心创作需求完全缺失 |
-| `{{platform}}` | `platform` | ✅ 正确 | - |
-| `{{target_words}}` | `total_words` | 🔴 严重 | 名称不匹配，总字数约束失效 |
-| `{{target_duration}}` | ❌ 未传递 | 🟡 中等 | 剧本模式的时长参数缺失（可选） |
-| `{{core_hook}}` | `core_hook` | ✅ 正确 | - |
-| `{{chapter_word_count}}` | ❌ 未传递 | 🔴 严重 | 每章字数规划完全失效 |
-| `world_bible` | `world_bible` | ⚪ 多余 | Prompt 不使用 |
-| `genre` | `genre` | ⚪ 多余 | Prompt 不使用 |
+| `{{content_type}}` |  未传递 |  严重 | 无法根据 novel/short_story/script 模式切换输出结构 |
+| `{{user_requirements}}` |  未传递 |  严重 | 用户核心创作需求完全缺失 |
+| `{{platform}}` | `platform` |  正确 | - |
+| `{{target_words}}` | `total_words` |  严重 | 名称不匹配，总字数约束失效 |
+| `{{target_duration}}` |  未传递 |  中等 | 剧本模式的时长参数缺失（可选） |
+| `{{core_hook}}` | `core_hook` |  正确 | - |
+| `{{chapter_word_count}}` |  未传递 |  严重 | 每章字数规划完全失效 |
+| `world_bible` | `world_bible` |  多余 | Prompt 不使用 |
+| `genre` | `genre` |  多余 | Prompt 不使用 |
 
 ## 2. 修复方案
 
@@ -65,11 +65,11 @@ context["chapter_word_count"] = str(chapter_word_count)
 
 ### 2.2 变更说明
 
-1. ✅ **修复名称不匹配**：`total_words` → `target_words`
-2. ✅ **新增必选参数**：`content_type`（创作模式）
-3. ✅ **新增必选参数**：`user_requirements`（用户核心需求，使用 `core_requirement`）
-4. ✅ **新增必选参数**：`chapter_word_count`（每章字数）
-5. ✅ **移除多余参数**：`world_bible`、`genre`（prompt 中不使用）
+1.  **修复名称不匹配**：`total_words` → `target_words`
+2.  **新增必选参数**：`content_type`（创作模式）
+3.  **新增必选参数**：`user_requirements`（用户核心需求，使用 `core_requirement`）
+4.  **新增必选参数**：`chapter_word_count`（每章字数）
+5.  **移除多余参数**：`world_bible`、`genre`（prompt 中不使用）
 
 ## 3. 验证方案
 

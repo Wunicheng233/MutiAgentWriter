@@ -16,16 +16,37 @@ export function computeDiff(oldText: string, newText: string): DiffPart[] {
   })
 }
 
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+function htmlToPlainText(html: string): string {
+  return html
+    .replace(/<p>/gi, '')
+    .replace(/<\/p>/gi, '\n\n')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .trim()
+}
+
 export function renderDiffHtml(oldText: string, newText: string): string {
-  const diff = computeDiff(oldText, newText)
+  const oldPlain = htmlToPlainText(oldText)
+  const newPlain = htmlToPlainText(newText)
+
+  const diff = computeDiff(oldPlain, newPlain)
 
   return diff.map(part => {
+    const safeValue = escapeHtml(part.value).replace(/\n/g, '<br>')
     if (part.added) {
-      return `<span style="background-color: rgba(0, 180, 0, 0.3); padding: 2px 4px; border-radius: 3px;">${part.value}</span>`
+      return `<span style="background-color: rgba(0, 180, 0, 0.3); padding: 2px 4px; border-radius: 3px;">${safeValue}</span>`
     }
     if (part.removed) {
-      return `<span style="background-color: rgba(255, 0, 0, 0.3); text-decoration: line-through; padding: 2px 4px; border-radius: 3px;">${part.value}</span>`
+      return `<span style="background-color: rgba(255, 0, 0, 0.3); text-decoration: line-through; padding: 2px 4px; border-radius: 3px;">${safeValue}</span>`
     }
-    return `<span>${part.value}</span>`
+    return `<span>${safeValue}</span>`
   }).join('')
 }

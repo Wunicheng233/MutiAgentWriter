@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react'
-import { SHORTCUTS, filterShortcuts } from '../../utils/shortcuts'
+import { filterShortcuts } from '../../utils/shortcuts'
 
 const groupLabels: Record<string, string> = {
   editor: '编辑器操作',
@@ -52,12 +52,14 @@ export const ShortcutList: React.FC = () => {
               {shortcuts.map((shortcut, index) => (
                 <div
                   key={`${group}-${index}`}
-                  className="flex justify-between items-center py-2"
+                  className="flex items-center py-2"
                 >
-                  <span className="text-sm text-[var(--text-body)]">{shortcut.label}</span>
-                  <kbd className="px-2 py-0.5 text-xs font-mono bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded border border-[var(--border-subtle)]">
-                    {shortcut.keys}
-                  </kbd>
+                  <span className="text-sm text-[var(--text-body)] flex-1">{shortcut.label}</span>
+                  <div className="w-[120px] flex justify-end">
+                    <kbd className="px-2 py-0.5 text-xs font-mono bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded border border-[var(--border-subtle)]">
+                      {shortcut.keys}
+                    </kbd>
+                  </div>
                 </div>
               ))}
             </div>

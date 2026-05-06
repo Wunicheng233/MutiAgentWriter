@@ -31,7 +31,7 @@ def migrate():
             print("创建 share_links 表...")
             from backend.models import Base
             Base.metadata.create_all(bind=engine, tables=[Base.metadata.tables['share_links']])
-            print("✅ share_links 表创建成功")
+            print(" share_links 表创建成功")
         else:
             # 检查 is_active 列是否存在
             result = conn.execute(text("""
@@ -49,7 +49,7 @@ def migrate():
                     ADD COLUMN is_active BOOLEAN DEFAULT TRUE NOT NULL
                 """))
                 conn.commit()
-                print("✅ is_active 列添加成功")
+                print(" is_active 列添加成功")
             else:
                 print("is_active 列已存在")
 

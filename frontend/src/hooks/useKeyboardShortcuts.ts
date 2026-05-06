@@ -13,7 +13,6 @@ export const useKeyboardShortcuts = () => {
     setRightPanelOpen,
     toggleTypewriterMode,
     toggleFadeMode,
-    toggleVimMode,
     setCommandPaletteOpen,
   } = useLayoutStore()
 
@@ -85,14 +84,6 @@ export const useKeyboardShortcuts = () => {
         return
       }
 
-      // Command/Ctrl + Shift + V: Toggle Vim mode
-      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'v') {
-        e.preventDefault()
-        e.stopPropagation()
-        toggleVimMode()
-        return
-      }
-
       // Command/Ctrl + K: Open command palette
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k' && !e.shiftKey) {
         e.preventDefault()
@@ -124,7 +115,7 @@ export const useKeyboardShortcuts = () => {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [location.pathname, navigate, toggleNavCollapsed, toggleHeader, setRightPanelOpen, toggleRightPanel, toggleFocusMode, toggleTypewriterMode, toggleFadeMode, toggleVimMode, setCommandPaletteOpen])
+  }, [location.pathname, navigate, toggleNavCollapsed, toggleHeader, setRightPanelOpen, toggleRightPanel, toggleFocusMode, toggleTypewriterMode, toggleFadeMode, setCommandPaletteOpen])
 }
 
 export default useKeyboardShortcuts

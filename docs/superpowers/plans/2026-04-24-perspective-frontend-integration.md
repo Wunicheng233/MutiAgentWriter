@@ -148,11 +148,11 @@ export interface PerspectiveSelectorProps {
 }
 
 const genreIcons: Record<string, string> = {
-  '科幻': '🚀',
-  '武侠': '⚔️',
-  '奇幻': '✨',
-  '文学': '📖',
-  '网文': '💻',
+  '科幻': '',
+  '武侠': '',
+  '奇幻': '',
+  '文学': '',
+  '网文': '',
 };
 
 export const PerspectiveSelector: React.FC<PerspectiveSelectorProps> = ({
@@ -263,7 +263,7 @@ export const PerspectiveSelector: React.FC<PerspectiveSelectorProps> = ({
         {Object.entries(groupedPerspectives).map(([genre, items]) => (
           <div key={genre}>
             <p className="text-sm font-medium text-secondary mb-3 flex items-center gap-2">
-              <span>{genreIcons[genre] || '📝'}</span>
+              <span>{genreIcons[genre] || ''}</span>
               <span>{genre}</span>
               <span className="text-xs">({items.length})</span>
             </p>
@@ -413,7 +413,7 @@ import PerspectiveSelector from '../components/PerspectiveSelector';
   <div className="mb-4 flex items-center justify-between">
     <div>
       <p className="text-xs uppercase tracking-wider text-secondary">
-        🎭 创作风格
+         创作风格
       </p>
       <h3 className="mt-1 text-lg font-medium">选择作家视角</h3>
     </div>
@@ -484,7 +484,7 @@ import PerspectiveSelector from '../components/PerspectiveSelector';
 // 在侧边栏合适位置添加：
 <div className="p-4 rounded-standard border border-border bg-white/50">
   <p className="text-sm font-medium mb-2 flex items-center gap-2">
-    <span>🎭</span>
+    <span></span>
     <span>当前风格</span>
   </p>
   {project?.writer_perspective ? (
@@ -694,21 +694,21 @@ Expected: All tests pass
 
 ---
 
-## 计划自检 ✅
+## 计划自检
 
 ### Spec 覆盖检查
 
 对照规格文档，本计划覆盖了：
-- ✅ PerspectiveSelector 组件实现
-- ✅ 视角列表 API 集成
-- ✅ 视角配置更新 API 集成
-- ✅ 按题材分组显示
-- ✅ 搜索过滤功能
-- ✅ 强度滑块调节
-- ✅ Critic 开关配置
-- ✅ 紧凑模式支持（用于侧边栏）
-- ✅ ProjectOverview 页面集成
-- ✅ 组件单元测试
+-  PerspectiveSelector 组件实现
+-  视角列表 API 集成
+-  视角配置更新 API 集成
+-  按题材分组显示
+-  搜索过滤功能
+-  强度滑块调节
+-  Critic 开关配置
+-  紧凑模式支持（用于侧边栏）
+-  ProjectOverview 页面集成
+-  组件单元测试
 
 ### 待完成的功能（后续迭代）
 
@@ -721,13 +721,13 @@ Expected: All tests pass
 
 ---
 
-**所有计划已完成！** 🎉
+**所有计划已完成！**
 
 三个子系统的实现计划都已完成：
 
-1. ✅ `perspective-engine-core.md` - 核心注入引擎
-2. ✅ `perspective-backend-api.md` - 后端 API 与数据模型
-3. ✅ `perspective-frontend-integration.md` - 前端组件集成
+1.  `perspective-engine-core.md` - 核心注入引擎
+2.  `perspective-backend-api.md` - 后端 API 与数据模型
+3.  `perspective-frontend-integration.md` - 前端组件集成
 
 **现在可以开始执行了。你希望使用哪种执行方式？**
 

@@ -3,7 +3,6 @@ import {
   listChapterVersions,
   getChapterVersion,
   restoreChapterVersion,
-  type ChapterVersionInfo,
 } from '../utils/endpoints'
 import { useToast } from '../components/toastContext'
 

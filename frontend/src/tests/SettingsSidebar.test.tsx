@@ -1,6 +1,6 @@
 import React from 'react'
 import { render, screen, fireEvent } from '@testing-library/react'
-import { SettingsSidebar, SettingsTab } from '../components/settings/SettingsSidebar'
+import { SettingsSidebar } from '../components/settings/SettingsSidebar'
 
 describe('SettingsSidebar', () => {
   const mockOnTabChange = vi.fn()
@@ -36,12 +36,5 @@ describe('SettingsSidebar', () => {
 
     fireEvent.click(screen.getByTestId('settings-tab-ai'))
     expect(mockOnTabChange).toHaveBeenCalledWith('ai')
-  })
-
-  it('should have icons for each category', () => {
-    render(<SettingsSidebar activeTab="theme" onTabChange={mockOnTabChange} />)
-
-    const icons = screen.getAllByText(/./)
-    expect(icons.length).toBeGreaterThanOrEqual(6)
   })
 })

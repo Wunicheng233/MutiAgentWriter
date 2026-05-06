@@ -520,7 +520,7 @@ class NovelOrchestrator:
                         plan_content = f.read().strip()
                     self.plan = plan_content
                     self.setting_bible = world_bible
-                    logger.info("✅ 已加载项目中已存在的设定圣经和策划方案")
+                    logger.info(" 已加载项目中已存在的设定圣经和策划方案")
 
                     # 检查是否有策划方案的用户反馈（来自上一次确认不通过）
                     feedback_plan_path = self.output_dir / "feedback_plan.txt"
@@ -595,7 +595,7 @@ class NovelOrchestrator:
                     if sys.stdin.isatty():
                         # CLI交互式确认
                         logger.info("\n" + "="*80)
-                        logger.info("📝 Planner输出预览（设定圣经+大纲）：")
+                        logger.info(" Planner输出预览（设定圣经+大纲）：")
                         logger.info("="*80)
                         preview = self.plan[:1000] + ("..." if len(self.plan) > 1000 else "")
                         logger.info(preview)
@@ -611,7 +611,7 @@ class NovelOrchestrator:
                             )
                             self.setting_bible = self.plan
                             logger.info("\n" + "="*80)
-                            logger.info("📝 修改后的方案预览：")
+                            logger.info(" 修改后的方案预览：")
                             logger.info("="*80)
                             preview = self.plan[:1000] + ("..." if len(self.plan) > 1000 else "")
                             logger.info(preview)
@@ -1320,7 +1320,7 @@ class NovelOrchestrator:
             if sys.stdin.isatty():
                 # CLI交互式确认
                 logger.info("\n" + "="*80)
-                logger.info(f"📖 第{chapter_index}章生成完成，请审阅：")
+                logger.info(f" 第{chapter_index}章生成完成，请审阅：")
                 logger.info("="*80)
                 preview = current_content[:1000] + ("..." if len(current_content) > 1000 else "")
                 logger.info(preview)
@@ -1355,7 +1355,7 @@ class NovelOrchestrator:
                         if dim in self.dimension_scores:
                             self.dimension_scores[dim].append(score_val)
                     logger.info("\n" + "="*80)
-                    logger.info(f"📖 修改后的第{chapter_index}章预览：")
+                    logger.info(f" 修改后的第{chapter_index}章预览：")
                     logger.info("="*80)
                     preview = current_content[:1000] + ("..." if len(current_content) > 1000 else "")
                     logger.info(preview)
@@ -1423,7 +1423,7 @@ class NovelOrchestrator:
         :return: 生成结果统计
         """
         logger.info("="*80)
-        logger.info("🚀 StoryForge AI 精简架构 多Agent小说创作系统启动")
+        logger.info(" StoryForge AI 精简架构 多Agent小说创作系统启动")
         logger.info("="*80)
 
         try:
@@ -1580,7 +1580,7 @@ class NovelOrchestrator:
                         if sys.stdin.isatty():
                             # 只有在 CLI 交互式环境才询问
                             logger.info("\n" + "="*80)
-                            logger.info(f"🔧 当前：第{chapter_num}章已完成，是否需要调整下一章（第{chapter_num + 1}章）的剧情？")
+                            logger.info(f" 当前：第{chapter_num}章已完成，是否需要调整下一章（第{chapter_num + 1}章）的剧情？")
                             logger.info("输入y可以输入新的剧情要求，输入n保持原策划不变")
                             logger.info("="*80)
                             adjust = input("\n是否调整下一章剧情？（y/n）：\n").lower()
@@ -1589,7 +1589,7 @@ class NovelOrchestrator:
                                 # 在原策划后面追加用户调整，下一章生成时会用到
                                 self.plan = self.plan + f"\n\n【用户人工调整 - 第{chapter_num + 1}章】：{new_plot}"
                                 self.setting_bible = self.plan
-                                logger.info(f"✅ 已记录你对第{chapter_num + 1}章的剧情调整")
+                                logger.info(f" 已记录你对第{chapter_num + 1}章的剧情调整")
                     except (EOFError, IOError):
                         # 非交互式环境，自动跳过
                         logger.info("非交互式运行，跳过剧情调整")
@@ -1599,16 +1599,16 @@ class NovelOrchestrator:
             # 统计并保存质量评分到info.json
             overall_score = self._persist_quality_summary()
             if overall_score is not None:
-                logger.info(f"📊 总体质量评分: {overall_score:.2f}/10")
+                logger.info(f" 总体质量评分: {overall_score:.2f}/10")
 
             # 输出统计结果
-            self._report_progress(100, f"🎉 《{self.novel_name}》创作完成！")
+            self._report_progress(100, f" 《{self.novel_name}》创作完成！")
             logger.info("="*80)
-            logger.info(f"🎉 《{self.novel_name}》章节 {self.start_chapter}-{self.end_chapter} 生成完成！")
-            logger.info(f"📊 本次成功生成：{len(generated)} 章，总字数约 {sum(g['words'] for g in generated):,} 字")
+            logger.info(f" 《{self.novel_name}》章节 {self.start_chapter}-{self.end_chapter} 生成完成！")
+            logger.info(f" 本次成功生成：{len(generated)} 章，总字数约 {sum(g['words'] for g in generated):,} 字")
             if generated:
                 for g in generated[-3:]:
-                    logger.info(f"   ✅ 第{g['num']}章，约 {g['words']} 字")
+                    logger.info(f"    第{g['num']}章，约 {g['words']} 字")
             logger.info("="*80)
 
             return {
@@ -1627,7 +1627,7 @@ class NovelOrchestrator:
             raise
         except Exception as e:
             logger.error(f"系统运行出错：{e}", exc_info=True)
-            self._report_progress(-1, f"❌ 出错：{str(e)}")
+            self._report_progress(-1, f" 出错：{str(e)}")
             raise
 
 

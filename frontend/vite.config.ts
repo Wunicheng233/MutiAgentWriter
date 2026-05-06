@@ -37,7 +37,7 @@ export default defineConfig({
             return 'react-vendor'
           }
 
-          return 'vendor'
+          return undefined
         },
       },
     },

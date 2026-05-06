@@ -207,7 +207,7 @@ def reset_current_db():
         ):
             deleted_any = _delete_collection_if_exists(client, collection_name) or deleted_any
         if deleted_any:
-            logger.info("✅ 当前小说向量数据库已重置")
+            logger.info(" 当前小说向量数据库已重置")
         else:
             logger.info("当前小说向量数据库无需重置")
     except Exception as e:
@@ -255,9 +255,9 @@ def add_chapter_to_db(
             ids=ids,
             metadatas=metadatas
         )
-        logger.info(f"✅ 第{chapter_num}章《{chapter_title}》已同步到向量库，共{chunk_count}个数据块")
+        logger.info(f" 第{chapter_num}章《{chapter_title}》已同步到向量库，共{chunk_count}个数据块")
     except Exception as e:
-        logger.error(f"❌ 章节存入向量库失败：{str(e)}")
+        logger.error(f" 章节存入向量库失败：{str(e)}")
         raise
 
 
@@ -288,7 +288,7 @@ def search_related_chapter_content(
             where=filter_condition
         )
     except Exception as e:
-        logger.error(f"❌ 内容检索失败：{str(e)}")
+        logger.error(f" 内容检索失败：{str(e)}")
         return "无相关历史内容"
 
     # 无结果处理
@@ -304,7 +304,7 @@ def search_related_chapter_content(
         chapter_title = meta.get("chapter_title", "未知标题")
         related_content += f"▶ 第{chapter_num}章《{chapter_title}》：{doc.strip()}\n"
 
-    logger.info(f"🔍 已检索到{len(documents)}条相关历史内容")
+    logger.info(f" 已检索到{len(documents)}条相关历史内容")
     return related_content
 
 
@@ -314,7 +314,7 @@ def load_setting_bible_to_db():
     output_dir = get_current_output_dir()
     setting_path = output_dir / "setting_bible.md"
     if not setting_path.exists():
-        logger.warning("⚠️ 设定圣经文件不存在，暂不存入数据库")
+        logger.warning(" 设定圣经文件不存在，暂不存入数据库")
         return
 
     try:
@@ -328,9 +328,9 @@ def load_setting_bible_to_db():
             ids=["core_setting_bible"],
             metadatas=[{"setting_type": "core_bible", "version": "1.0"}]
         )
-        logger.info("✅ 核心设定圣经已同步到向量库")
+        logger.info(" 核心设定圣经已同步到向量库")
     except Exception as e:
-        logger.error(f"❌ 设定圣经存入失败：{str(e)}")
+        logger.error(f" 设定圣经存入失败：{str(e)}")
 
 
 def search_core_setting(query: str, top_k: int = 3) -> str:
@@ -342,7 +342,7 @@ def search_core_setting(query: str, top_k: int = 3) -> str:
             n_results=top_k
         )
     except Exception as e:
-        logger.error(f"❌ 设定检索失败：{str(e)}")
+        logger.error(f" 设定检索失败：{str(e)}")
         return "无相关核心设定"
 
     documents = results["documents"][0]
@@ -408,9 +408,9 @@ def add_skill_to_db(
                 "auto_generated": int(auto_generated),
             }],
         )
-        logger.info(f"✅ 技能 '{skill_id}' 已同步到向量库 (type={skill_type})")
+        logger.info(f" 技能 '{skill_id}' 已同步到向量库 (type={skill_type})")
     except Exception as e:
-        logger.error(f"❌ 技能存入向量库失败：{str(e)}")
+        logger.error(f" 技能存入向量库失败：{str(e)}")
 
 
 def search_relevant_skills(
@@ -449,7 +449,7 @@ def search_relevant_skills(
             where=filter_condition,
         )
     except Exception as e:
-        logger.error(f"❌ 技能检索失败：{str(e)}")
+        logger.error(f" 技能检索失败：{str(e)}")
         return []
 
     documents = results["documents"][0]
@@ -473,7 +473,7 @@ def search_relevant_skills(
             "content_preview": doc[:200],
         })
 
-    logger.info(f"🔍 已检索到 {len(matched)} 条相关技能")
+    logger.info(f" 已检索到 {len(matched)} 条相关技能")
     return matched
 
 
@@ -482,12 +482,12 @@ def remove_skill_from_db(skill_id: str) -> bool:
     collection = get_skill_collection()
     try:
         collection.delete(ids=[skill_id])
-        logger.info(f"✅ 技能 '{skill_id}' 已从向量库删除")
+        logger.info(f" 技能 '{skill_id}' 已从向量库删除")
         return True
     except Exception as e:
         if _is_missing_collection_error(e):
             return False
-        logger.error(f"❌ 技能删除失败：{str(e)}")
+        logger.error(f" 技能删除失败：{str(e)}")
         return False
 def init_reference_collection():
     """初始化文风参考集合，加载references目录下的所有txt文件"""
@@ -497,7 +497,7 @@ def init_reference_collection():
 
     # 检查是否已经有数据
     if reference_collection.count() > 0:
-        logger.info(f"✅ 文风参考集合已初始化，共有{reference_collection.count()}条参考")
+        logger.info(f" 文风参考集合已初始化，共有{reference_collection.count()}条参考")
         return
 
     # 遍历加载所有txt文件
@@ -514,7 +514,7 @@ def init_reference_collection():
             )
             count += 1
 
-    logger.info(f"✅ 文风参考集合初始化完成，加载了{count}条参考范例")
+    logger.info(f" 文风参考集合初始化完成，加载了{count}条参考范例")
 
 
 def search_reference_style(query: str, top_k: int = 2) -> str:
@@ -532,7 +532,7 @@ def search_reference_style(query: str, top_k: int = 2) -> str:
             n_results=top_k
         )
     except Exception as e:
-        logger.error(f"❌ 文风参考检索失败：{str(e)}")
+        logger.error(f" 文风参考检索失败：{str(e)}")
         return ""
 
     documents = results["documents"][0]
@@ -543,5 +543,5 @@ def search_reference_style(query: str, top_k: int = 2) -> str:
     for i, doc in enumerate(documents, 1):
         related_content += f"\n--- 参考范例{i} ---\n{doc.strip()}\n"
 
-    logger.info(f"🔍 已检索到{len(documents)}条文风参考范例")
+    logger.info(f" 已检索到{len(documents)}条文风参考范例")
     return related_content

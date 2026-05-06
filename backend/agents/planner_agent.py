@@ -34,7 +34,7 @@ def generate_plan(
     单章字数：{chapter_word_count}
     内容类型：{content_type}
     """
-    logger.info(f"📝 顶层策划Agent正在生成{content_type}方案...")
+    logger.info(f" 顶层策划Agent正在生成{content_type}方案...")
     return call_volc_api(
         "planner",
         user_input,
@@ -60,7 +60,7 @@ def revise_plan(
     原方案：{original_plan}
     修改意见：{feedback}
     """
-    logger.info("📝 顶层策划Agent正在修改方案...")
+    logger.info(" 顶层策划Agent正在修改方案...")
     return call_volc_api(
         "planner",
         user_input,

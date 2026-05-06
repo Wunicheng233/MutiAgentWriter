@@ -136,6 +136,16 @@ const HistoryIcon = () => (
   </svg>
 )
 
+const BibleIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+    <path d="M9 9h.01" />
+    <path d="M15 9h.01" />
+    <path d="M12 15h.01" />
+  </svg>
+)
+
 // 全局导航项
 const globalNavItems: NavConfigItem[] = [
   { id: 'dashboard', label: '书架', path: '/dashboard', icon: <ProjectIcon /> },
@@ -162,6 +172,7 @@ export const NavRail: React.FC<NavRailProps> = React.memo(({ collapsed, onToggle
     { id: 'chapters', label: '章节', path: 'chapters', icon: <ChaptersIcon /> },
     { id: 'reader', label: '阅读器', path: 'read/1', activePath: 'read', icon: <ReaderIcon /> },
     { id: 'editor', label: '编辑器', path: 'editor/1', activePath: 'editor', icon: <EditorIcon /> },
+    { id: 'bible', label: '设定库', path: 'bible', icon: <BibleIcon /> },
     { id: 'analytics', label: '质量中心', path: 'analytics', icon: <AnalyticsIcon /> },
     { id: 'versions', label: '历史版本', path: 'versions', icon: <HistoryIcon /> },
     { id: 'export', label: '导出分享', path: 'export', icon: <ExportIcon /> },

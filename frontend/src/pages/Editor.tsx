@@ -85,12 +85,11 @@ export const Editor: React.FC = () => {
   )
 
   // Get layout state from store
-  const { focusMode, typewriterMode, fadeMode, vimMode } = useLayoutStore(
+  const { focusMode, typewriterMode, fadeMode } = useLayoutStore(
     useShallow((state) => ({
       focusMode: state.focusMode,
       typewriterMode: state.typewriterMode,
       fadeMode: state.fadeMode,
-      vimMode: state.vimMode,
     }))
   )
 
@@ -247,6 +246,7 @@ export const Editor: React.FC = () => {
 
   // 防抖自动保存
   const timeoutRef = useRef<number | null>(null)
+  const loadedChapterKeyRef = useRef<string | null>(null)
   const debouncedSave = useCallback((content: string) => {
     setSaving(true)
     if (timeoutRef.current) {
@@ -302,13 +302,13 @@ export const Editor: React.FC = () => {
   useEffect(() => {
     if (!editor || !chapter?.content) return
 
-    const currentContent = editor.getHTML()
-    // 如果当前编辑器没有内容（只有空p标签），说明还没填充，需要填充
-    if (!currentContent || currentContent.trim() === '<p></p>') {
+    const chapterKey = `${chapter.project_id}:${chapter.chapter_index}:${chapter.updated_at ?? ''}`
+    if (loadedChapterKeyRef.current !== chapterKey) {
       const htmlContent = chapterContentToEditorHtml(chapter.content)
-      editor.commands.setContent(htmlContent)
+      editor.commands.setContent(htmlContent, { emitUpdate: false })
+      loadedChapterKeyRef.current = chapterKey
     }
-  }, [editor, chapter?.content])
+  }, [editor, chapter?.chapter_index, chapter?.content, chapter?.project_id, chapter?.updated_at])
 
   // Click outside to hide selection toolbar
   useEffect(() => {

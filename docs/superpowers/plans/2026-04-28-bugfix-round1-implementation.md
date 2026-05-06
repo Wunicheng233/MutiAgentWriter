@@ -14,12 +14,12 @@
 
 | File | Changes | Priority |
 |------|---------|----------|
-| `backend/database.py` | Add contextmanager import and decorator | 🔴 High |
-| `backend/api/projects.py` | Add exception handling and type validation | 🟡 Medium |
-| `backend/rate_limiter.py` | Move import to top | 🟡 Medium |
-| `backend/core/orchestrator.py` | Add boundary condition checks | 🟡 Medium |
-| `frontend/src/pages/ProjectOutline.tsx` | Fix ESLint setState-in-effect error | 🟡 Medium |
-| `frontend/src/components/ai/AIChatPanel.tsx` | Fix unused variable ESLint error | 🟡 Medium |
+| `backend/database.py` | Add contextmanager import and decorator |  High |
+| `backend/api/projects.py` | Add exception handling and type validation |  Medium |
+| `backend/rate_limiter.py` | Move import to top |  Medium |
+| `backend/core/orchestrator.py` | Add boundary condition checks |  Medium |
+| `frontend/src/pages/ProjectOutline.tsx` | Fix ESLint setState-in-effect error |  Medium |
+| `frontend/src/components/ai/AIChatPanel.tsx` | Fix unused variable ESLint error |  Medium |
 
 ---
 
@@ -321,14 +321,14 @@ If all tests pass, tag or verify the changes are complete.
 ## Plan Self-Review
 
 **1. Spec coverage:** All 9 high/medium priority issues from the spec are covered:
-- ✅ contextmanager import + decorator (issues 1-2)
-- ✅ projects.py exception handling (issue 3)
-- ✅ projects.py type validation (issue 4)
-- ✅ rate_limiter import location (issue 5)
-- ✅ ProjectOutline ESLint fix (issue 6)
-- ✅ AIChatPanel ESLint fix (issue 7)
-- ✅ orchestrator chapter limit (issue 8)
-- ✅ orchestrator empty outline fallback (issue 9)
+-  contextmanager import + decorator (issues 1-2)
+-  projects.py exception handling (issue 3)
+-  projects.py type validation (issue 4)
+-  rate_limiter import location (issue 5)
+-  ProjectOutline ESLint fix (issue 6)
+-  AIChatPanel ESLint fix (issue 7)
+-  orchestrator chapter limit (issue 8)
+-  orchestrator empty outline fallback (issue 9)
 
 **2. Placeholder scan:** No TBD/TODO placeholders. All code blocks complete with exact implementations.
 

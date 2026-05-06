@@ -600,33 +600,33 @@ Expected: 构建成功，无 React Compiler 相关的警告
 - [ ] **Step 5: 最终总结验证**
 
 确认以下问题已解决:
-1. ✅ Pagination: 内联 SVG，消除渲染期间创建组件的问题
-2. ✅ Toast: Context 和 hooks 分离，符合 Fast Refresh 规则
-3. ✅ ProjectOutline: useEffect 依赖优化，消除级联渲染
-4. ✅ ProjectOverview: 移除未使用的 useState 导入
-5. ✅ NavRail: 修复未使用的 hovered 变量警告
-6. ✅ Table: 替换 any 类型，提升类型安全性
+1.  Pagination: 内联 SVG，消除渲染期间创建组件的问题
+2.  Toast: Context 和 hooks 分离，符合 Fast Refresh 规则
+3.  ProjectOutline: useEffect 依赖优化，消除级联渲染
+4.  ProjectOverview: 移除未使用的 useState 导入
+5.  NavRail: 修复未使用的 hovered 变量警告
+6.  Table: 替换 any 类型，提升类型安全性
 
 ---
 
 ## Self-Review Check
 
 **1. Spec coverage:**
-- ✅ 涵盖所有高优先级 ESLint 错误（Pagination, Toast, ProjectOutline）
-- ✅ 涵盖所有中优先级问题（未使用的导入/变量、any 类型）
-- ✅ 任务分解清晰，每个任务都有明确的步骤和预期结果
+-  涵盖所有高优先级 ESLint 错误（Pagination, Toast, ProjectOutline）
+-  涵盖所有中优先级问题（未使用的导入/变量、any 类型）
+-  任务分解清晰，每个任务都有明确的步骤和预期结果
 - **无缺口**
 
 **2. Placeholder scan:**
-- ✅ 所有代码更改都有精确的代码块
-- ✅ 所有命令都有精确的路径和预期输出
-- ✅ 没有模糊的 "implement" 或 "fix" 指令
-- ✅ Task 5 明确标记了"仅在确认后执行"的条件
+-  所有代码更改都有精确的代码块
+-  所有命令都有精确的路径和预期输出
+-  没有模糊的 "implement" 或 "fix" 指令
+-  Task 5 明确标记了"仅在确认后执行"的条件
 - **无 placeholders**
 
 **3. Type consistency:**
-- ✅ 所有文件路径与实际项目结构匹配
-- ✅ 行号大致准确（考虑到文件可能有小的变动）
-- ✅ 类型更改一致（any → object/unknown）
-- ✅ 导入路径与项目实际结构匹配
+-  所有文件路径与实际项目结构匹配
+-  行号大致准确（考虑到文件可能有小的变动）
+-  类型更改一致（any → object/unknown）
+-  导入路径与项目实际结构匹配
 - **无不一致之处**

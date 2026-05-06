@@ -108,9 +108,9 @@ git commit -m "chore: clean up temporary files (.DS_Store, __pycache__, *.pyc)"
 **Rationale:** 更新 19 个过时依赖中的安全更新和小版本更新，避免大版本（eslint 9→10, storybook 8→10, tailwind 3→4）带来的破坏性变更。
 
 **更新策略：**
-- ✅ 更新: Current = Wanted 的依赖（安全更新，向后兼容）
-- ⚠️ 谨慎: 大版本更新 (eslint, storybook, tailwind) 跳过
-- ✅ 更新: 次版本号和补丁版本号更新
+-  更新: Current = Wanted 的依赖（安全更新，向后兼容）
+-  谨慎: 大版本更新 (eslint, storybook, tailwind) 跳过
+-  更新: 次版本号和补丁版本号更新
 
 - [ ] **Step 1: 识别可以安全更新的依赖**
 
@@ -509,24 +509,24 @@ Expected: 4 个提交：清理文件、更新依赖、Select 重构、DropdownMe
 ## Self-Review
 
 **1. Spec coverage:**
-- ✅ 临时文件清理: 包含完整的删除和验证步骤
-- ✅ 安全依赖更新: 明确跳过了大版本更新，只更新安全补丁
-- ✅ Select Hook 提取: 完整的 Hook 代码和集成步骤
-- ✅ DropdownMenu 工具函数: 完整的工具函数提取
-- ✅ 最终验证: 完整的测试和构建验证
+-  临时文件清理: 包含完整的删除和验证步骤
+-  安全依赖更新: 明确跳过了大版本更新，只更新安全补丁
+-  Select Hook 提取: 完整的 Hook 代码和集成步骤
+-  DropdownMenu 工具函数: 完整的工具函数提取
+-  最终验证: 完整的测试和构建验证
 - **No gaps**
 
 **2. Placeholder scan:**
-- ✅ 所有步骤都有完整的代码块
-- ✅ 所有命令都有精确的路径
-- ✅ 所有预期输出都已说明
-- ✅ 没有 "TBD" 或模糊描述
+-  所有步骤都有完整的代码块
+-  所有命令都有精确的路径
+-  所有预期输出都已说明
+-  没有 "TBD" 或模糊描述
 - **No placeholders found**
 
 **3. Type consistency:**
-- ✅ Hook 类型定义完整 (UseKeyboardNavigationOptions)
-- ✅ 工具函数类型定义完整 (MenuPosition, MenuPlacement)
-- ✅ 所有函数都有合适的返回类型
+-  Hook 类型定义完整 (UseKeyboardNavigationOptions)
+-  工具函数类型定义完整 (MenuPosition, MenuPlacement)
+-  所有函数都有合适的返回类型
 - **No inconsistencies found**
 
 ---

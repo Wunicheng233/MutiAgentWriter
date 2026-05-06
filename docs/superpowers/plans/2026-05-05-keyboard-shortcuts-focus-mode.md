@@ -883,10 +883,10 @@ export const EditorStatusBar: React.FC = () => {
       data-testid="editor-status-bar"
     >
       <div className="flex items-center gap-2">
-        <ModeToggle label="Typewriter" active={typewriterMode} onClick={toggleTypewriterMode} icon="📠" />
-        <ModeToggle label="Fade" active={fadeMode} onClick={toggleFadeMode} icon="👁️" />
-        <ModeToggle label="Focus" active={focusMode} onClick={toggleFocusMode} icon="🎯" />
-        <ModeToggle label="Vim" active={vimMode} onClick={toggleVimMode} icon="🅥" />
+        <ModeToggle label="Typewriter" active={typewriterMode} onClick={toggleTypewriterMode} icon="" />
+        <ModeToggle label="Fade" active={fadeMode} onClick={toggleFadeMode} icon="" />
+        <ModeToggle label="Focus" active={focusMode} onClick={toggleFocusMode} icon="" />
+        <ModeToggle label="Vim" active={vimMode} onClick={toggleVimMode} icon="" />
       </div>
 
       <button

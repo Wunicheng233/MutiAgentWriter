@@ -64,7 +64,7 @@ def critic_chapter(
         "novel_state_snapshot": novel_state_snapshot or "（无状态快照）",
     }
 
-    logger.info("🔍 Critic Agent正在评审章节，等待结果...")
+    logger.info(" Critic Agent正在评审章节，等待结果...")
     temperature = settings.get_temperature_for_agent("critic")
     result = call_volc_api(
         "critic",
@@ -82,7 +82,7 @@ def critic_chapter(
     data = parse_json_result(result)
     if data is None:
         # 解析失败，默认不通过
-        logger.error(f"❌ Critic 输出JSON解析失败，输出内容: {result[:200]}...")
+        logger.error(f" Critic 输出JSON解析失败，输出内容: {result[:200]}...")
         return False, 5, {}, [{
             "type": "格式问题",
             "location": "全文",
@@ -119,7 +119,7 @@ def critic_chapter(
                 dimensions[k] = default_dimensions[k]
             dimensions[k] = max(1, min(10, dimensions[k]))
 
-    logger.info(f"📊 评审完成，分数: {score}/10，通过: {passed}，问题数: {len(issues)}")
+    logger.info(f" 评审完成，分数: {score}/10，通过: {passed}，问题数: {len(issues)}")
     if not passed and issues:
         for i, issue in enumerate(issues[:3]):
             logger.info(f"   {i+1}. [{issue.get('type')}] {issue.get('location')} → {issue.get('fix')[:50]}")

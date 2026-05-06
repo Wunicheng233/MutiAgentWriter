@@ -15,8 +15,8 @@ export const theme = {
     white: '#fffdf8'
   },
   fonts: {
-    serif: '"Songti SC", "Noto Serif SC", "STSong", serif',
-    sans: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", sans-serif'
+    serif: 'Tinos, "LXGW WenKai", "Noto Serif SC", Georgia, serif',
+    sans: 'Inter, "LXGW WenKai", -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif'
   },
   shadow: '0 28px 82px rgba(58, 46, 36, 0.13)'
 } as const;

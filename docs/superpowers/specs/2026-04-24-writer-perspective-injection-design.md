@@ -516,11 +516,11 @@ export const PerspectiveSelector: React.FC<{
   const grouped = groupBy(perspectives, p => p.genre);
 
   const genreIcons: Record<string, string> = {
-    '科幻': '📚',
-    '武侠': '🗡️',
-    '奇幻': '✨',
-    '文学': '📖',
-    '网文': '💻',
+    '科幻': '',
+    '武侠': '',
+    '奇幻': '',
+    '文学': '',
+    '网文': '',
   };
 
   return (
@@ -535,7 +535,7 @@ export const PerspectiveSelector: React.FC<{
         {Object.entries(grouped).map(([genre, items]) => (
           <div key={genre}>
             <p className="text-sm font-medium text-secondary mb-2">
-              {genreIcons[genre] || '📝'} {genre}
+              {genreIcons[genre] || ''} {genre}
             </p>
             <div className="space-y-2">
               {items.map(p => (
@@ -632,7 +632,7 @@ export const PerspectiveSelector: React.FC<{
 // 在创作配置表单中新增
 <div className="mt-6">
   <p className="text-xs uppercase tracking-wider text-secondary mb-4">
-    🎭 创作风格
+     创作风格
   </p>
   <PerspectiveSelector
     value={project.writer_perspective}
@@ -653,7 +653,7 @@ export const PerspectiveSelector: React.FC<{
 // 侧边栏组件
 <div className="p-4 rounded-standard border border-border">
   <p className="text-sm font-medium mb-2">
-    🎭 当前风格：{currentPerspective?.name || '默认'}
+     当前风格：{currentPerspective?.name || '默认'}
   </p>
   <p className="text-xs text-secondary mb-3">
     {currentPerspective?.description || '无特定作家风格'}
@@ -767,18 +767,18 @@ revise_injection: |
 
 | 分类 | 作家 | ID | 核心特质 | 适用题材 |
 |-----|------|----|---------|---------|
-| 📚 科幻 | 刘慈欣 | `liu-cixin` | 思想实验、宏大尺度、冷峻理性 | 硬科幻、太空歌剧 |
-| 🗡️ 武侠 | 金庸 | `jin-yong` | 历史厚重、武学哲学、群像叙事 | 武侠、历史玄幻 |
-| 🗡️ 武侠 | 古龙 | `gu-long` | 短句留白、意境优先、浪子情怀 | 武侠、悬疑 |
-| ✨ 奇幻 | J.K.罗琳 | `jk-rowling` | 魔法亲和力、成长叙事、温暖底色 | 奇幻、青少年向 |
-| ✨ 奇幻 | 乔治·R·R·马丁 | `george-rr-martin` | POV切换、灰色道德、残酷真实 | 史诗奇幻、政治斗争 |
-| 📖 文学 | 余华 | `yu-hua` | 冷峻暴力、生存叙事、小人物史诗 | 现实主义、苦难叙事 |
-| 📖 文学 | 村上春树 | `haruki-murakami` | 都市疏离、爵士乐氛围、超现实隐喻 | 都市、悬疑、文艺 |
-| 📖 文学 | 海明威 | `ernest-hemingway` | 冰山原则、极简主义、硬汉独白 | 战争、冒险、硬汉小说 |
-| 📖 文学 | 纳博科夫 | `vladimir-nabokov` | 文字游戏、不可靠叙事、元小说 | 后现代、实验文学 |
-| 📖 文学 | 鲁迅 | `lu-xun` | 国民性批判、冷峻讽刺、匕首投枪 | 社会批判、杂文风 |
-| 💻 网文 | 唐家三少 | `tangjiashao` | 等级清晰、爽点密集、稳定节奏 | 升级流、系统流 |
-| 💻 网文 | 郁雨竹 | `yuyuzhu` | 乡土温情、人物鲜活、日常流叙事 | 乡土、种田文 |
+|  科幻 | 刘慈欣 | `liu-cixin` | 思想实验、宏大尺度、冷峻理性 | 硬科幻、太空歌剧 |
+|  武侠 | 金庸 | `jin-yong` | 历史厚重、武学哲学、群像叙事 | 武侠、历史玄幻 |
+|  武侠 | 古龙 | `gu-long` | 短句留白、意境优先、浪子情怀 | 武侠、悬疑 |
+|  奇幻 | J.K.罗琳 | `jk-rowling` | 魔法亲和力、成长叙事、温暖底色 | 奇幻、青少年向 |
+|  奇幻 | 乔治·R·R·马丁 | `george-rr-martin` | POV切换、灰色道德、残酷真实 | 史诗奇幻、政治斗争 |
+|  文学 | 余华 | `yu-hua` | 冷峻暴力、生存叙事、小人物史诗 | 现实主义、苦难叙事 |
+|  文学 | 村上春树 | `haruki-murakami` | 都市疏离、爵士乐氛围、超现实隐喻 | 都市、悬疑、文艺 |
+|  文学 | 海明威 | `ernest-hemingway` | 冰山原则、极简主义、硬汉独白 | 战争、冒险、硬汉小说 |
+|  文学 | 纳博科夫 | `vladimir-nabokov` | 文字游戏、不可靠叙事、元小说 | 后现代、实验文学 |
+|  文学 | 鲁迅 | `lu-xun` | 国民性批判、冷峻讽刺、匕首投枪 | 社会批判、杂文风 |
+|  网文 | 唐家三少 | `tangjiashao` | 等级清晰、爽点密集、稳定节奏 | 升级流、系统流 |
+|  网文 | 郁雨竹 | `yuyuzhu` | 乡土温情、人物鲜活、日常流叙事 | 乡土、种田文 |
 
 ---
 

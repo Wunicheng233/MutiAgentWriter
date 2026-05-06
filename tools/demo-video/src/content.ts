@@ -1,13 +1,12 @@
 export const scenes = [
-  {id: 'opening', start: 0, duration: 180, caption: '让 AI 写小说，不止生成一段文字。'},
-  {id: 'bookshelf', start: 180, duration: 240, caption: '从一个想法开始。'},
-  {id: 'create', start: 420, duration: 300, caption: '选择题材、协作方式和作家风格。'},
-  {id: 'skill', start: 720, duration: 300, caption: '风格成为可注入的创作能力。'},
-  {id: 'planning', start: 1020, duration: 360, caption: '先策划，再写作。方向由人确认。'},
-  {id: 'workflow', start: 1380, duration: 420, caption: '每一章，都经过写作、评审与修订。'},
-  {id: 'confirm', start: 1800, duration: 300, caption: '人在关键节点把关。'},
-  {id: 'reader', start: 2100, duration: 420, caption: '最终回到阅读本身。'},
-  {id: 'closing', start: 2520, duration: 180, caption: '多智能体小说创作工作台。'}
+  {id: 'opening', start: 0, duration: 120, caption: 'Vibe Coding? Vibe Writing!'},
+  {id: 'shelf', start: 120, duration: 135, caption: '作品从书架开始。'},
+  {id: 'create-skill', start: 255, duration: 165, caption: 'Brief 和作家 Skill 一次注入。'},
+  {id: 'workflow', start: 420, duration: 165, caption: '多智能体协作推进。'},
+  {id: 'selection-ai', start: 585, duration: 255, caption: '选区润色，就地应用。'},
+  {id: 'versions', start: 840, duration: 180, caption: '历史版本可对比、可回退。'},
+  {id: 'reader-quality-export', start: 1020, duration: 150, caption: '阅读、质量和导出形成闭环。'},
+  {id: 'closing', start: 1170, duration: 90, caption: 'StoryForge AI。'}
 ] as const;
 
-export const totalFrames = 2700;
+export const totalFrames = 1260;

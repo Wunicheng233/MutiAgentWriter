@@ -4,7 +4,7 @@
 
 ## Superpowers 工作流配置
 
-### ✅ 始终启用的技能
+###  始终启用的技能
 
 以下技能在本项目中必须始终使用：
 
@@ -67,11 +67,11 @@ cd frontend && npm run test:run
 
 ### 禁止事项
 
-1. ❌ 跳过 brainstorming 直接写代码
-2. ❌ 没有计划就开始大规模重构
-3. ❌ 不写测试就提交功能
-4. ❌ 在 novel_agent 环境外运行 Python 命令
-5. ❌ 直接 push 到 main 分支（除非是文档更新）
+1.  跳过 brainstorming 直接写代码
+2.  没有计划就开始大规模重构
+3.  不写测试就提交功能
+4.  在 novel_agent 环境外运行 Python 命令
+5.  直接 push 到 main 分支（除非是文档更新）
 
 ### 代码规范
 

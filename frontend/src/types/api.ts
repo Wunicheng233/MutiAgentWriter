@@ -68,7 +68,7 @@ export interface Project {
   content_type: string
   status: string
   config?: ProjectConfig
-  bible?: Record<string, JsonValue>
+  bible?: Bible
   file_path?: string
   overall_quality_score: number
   dimension_average_scores?: Record<string, number>
@@ -241,4 +241,110 @@ export interface ChatRequest {
 
 export interface ChatResponse {
   content: string
+}
+
+// ========== Bible 相关类型 ==========
+
+export type CharacterRole = 'protagonist' | 'deuteragonist' | 'antagonist' | 'support' | 'npc'
+
+export type RelationshipType = 'friend' | 'lover' | 'enemy' | 'family' | 'mentor' | 'other'
+
+export type TodoType = 'consistency' | 'reminder' | 'plot' | 'other'
+
+export type LocationType = 'city' | 'mountain' | 'forest' | 'dungeon' | 'other'
+
+export type ImportanceLevel = 'low' | 'medium' | 'high'
+
+export type ArcStatus = 'planning' | 'in-progress' | 'completed'
+
+export interface Relationship {
+  characterId: string
+  type: RelationshipType
+  description: string
+}
+
+export interface Character {
+  id: string
+  name: string
+  alias?: string[]
+  role: CharacterRole
+  personality?: string
+  appearance?: string
+  background?: string
+  catchphrase?: string
+  goals?: string
+  conflicts?: string
+  relationships?: Relationship[]
+  tags?: string[]
+  isMainCharacter?: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export interface Location {
+  id: string
+  name: string
+  description: string
+  type: LocationType
+}
+
+export interface TimelineEvent {
+  id: string
+  time: string
+  event: string
+  importance: ImportanceLevel
+}
+
+export interface WorldSetting {
+  powerSystem?: string
+  locations?: Location[]
+  timeline?: TimelineEvent[]
+  rules?: string
+  culture?: string
+}
+
+export interface PlotArc {
+  id: string
+  name: string
+  description: string
+  status: ArcStatus
+}
+
+export interface Foreshadowing {
+  id: string
+  hint: string
+  payoffChapter?: number
+  resolved: boolean
+}
+
+export interface KeyScene {
+  id: string
+  name: string
+  description: string
+  chapterNumber?: number
+}
+
+export interface PlotSetting {
+  coreTheme?: string
+  synopsis?: string
+  arcs?: PlotArc[]
+  foreshadowing?: Foreshadowing[]
+  keyScenes?: KeyScene[]
+}
+
+export interface TodoItem {
+  id: string
+  content: string
+  type: TodoType
+  chapterReference?: number
+  completed: boolean
+  createdAt: string
+}
+
+export interface Bible {
+  version: 1
+  characters: Character[]
+  world: WorldSetting
+  plot: PlotSetting
+  todos: TodoItem[]
 }

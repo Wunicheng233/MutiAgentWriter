@@ -117,7 +117,7 @@ Skill = 可插拔能力插件（安装包）
 │                      │      Critic      │                         │
 │                      │   章节评审员      │                         │
 │                      │                  │                         │
-│                      │   ❌ 隔离层       │                         │
+│                      │    隔离层       │                         │
 │                      │  不注入任何 Skill │                         │
 │                      └──────────────────┘                         │
 └───────────────────────────────────────────────────────────────────┘
@@ -134,8 +134,8 @@ skills/
 ├── _registry.json      // 自动生成的注册表缓存
 │
 ├── author-jk-rowling/  // Skill ID = 目录名
-│   ├── skill.json      // ✅ 元数据声明（必选）
-│   ├── injection.md    // ✅ Prompt 注入文本（必选）
+│   ├── skill.json      //  元数据声明（必选）
+│   ├── injection.md    //  Prompt 注入文本（必选）
 │   ├── config.json     // 可选：默认配置
 │   ├── hooks.py        // 可选：可执行钩子（预留）
 │   └── README.md       // 可选：人读说明
@@ -331,7 +331,7 @@ def should_apply_skill(skill: Skill, agent_name: str, project_config: dict) -> b
 | **Planner** | 刘慈欣 + 一致性检查 | 世界观是科幻硬核风 |
 | **Writer** | 金庸 + 一致性检查 | 文字是武侠文风，但世界观是科幻的 |
 | **Revise** | 一致性检查 | 只关注一致性，不改文风 |
-| **Critic** | ❌ 无 | 保持中立质量标尺 |
+| **Critic** |  无 | 保持中立质量标尺 |
 
 ---
 
@@ -361,10 +361,10 @@ def should_apply_skill(skill: Skill, agent_name: str, project_config: dict) -> b
 ┌─────────────────────────────────────────────────┐
 │  3. Skill 装配器过滤                            │
 │     对每个 Skill：                              │
-│     ├─ ✅ 匹配算法：这个 Skill 适用于当前 Agent? │
-│     ├─ ✅ 强度裁剪：根据 strength 裁剪内容      │
-│     ├─ ✅ 安全过滤：提取 style_only 内容        │
-│     └─ ❌ 不通过的 Skill 直接丢弃               │
+│     ├─  匹配算法：这个 Skill 适用于当前 Agent? │
+│     ├─  强度裁剪：根据 strength 裁剪内容      │
+│     ├─  安全过滤：提取 style_only 内容        │
+│     └─  不通过的 Skill 直接丢弃               │
 └───────────────────┬─────────────────────────────┘
                     │
                     ▼

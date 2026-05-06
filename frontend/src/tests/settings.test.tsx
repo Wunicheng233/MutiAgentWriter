@@ -4,6 +4,30 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import { Settings } from '../pages/Settings'
 import { useLayoutStore } from '../store/useLayoutStore'
 import { RewriteMode } from '../utils/selectionAI'
+import type { SettingsTab } from '../components/settings/types'
+
+interface InputMockProps {
+  label: string
+  value: string
+  onChange: React.ChangeEventHandler<HTMLInputElement>
+}
+
+interface SelectMockProps {
+  children: React.ReactNode
+}
+
+interface SelectValueMockProps {
+  placeholder?: string
+}
+
+interface SelectItemMockProps {
+  value: string
+  children: React.ReactNode
+}
+
+interface SettingsSidebarMockProps {
+  onTabChange: (tab: SettingsTab) => void
+}
 
 // Mock react-router-dom
 vi.mock('react-router-dom', () => ({
@@ -23,7 +47,7 @@ vi.mock('../components/v2', () => ({
   Button: ({ children, onClick, variant }: { children: React.ReactNode; onClick?: () => void; variant?: string }) => (
     <button onClick={onClick} data-variant={variant}>{children}</button>
   ),
-  Input: ({ label, value, onChange }: any) => (
+  Input: ({ label, value, onChange }: InputMockProps) => (
     <div>
       <label>{label}</label>
       <input value={value} onChange={onChange} />
@@ -34,25 +58,21 @@ vi.mock('../components/v2', () => ({
   Switch: ({ checked, onChange }: { checked: boolean; onChange: () => void }) => (
     <button onClick={onChange} data-checked={checked} />
   ),
-  Select: ({ value, onChange, options }: any) => (
-    <select value={value} onChange={onChange}>
-      {options.map((opt: any) => (
-        <option key={opt.value} value={opt.value}>{opt.label}</option>
-      ))}
-    </select>
+  Select: ({ children }: SelectMockProps) => (
+    <div data-testid="select">{children}</div>
   ),
+  SelectTrigger: ({ children }: SelectMockProps) => <div>{children}</div>,
+  SelectValue: ({ placeholder }: SelectValueMockProps) => <span>{placeholder}</span>,
+  SelectContent: ({ children }: SelectMockProps) => <div>{children}</div>,
+  SelectItem: ({ value, children }: SelectItemMockProps) => <div data-value={value}>{children}</div>,
 }))
 
 vi.mock('../components/ThemeSelector', () => ({
   ThemeSelector: () => <div>Warm Parchment</div>,
 }))
 
-vi.mock('../components/layout/CanvasContainer', () => ({
-  CanvasContainer: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-}))
-
 vi.mock('../components/settings/SettingsSidebar', () => ({
-  default: ({ activeTab, onTabChange }: any) => (
+  default: ({ onTabChange }: SettingsSidebarMockProps) => (
     <div data-testid="settings-sidebar">
       <button data-testid="settings-tab-theme" onClick={() => onTabChange('theme')}>theme</button>
       <button data-testid="settings-tab-editor" onClick={() => onTabChange('editor')}>editor</button>
@@ -86,7 +106,6 @@ describe('Settings Page', () => {
     useLayoutStore.setState({
       typewriterMode: false,
       fadeMode: false,
-      vimMode: false,
       focusMode: false,
       defaultAIPanelOpen: false,
       autoExpandHeaderInProject: true,
@@ -126,7 +145,6 @@ describe('Settings Page', () => {
 
     expect(screen.getByText('Typewriter 模式')).toBeTruthy()
     expect(screen.getByText('Fade 模式')).toBeTruthy()
-    expect(screen.getByText('Vim 模式')).toBeTruthy()
   })
 
   it('layout tab should have layout switches', () => {

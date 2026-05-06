@@ -44,7 +44,7 @@ def revise_chapter(
         "world_bible": setting_bible,
     }
 
-    logger.info(f"✂️  Revise Agent正在修订章节，问题数: {len(critic_issues)}")
+    logger.info(f"  Revise Agent正在修订章节，问题数: {len(critic_issues)}")
     temperature = settings.get_temperature_for_agent("revise")
     return call_volc_api(
         "revise",
@@ -76,7 +76,7 @@ def revise_local_patch(
         "original_chapter_excerpt": _build_local_excerpt(local_context),
     }
 
-    logger.info("✂️  Revise Agent正在执行局部片段修复")
+    logger.info("  Revise Agent正在执行局部片段修复")
     temperature = settings.get_temperature_for_agent("revise")
     result = call_volc_api(
         "revise_local_patch",
@@ -118,7 +118,7 @@ def stitch_chapter(
         "repair_trace": json.dumps(repair_trace, ensure_ascii=False, indent=2),
     }
 
-    logger.info("🪡 Revise Agent正在执行章节拼接连贯性修复")
+    logger.info(" Revise Agent正在执行章节拼接连贯性修复")
     temperature = settings.get_temperature_for_agent("revise")
     result = call_volc_api(
         "stitch",

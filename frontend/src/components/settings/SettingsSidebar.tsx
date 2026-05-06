@@ -1,6 +1,7 @@
 import React from 'react'
+import type { SettingsTab } from './types'
 
-export type SettingsTab = 'theme' | 'editor' | 'shortcuts' | 'ai' | 'layout' | 'account'
+export type { SettingsTab }
 
 interface SettingsSidebarProps {
   activeTab: SettingsTab
@@ -45,5 +46,4 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
   )
 }
 
-export type { SettingsTab }
 export default SettingsSidebar

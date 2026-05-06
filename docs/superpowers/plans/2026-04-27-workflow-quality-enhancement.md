@@ -1019,18 +1019,18 @@ git commit -m "feat: add feature flags for all workflow quality enhancements"
 
 ## Plan Self-Review
 
-✅ **Spec coverage:**
+ **Spec coverage:**
 - A optimization (scene-aware criticism): Task 3 + Task 4
 - C optimization (NovelState as gatekeeper): Task 1 + Task 6
 - Foreshadow tracking: Task 2
 - Chapter consistency pass: Task 5
 - Feature flags: Task 7
 
-✅ **Placeholder scan:** No TBD/TODO placeholders found. All code steps have exact code.
+ **Placeholder scan:** No TBD/TODO placeholders found. All code steps have exact code.
 
-✅ **Type consistency:** All method names, property names, types are consistent across tasks.
+ **Type consistency:** All method names, property names, types are consistent across tasks.
 
-✅ **No new dependencies:** All enhancements use existing dependencies.
+ **No new dependencies:** All enhancements use existing dependencies.
 
 ---
 

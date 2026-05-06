@@ -191,7 +191,7 @@ def rewrite_chapter(
 5. 参考优秀文风范例，学习好的文笔表达方式，减少AI模板化刻板感
 """
 
-    logger.info("✍️  内容生成Agent正在修改章节...")
+    logger.info("  内容生成Agent正在修改章节...")
     result = call_volc_api("writer", user_input, client=client, perspective=perspective, perspective_strength=perspective_strength, project_config=project_config)
 
     # 检测并修复标题

@@ -1,12 +1,13 @@
 import { useLayoutStore } from '../store/useLayoutStore'
+import { RewriteMode } from '../utils/selectionAI'
 
 describe('useLayoutStore - new focus modes', () => {
   beforeEach(() => {
     useLayoutStore.setState({
       typewriterMode: false,
       fadeMode: false,
-      vimMode: false,
       commandPaletteOpen: false,
+      defaultRewriteMode: RewriteMode.POLISH,
     })
   })
 
@@ -30,20 +31,37 @@ describe('useLayoutStore - new focus modes', () => {
     expect(useLayoutStore.getState().fadeMode).toBe(true)
   })
 
-  it('should have vimMode default to false', () => {
-    expect(useLayoutStore.getState().vimMode).toBe(false)
-  })
-
-  it('should toggle vimMode', () => {
-    expect(useLayoutStore.getState().vimMode).toBe(false)
-    useLayoutStore.getState().toggleVimMode()
-    expect(useLayoutStore.getState().vimMode).toBe(true)
-  })
-
   it('should set commandPaletteOpen', () => {
     useLayoutStore.getState().setCommandPaletteOpen(true)
     expect(useLayoutStore.getState().commandPaletteOpen).toBe(true)
     useLayoutStore.getState().setCommandPaletteOpen(false)
     expect(useLayoutStore.getState().commandPaletteOpen).toBe(false)
+  })
+
+  it('should have defaultRewriteMode default to POLISH', () => {
+    expect(useLayoutStore.getState().defaultRewriteMode).toBe(RewriteMode.POLISH)
+  })
+
+  it('should set defaultRewriteMode', () => {
+    useLayoutStore.getState().setDefaultRewriteMode(RewriteMode.EXPAND)
+    expect(useLayoutStore.getState().defaultRewriteMode).toBe(RewriteMode.EXPAND)
+  })
+
+  it('should clear all local state', () => {
+    // Set some state first
+    useLayoutStore.setState({
+      focusMode: true,
+      typewriterMode: true,
+      fadeMode: true,
+      defaultRewriteMode: RewriteMode.EXPAND,
+    })
+
+    useLayoutStore.getState().clearAllLocalState()
+
+    // Verify reset to defaults
+    expect(useLayoutStore.getState().focusMode).toBe(false)
+    expect(useLayoutStore.getState().typewriterMode).toBe(false)
+    expect(useLayoutStore.getState().fadeMode).toBe(false)
+    expect(useLayoutStore.getState().defaultRewriteMode).toBe(RewriteMode.POLISH)
   })
 })

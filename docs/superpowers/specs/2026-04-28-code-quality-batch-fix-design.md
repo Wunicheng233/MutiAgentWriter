@@ -27,11 +27,11 @@
 
 | # | 优先级 | 问题描述 | 修复方案 |
 |---|--------|---------|---------|
-| 1 | 🔴 高 | 本地 27 个提交未推送 origin/main | `git push` |
-| 2 | 🟡 中 | `useKeyboardNavigation.ts` 文件移动未完成提交 | git add + git rm + commit |
-| 3 | 🟡 中 | 4 个修改文件未提交 | 分配合适的 commit message |
-| 4 | 🟡 中 | `@tiptap/extension-image` 已安装但未使用 | `npm uninstall` |
-| 5 | 🔴 高 | `.env` 文件暴露风险 | 确认 .gitignore 生效且文件未被跟踪 |
+| 1 |  高 | 本地 27 个提交未推送 origin/main | `git push` |
+| 2 |  中 | `useKeyboardNavigation.ts` 文件移动未完成提交 | git add + git rm + commit |
+| 3 |  中 | 4 个修改文件未提交 | 分配合适的 commit message |
+| 4 |  中 | `@tiptap/extension-image` 已安装但未使用 | `npm uninstall` |
+| 5 |  高 | `.env` 文件暴露风险 | 确认 .gitignore 生效且文件未被跟踪 |
 
 ### 2.2 验证标准
 
@@ -200,11 +200,11 @@ pip-audit
 
 ## 5. 验收标准
 
-✅ **Phase 1 验收**：工作区整洁，Git 状态干净，依赖清理完成
+ **Phase 1 验收**：工作区整洁，Git 状态干净，依赖清理完成
 
-✅ **Phase 2 验收**：后端测试全部通过，无未使用导入/变量警告
+ **Phase 2 验收**：后端测试全部通过，无未使用导入/变量警告
 
-✅ **Phase 3 验收**：前端测试全部通过，零类型错误，覆盖率工具可用
+ **Phase 3 验收**：前端测试全部通过，零类型错误，覆盖率工具可用
 
 ---
 

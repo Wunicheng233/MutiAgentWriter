@@ -964,7 +964,7 @@ class WorkflowFoundationTests(BaseWorkflowTestCase):
                     ),
                     encoding="utf-8",
                 )
-                self.progress_callback(100, "🎉 完成")
+                self.progress_callback(100, " 完成")
                 return {"generated_chapters": 1}
 
         original_session_local = writing_tasks.SessionLocal

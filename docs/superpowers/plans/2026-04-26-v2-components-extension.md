@@ -3002,7 +3002,7 @@ git commit -m "feat(v2): export all new components"
 
 ## 计划完成总结
 
-✅ **新增 8 个组件：**
+ **新增 8 个组件：**
 - Switch - 开关组件
 - Alert - 警告提示
 - Tabs - 标签页
@@ -3012,16 +3012,16 @@ git commit -m "feat(v2): export all new components"
 - Popover - 弹出框
 - DropdownMenu - 下拉菜单
 
-✅ **共享 Hooks：**
+ **共享 Hooks：**
 - useClickOutside
 - useId
 
-✅ **共计：** 8 个新组件 + 2 个 Hooks，约 2000 行代码
+ **共计：** 8 个新组件 + 2 个 Hooks，约 2000 行代码
 
 **设计原则：**
-- ✅ 极简而高级
-- ✅ 无冗余装饰
-- ✅ 细腻的动效
-- ✅ 完整的可访问性支持
-- ✅ 遵循现有 v2 组件库风格
-- ✅ 完整的测试覆盖
+-  极简而高级
+-  无冗余装饰
+-  细腻的动效
+-  完整的可访问性支持
+-  遵循现有 v2 组件库风格
+-  完整的测试覆盖
