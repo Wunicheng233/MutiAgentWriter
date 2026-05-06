@@ -16,9 +16,6 @@ import {
   confirmTask,
   regenerateChapter,
   listChapters,
-  listChapterVersions,
-  restoreChapterVersion,
-  type ChapterVersionInfo,
 } from '../utils/endpoints'
 import api from '../utils/api'
 import { useToast } from '../components/toastContext'
@@ -35,9 +32,8 @@ import {
   renderSafeMarkdown,
 } from '../utils/safeContent'
 import SelectionToolbar from '../components/editor/SelectionToolbar'
-import SelectionAIPanel from '../components/editor/SelectionAIPanel'
+import { useShallow } from 'zustand/react/shallow'
 import { useSelectionStore } from '../store/useSelectionStore'
-import { RewriteMode } from '../utils/selectionAI'
 
 // 精简架构：仅 4 个核心 Agent
 const agentNames = [
@@ -66,8 +62,6 @@ export const Editor: React.FC = () => {
   const [pollingTaskId, setPollingTaskId] = useState<string | null>(null)
   const [progress, setProgress] = useState(0)
   const [currentStep, setCurrentStep] = useState('')
-  const [showVersionHistory, setShowVersionHistory] = useState(false)
-  const [versions, setVersions] = useState<ChapterVersionInfo[]>([])
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
   const [feedbackText, setFeedbackText] = useState('')
   const [waitingConfirmChapter, setWaitingConfirmChapter] = useState<number | null>(null)
@@ -75,18 +69,28 @@ export const Editor: React.FC = () => {
   const [liveTaskStatus, setLiveTaskStatus] = useState<string | null>(null)
   const [liveCurrentChapter, setLiveCurrentChapter] = useState<number | null>(null)
   const [inspectorOpen, setInspectorOpen] = useState(false)
-  const [selectionPanelOpen, setSelectionPanelOpen] = useState(false)
-  const { setSelection, hideToolbar, selectedText } = useSelectionStore()
+
+  const { setSelection, hideToolbar, pendingRewriteResult, selectionStart, selectionEnd, setPendingRewriteResult } = useSelectionStore(
+    useShallow((state) => ({
+      setSelection: state.setSelection,
+      hideToolbar: state.hideToolbar,
+      pendingRewriteResult: state.pendingRewriteResult,
+      selectionStart: state.selectionStart,
+      selectionEnd: state.selectionEnd,
+      setPendingRewriteResult: state.setPendingRewriteResult,
+    }))
+  )
 
   // Handle selection from TipTap editor
-  const handleSelectionUpdate = useCallback(({ editor }: { editor: any }) => {
-    const { from, to } = editor.state.selection
-    const selectedText = editor.state.doc.textBetween(from, to, '\n')
+  const handleSelectionUpdate = useCallback(({ editor }: { editor: unknown }) => {
+    const editorState = editor as { state: { selection: { from: number; to: number }; doc: { textBetween: (from: number, to: number, separator: string) => string } } }
+    const { from, to } = editorState.state.selection
+    const selectedText = editorState.state.doc.textBetween(from, to, '\n')
 
     // Only show toolbar for meaningful selections (5+ chars)
     if (selectedText && selectedText.length >= 5) {
       // Get selection coordinates
-      const { view } = editor
+      const { view } = editor as { view: { coordsAtPos: (pos: number) => { top: number; left: number } } }
       const start = view.coordsAtPos(from)
       const end = view.coordsAtPos(to)
 
@@ -106,13 +110,6 @@ export const Editor: React.FC = () => {
       hideToolbar()
     }
   }, [setSelection, hideToolbar])
-
-  // Handle rewrite action from toolbar
-  const handleRewriteAction = useCallback((mode: RewriteMode) => {
-    setSelectionPanelOpen(true)
-    hideToolbar()
-    // We could auto-trigger the action here instead of making user click again
-  }, [hideToolbar])
 
   const setCurrentProject = useProjectStore(state => state.setCurrentProject)
   const setProjectStatus = useProjectStore(state => state.setProjectStatus)
@@ -268,22 +265,18 @@ export const Editor: React.FC = () => {
     immediatelyRender: false,
   })
 
-  // Apply AI rewrite result to editor
-  const handleApplyRewrite = useCallback((newText: string) => {
-    if (!editor) return
-
-    const { selectionStart, selectionEnd } = useSelectionStore.getState()
-
-    // Replace selected text in editor
-    editor.chain()
-      .focus()
-      .setTextSelection({ from: selectionStart, to: selectionEnd })
-      .deleteSelection()
-      .insertContent(newText)
-      .run()
-
-    setSelectionPanelOpen(false)
-  }, [editor])
+  // Handle AI rewrite result from store
+  useEffect(() => {
+    if (pendingRewriteResult && editor) {
+      editor.chain()
+        .focus()
+        .setTextSelection({ from: selectionStart, to: selectionEnd })
+        .deleteSelection()
+        .insertContent(pendingRewriteResult)
+        .run()
+      setPendingRewriteResult(null)
+    }
+  }, [pendingRewriteResult, editor, selectionStart, selectionEnd, setPendingRewriteResult])
 
   // 当编辑器实例创建完成或者chapter内容加载完成，填充到编辑器
   // 只在编辑器为空时填充，不会覆盖用户已做的修改
@@ -404,41 +397,6 @@ export const Editor: React.FC = () => {
     return () => clearInterval(interval)
   }, [chapterIdx, pollingTaskId, projectId, queryClient, refetchChapter, refetchProject, showToast])
 
-  // 加载版本列表
-  const loadVersions = useCallback(async () => {
-    if (!showVersionHistory) return
-    try {
-      const res = await listChapterVersions(projectId, chapterIdx)
-      setVersions(res.versions)
-    } catch (e) {
-      console.error('Failed to load versions', e)
-    }
-  }, [projectId, chapterIdx, showVersionHistory])
-
-  // 恢复到指定版本
-  const handleRestore = async (versionId: number) => {
-    try {
-      const restored = await restoreChapterVersion(projectId, chapterIdx, versionId)
-      if (editor) {
-        editor.commands.setContent(restored.content)
-      }
-      queryClient.invalidateQueries({ queryKey: ['chapter', projectId, chapterIdx] })
-      showToast('已恢复到所选版本', 'success')
-      loadVersions()
-    } catch (e: unknown) {
-      showToast(getErrorMessage(e, '恢复失败'), 'error')
-    }
-  }
-
-  // Toggle version history
-  const toggleVersionHistory = async () => {
-    const nextState = !showVersionHistory
-    setShowVersionHistory(nextState)
-    if (nextState) {
-      await loadVersions()
-    }
-  }
-
   // 提交人工确认
   const handleSubmitConfirmation = async (approved: boolean) => {
     if (!pollingTaskId) return
@@ -461,10 +419,10 @@ export const Editor: React.FC = () => {
     }
   }
 
-  // 更新 word count - 统计汉字数量，HTML标签不计入
-  const wordCount = chapter?.content
-    ? (chapter.content.match(/[\u4e00-\u9fff]/g) || []).length
-    : 0
+  // 更新 word count - 使用编辑器实时内容，统计汉字数量，HTML标签不计入
+  const hasEditor = editor && typeof editor.getText === 'function'
+  const textContent = hasEditor ? editor.getText() : (chapter?.content || '')
+  const wordCount = (textContent.match(/[一-鿿]/g) || []).length
   const activeChapterNumber =
     waitingConfirmChapter ??
     project?.current_generation_task?.current_workflow_run?.current_chapter ??
@@ -700,48 +658,6 @@ export const Editor: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="flex-shrink-0">
-                    <Button
-                      variant={showVersionHistory ? 'primary' : 'secondary'}
-                      className="w-full"
-                      onClick={toggleVersionHistory}
-                    >
-                      {showVersionHistory ? '关闭历史版本' : '历史版本'}
-                    </Button>
-
-                    {showVersionHistory && (
-                      <Card className="mt-4 max-h-[280px] overflow-y-auto border-[var(--border-default)]">
-                        <h4 className="mb-3 font-medium text-[var(--text-primary)] text-sm">保存的版本</h4>
-                        {versions.length === 0 ? (
-                          <p className="text-sm text-[var(--text-secondary)] py-4 text-center">暂无历史版本</p>
-                        ) : (
-                          <div className="space-y-2">
-                            {versions.map(ver => (
-                              <div
-                                key={ver.id}
-                                className="version-item flex items-center justify-between rounded-standard border border-[var(--border-default)] p-3 cursor-pointer"
-                              >
-                                <div>
-                                  <div className="text-sm font-medium text-[var(--text-primary)]">V{ver.version_number}</div>
-                                  <div className="text-xs text-[var(--text-secondary)]">
-                                    {new Date(ver.created_at).toLocaleString()}
-                                    {' · '}{ver.word_count} 字
-                                  </div>
-                                </div>
-                                <Button
-                                  variant="tertiary"
-                                  size="sm"
-                                  onClick={() => handleRestore(ver.id)}
-                                >
-                                  恢复
-                                </Button>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </Card>
-                    )}
-                  </div>
                 </aside>
               )}
 
@@ -849,7 +765,7 @@ export const Editor: React.FC = () => {
       )}
 
       {/* Selection Floating Toolbar */}
-      <SelectionToolbar onAction={handleRewriteAction} />
+      <SelectionToolbar />
     </div>
   )
 }
