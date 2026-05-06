@@ -32,8 +32,11 @@ import {
   renderSafeMarkdown,
 } from '../utils/safeContent'
 import SelectionToolbar from '../components/editor/SelectionToolbar'
+import EditorStatusBar from '../components/editor/EditorStatusBar'
 import { useShallow } from 'zustand/react/shallow'
 import { useSelectionStore } from '../store/useSelectionStore'
+import { useTypewriterMode } from '../hooks/useTypewriterMode'
+import { useFadeMode } from '../hooks/useFadeMode'
 
 // 精简架构：仅 4 个核心 Agent
 const agentNames = [
@@ -78,6 +81,16 @@ export const Editor: React.FC = () => {
       selectionStart: state.selectionStart,
       selectionEnd: state.selectionEnd,
       setPendingRewriteResult: state.setPendingRewriteResult,
+    }))
+  )
+
+  // Get layout state from store
+  const { focusMode, typewriterMode, fadeMode, vimMode } = useLayoutStore(
+    useShallow((state) => ({
+      focusMode: state.focusMode,
+      typewriterMode: state.typewriterMode,
+      fadeMode: state.fadeMode,
+      vimMode: state.vimMode,
     }))
   )
 
@@ -265,6 +278,12 @@ export const Editor: React.FC = () => {
     immediatelyRender: false,
   })
 
+  // Apply typewriter mode
+  useTypewriterMode(editor, typewriterMode)
+
+  // Apply fade mode
+  useFadeMode(editor, fadeMode)
+
   // Handle AI rewrite result from store
   useEffect(() => {
     if (pendingRewriteResult && editor) {
@@ -451,9 +470,6 @@ export const Editor: React.FC = () => {
   const chapterPreviewText = chapter?.content
     ? chapterContentToPreviewText(chapter.content)
     : ''
-
-  // Get layout state from store
-  const { focusMode } = useLayoutStore()
 
   // Handle missing route parameters - must be after all hooks (React Hooks rule)
   if (hasValidProjectId && (!hasValidChapterIndex || chapterIdx < 1)) {
@@ -663,7 +679,7 @@ export const Editor: React.FC = () => {
 
               {/* Editor Area - 双栏模式固定高度，单栏模式自然滚动 */}
               <div className={`flex flex-col ${inspectorOpen ? 'h-full overflow-hidden' : ''} ${inspectorOpen ? 'opacity-85' : ''} transition-opacity duration-200`}>
-                <div className={`editor-container ${inspectorOpen ? 'flex-1 overflow-y-auto min-h-0' : 'min-h-[62vh] overflow-y-auto'} rounded-comfortable border border-[var(--border-default)] bg-[var(--bg-secondary)] editor-paper transition-all duration-200 hover:border-[var(--border-strong)]`}>
+                <div className={`editor-container pb-12 ${inspectorOpen ? 'flex-1 overflow-y-auto min-h-0' : 'min-h-[62vh] overflow-y-auto'} rounded-comfortable border border-[var(--border-default)] bg-[var(--bg-secondary)] editor-paper transition-all duration-200 hover:border-[var(--border-strong)]`}>
                   {editor && (
                     <EditorContent
                       editor={editor}
@@ -766,6 +782,9 @@ export const Editor: React.FC = () => {
 
       {/* Selection Floating Toolbar */}
       <SelectionToolbar />
+
+      {/* Editor Status Bar */}
+      <EditorStatusBar />
     </div>
   )
 }

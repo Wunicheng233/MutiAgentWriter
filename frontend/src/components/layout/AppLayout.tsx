@@ -9,11 +9,13 @@ import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts'
 import { NavRail } from './NavRail'
 import { CanvasContainer } from './CanvasContainer'
 import { RightPanel } from './RightPanel'
-import { AIChatPanel } from '../ai/AIChatPanel'
+import { AIPanel } from '../ai/AIPanel'
+import SelectionAIPanel from '../editor/SelectionAIPanel'
 import { FloatingToggleButton } from '../FloatingToggleButton'
 import { NavBar } from '../NavBar'
 import { ProjectHeader } from './ProjectHeader'
 import { getProject } from '../../utils/endpoints'
+import CommandPalette from '../CommandPalette/CommandPalette'
 
 const NavExpandIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -33,6 +35,7 @@ export const AppLayout = () => {
     navCollapsed,
     rightPanelOpen,
     rightPanelWidth,
+    rightPanelTab,
     focusMode,
     setRightPanelWidth,
     setRightPanelOpen,
@@ -42,6 +45,7 @@ export const AppLayout = () => {
       navCollapsed: state.navCollapsed,
       rightPanelOpen: state.rightPanelOpen,
       rightPanelWidth: state.rightPanelWidth,
+      rightPanelTab: state.rightPanelTab,
       focusMode: state.focusMode,
       setRightPanelWidth: state.setRightPanelWidth,
       setRightPanelOpen: state.setRightPanelOpen,
@@ -156,13 +160,20 @@ export const AppLayout = () => {
             onResize={setRightPanelWidth}
             onClose={() => setRightPanelOpen(false)}
           >
-            <AIChatPanel />
+            {rightPanelTab === 'selection' ? (
+              <SelectionAIPanel isOpen={rightPanelOpen} />
+            ) : (
+              <AIPanel />
+            )}
           </RightPanel>
         </div>
       )}
 
       {/* Floating button to open AI panel (only shown when closed) */}
       <FloatingToggleButton />
+
+      {/* Global Command Palette */}
+      <CommandPalette />
     </div>
   )
 }
