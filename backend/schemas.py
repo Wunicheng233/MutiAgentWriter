@@ -5,7 +5,7 @@ Pydantic 请求/响应模式
 
 from typing import Optional, List, Dict
 from datetime import datetime
-from pydantic import BaseModel, ConfigDict, field_serializer
+from pydantic import BaseModel, ConfigDict, Field, field_serializer
 
 
 # ========== User ==========
@@ -48,6 +48,69 @@ class Token(BaseModel):
     access_token: str
     token_type: str
     user: UserResponse
+
+
+class GenerationQuotaResponse(BaseModel):
+    daily_limit: Optional[int] = None
+    used_today: int
+    remaining_today: Optional[int] = None
+    reset_at: datetime
+    api_source: str = "system"
+    platform_token_budget_applies: bool = True
+    monthly_token_limit: Optional[int] = None
+    monthly_tokens_used: int
+    monthly_tokens_remaining: Optional[int] = None
+    monthly_reset_at: datetime
+    allowed: bool
+    reason: Optional[str] = None
+
+
+class GenerationPreflightResponse(BaseModel):
+    start_chapter: int
+    end_chapter: int
+    chapter_count: int
+    target_words_per_chapter: int
+    estimated_output_words: int
+    estimated_token_count: int
+    api_source: str
+    platform_token_budget_applies: bool
+    monthly_token_limit: Optional[int] = None
+    monthly_tokens_remaining: Optional[int] = None
+    daily_remaining: Optional[int] = None
+    quota_allowed: bool
+    risk_level: str
+    messages: List[str] = []
+
+
+class ProblemReportCreate(BaseModel):
+    category: str = Field("bug", max_length=30)
+    severity: str = Field("medium", max_length=20)
+    title: Optional[str] = Field(None, max_length=120)
+    description: str = Field(..., min_length=5, max_length=4000)
+    page_url: Optional[str] = Field(None, max_length=500)
+    route: Optional[str] = Field(None, max_length=240)
+    project_id: Optional[int] = None
+    task_id: Optional[int] = None
+    user_agent: Optional[str] = Field(None, max_length=500)
+    context: Optional[Dict] = None
+
+
+class ProblemReportResponse(BaseModel):
+    id: int
+    user_id: Optional[int] = None
+    project_id: Optional[int] = None
+    task_id: Optional[int] = None
+    category: str
+    severity: str
+    status: str
+    title: Optional[str] = None
+    description: str
+    page_url: Optional[str] = None
+    route: Optional[str] = None
+    context: Optional[Dict] = None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ========== Generation Task ==========

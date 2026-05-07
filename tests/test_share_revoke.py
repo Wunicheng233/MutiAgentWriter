@@ -5,6 +5,7 @@
 
 import unittest
 import secrets
+import datetime
 
 from backend.main import app
 from backend.models import ShareLink, Chapter
@@ -195,6 +196,54 @@ class TestShareLinkRevoke(unittest.TestCase):
             # THEN: 章节访问不再有效
             response = self.client.get(f"/api/share/{share_token}/chapters/1")
             self.assertEqual(response.status_code, 404)
+        finally:
+            db.close()
+
+    def test_owner_can_create_share_link_with_custom_expiration_and_view_stats(self):
+        """测试：创建分享链接时可以设置有效期，公开访问会累计访问次数"""
+        db = self.base.SessionLocal()
+        try:
+            user = self.base._create_user("share_stats_owner", "share_stats@example.com")
+            self.base._set_current_user(user)
+            project = self.base._create_project(owner=user, name="Stats Project")
+
+            response = self.client.post(
+                f"/api/projects/{project.id}/share",
+                json={"expires_in_days": 30},
+            )
+            self.assertEqual(response.status_code, 200)
+            payload = response.json()
+            self.assertEqual(payload["view_count"], 0)
+            expires_at = datetime.datetime.fromisoformat(payload["expires_at"].replace("Z", "+00:00"))
+            delta = expires_at.replace(tzinfo=None) - datetime.datetime.utcnow()
+            self.assertGreater(delta.days, 28)
+            self.assertLess(delta.days, 31)
+
+            self.client.get(f"/api/share/{payload['share_token']}")
+            self.client.get(f"/api/share/{payload['share_token']}")
+
+            status_response = self.client.get(f"/api/projects/{project.id}/share")
+            self.assertEqual(status_response.status_code, 200)
+            status_payload = status_response.json()
+            self.assertTrue(status_payload["exists"])
+            self.assertEqual(status_payload["view_count"], 2)
+            self.assertIsNotNone(status_payload["last_viewed_at"])
+        finally:
+            db.close()
+
+    def test_share_link_rejects_too_long_expiration_window(self):
+        """测试：公测阶段分享链接有效期不能无限延长"""
+        db = self.base.SessionLocal()
+        try:
+            user = self.base._create_user("share_window_owner", "share_window@example.com")
+            self.base._set_current_user(user)
+            project = self.base._create_project(owner=user, name="Window Project")
+
+            response = self.client.post(
+                f"/api/projects/{project.id}/share",
+                json={"expires_in_days": 365},
+            )
+            self.assertEqual(response.status_code, 422)
         finally:
             db.close()
 

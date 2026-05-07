@@ -9,8 +9,13 @@ import { useProjectStore, type ProjectStatus } from '../store/useProjectStore'
 import type { BadgeVariant } from '../components/v2'
 import {
   getChapter,
+  cancelGeneration,
+  cleanStuckTasks,
+  getGenerationPreflight,
+  getGenerationQuota,
   getProject,
   getProjectTokenStats,
+  resumeGeneration,
   triggerGenerate,
   confirmTask,
 } from '../utils/endpoints'
@@ -134,6 +139,10 @@ function formatDateTime(value?: string): string {
   return new Date(value).toLocaleString()
 }
 
+function formatInteger(value?: number | null): string {
+  return typeof value === 'number' && Number.isFinite(value) ? value.toLocaleString() : '-'
+}
+
 function getFlowStepStatus(project: Project, stepKey: string): 'done' | 'active' | 'idle' {
   const currentStep = inferCurrentFlowStep(project)
   const currentIndex = flowSteps.findIndex(step => step.key === currentStep)
@@ -196,8 +205,8 @@ function getRunSummary(project: Project): {
   if (project.status === 'failed' || task?.status === 'failure') {
     return {
       headline: '最近一次运行失败',
-      detail: task?.error_message || '建议检查任务状态后重新发起生成。',
-      ctaLabel: '重新生成',
+      detail: task?.error_message || '建议检查任务状态后从未完成章节继续生成。',
+      ctaLabel: '继续生成',
     }
   }
 
@@ -256,6 +265,8 @@ export const ProjectOverview: React.FC = () => {
   const [confirmModalOpen, setConfirmModalOpen] = useState(false)
   const [confirmFeedback, setConfirmFeedback] = useState('')
   const [confirming, setConfirming] = useState(false)
+  const [recovering, setRecovering] = useState(false)
+  const [cancelling, setCancelling] = useState(false)
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['project', projectId],
@@ -277,6 +288,18 @@ export const ProjectOverview: React.FC = () => {
   const { data: tokenStats } = useQuery({
     queryKey: ['project-token-stats', projectId],
     queryFn: () => getProjectTokenStats(projectId),
+    enabled: isValidProjectId && !!data,
+  })
+
+  const { data: generationQuota } = useQuery({
+    queryKey: ['generation-quota'],
+    queryFn: getGenerationQuota,
+    enabled: isValidProjectId && !!data,
+  })
+
+  const { data: generationPreflight } = useQuery({
+    queryKey: ['generation-preflight', projectId],
+    queryFn: () => getGenerationPreflight(projectId),
     enabled: isValidProjectId && !!data,
   })
 
@@ -343,11 +366,21 @@ export const ProjectOverview: React.FC = () => {
   }, [isWaitingConfirm, location.search])
 
   const handleTriggerGenerate = async () => {
+    if (generationPreflight?.risk_level === 'blocked') {
+      showToast(generationPreflight.messages?.[0] || '请先修正生成前检查中提示的问题', 'error')
+      return
+    }
+    if (generationQuota && !generationQuota.allowed) {
+      showToast(generationQuota.reason || '今日生成配额不足', 'error')
+      return
+    }
+
     try {
       const isRegenerate = data?.status !== 'draft'
       await triggerGenerate(projectId, isRegenerate)
       showToast(isRegenerate ? '重新生成任务已提交，已有章节已清空' : '生成任务已提交', 'success')
       refetch()
+      queryClient.invalidateQueries({ queryKey: ['generation-quota'] })
     } catch (error: unknown) {
       showToast(getErrorMessage(error, '提交失败'), 'error')
     }
@@ -371,6 +404,56 @@ export const ProjectOverview: React.FC = () => {
     }
   }
 
+  const handleCleanStuckTasks = async () => {
+    try {
+      setRecovering(true)
+      const result = await cleanStuckTasks(projectId)
+      showToast(result.message || '已清理卡住任务', 'success')
+      queryClient.invalidateQueries({ queryKey: ['project', projectId] })
+      queryClient.invalidateQueries({ queryKey: ['project-global-status', projectId] })
+    } catch (error: unknown) {
+      showToast(getErrorMessage(error, '恢复失败'), 'error')
+    } finally {
+      setRecovering(false)
+    }
+  }
+
+  const handleResumeGeneration = async () => {
+    if (generationQuota && !generationQuota.allowed) {
+      showToast(generationQuota.reason || '今日生成配额不足', 'error')
+      return
+    }
+
+    try {
+      setRecovering(true)
+      await resumeGeneration(projectId)
+      showToast('已从未完成章节继续生成', 'success')
+      queryClient.invalidateQueries({ queryKey: ['project', projectId] })
+      queryClient.invalidateQueries({ queryKey: ['project-global-status', projectId] })
+      queryClient.invalidateQueries({ queryKey: ['generation-quota'] })
+      queryClient.invalidateQueries({ queryKey: ['generation-preflight', projectId] })
+    } catch (error: unknown) {
+      showToast(getErrorMessage(error, '继续生成失败'), 'error')
+    } finally {
+      setRecovering(false)
+    }
+  }
+
+  const handleCancelGeneration = async () => {
+    try {
+      setCancelling(true)
+      const result = await cancelGeneration(projectId)
+      showToast(result.message || '生成任务已取消', 'success')
+      queryClient.invalidateQueries({ queryKey: ['project', projectId] })
+      queryClient.invalidateQueries({ queryKey: ['project-global-status', projectId] })
+      queryClient.invalidateQueries({ queryKey: ['generation-quota'] })
+    } catch (error: unknown) {
+      showToast(getErrorMessage(error, '取消失败'), 'error')
+    } finally {
+      setCancelling(false)
+    }
+  }
+
   if (isLoading) {
     return <p className="text-[var(--text-secondary)]">加载中...</p>
   }
@@ -381,6 +464,10 @@ export const ProjectOverview: React.FC = () => {
 
   const config = data.config
   const workflow = data.current_generation_task?.current_workflow_run
+  const isFailedProject = data.status === 'failed' || data.current_generation_task?.status === 'failure'
+  const canCancelGeneration = ['pending', 'started', 'progress'].includes(data.current_generation_task?.status || '')
+  const canCleanStuckTask = ['pending', 'started', 'progress'].includes(data.current_generation_task?.status || '')
+  const recoveryMessage = data.current_generation_task?.error_message || '上一次生成没有正常完成，可以检查模型配置后重试。'
   const runSummary = getRunSummary(data)
   const targetStart = config?.start_chapter ?? 1
   const targetEnd = config?.end_chapter ?? 10
@@ -391,6 +478,35 @@ export const ProjectOverview: React.FC = () => {
   const workflowProgress = data.status === 'completed' ? 100 : data.current_generation_task ? Math.min(data.current_generation_task.progress * 100, 100) : completedChapterRatio
   const workflowMeta = renderWorkflowMeta(workflow)
   const agentStates = getAgentStates(data)
+  const quotaLabel = generationQuota
+    ? generationQuota.daily_limit
+      ? `今日生成 ${generationQuota.remaining_today ?? 0} / ${generationQuota.daily_limit}`
+      : '今日生成 不限'
+    : null
+  const apiSourceLabel = generationQuota?.api_source === 'user'
+    ? '自带 Key，不占用平台 Token 预算'
+    : null
+  const tokenBudgetLabel = generationQuota?.platform_token_budget_applies && generationQuota.monthly_token_limit
+    ? `本月 Token ${formatInteger(generationQuota.monthly_tokens_remaining)} / ${formatInteger(generationQuota.monthly_token_limit)}`
+    : null
+  const preflightSummary = generationPreflight
+    ? `生成预估：${generationPreflight.chapter_count} 章 · 约 ${formatInteger(generationPreflight.estimated_output_words)} 字 · 约 ${formatInteger(generationPreflight.estimated_token_count)} Token`
+    : null
+  const preflightMessage = generationPreflight?.messages?.[0]
+  const preflightMessageClass = generationPreflight?.risk_level === 'blocked'
+    ? 'text-[var(--badge-error-text)]'
+    : generationPreflight?.risk_level === 'warning'
+      ? 'text-[var(--badge-warning-text)]'
+      : 'text-[var(--text-muted)]'
+  const quotaBlocksGeneration = Boolean(generationQuota && !generationQuota.allowed && !isWaitingConfirm && !runSummary.ctaHref)
+  const preflightBlocksGeneration = Boolean(generationPreflight?.risk_level === 'blocked' && !isWaitingConfirm && !runSummary.ctaHref)
+  const generationBlocked = quotaBlocksGeneration || preflightBlocksGeneration
+  const quotaBlockedByMonthlyToken = Boolean(generationQuota?.reason?.includes('Token'))
+  const generateButtonLabel = generationBlocked
+    ? preflightBlocksGeneration
+      ? '先修正模型配置'
+      : quotaBlockedByMonthlyToken ? '本月 Token 预算已用完' : '今日生成次数已用完'
+    : runSummary.ctaLabel
   const chapterPreviewText = chapterPreview?.content
     ? chapterContentToPreviewText(chapterPreview.content)
     : ''
@@ -403,8 +519,32 @@ export const ProjectOverview: React.FC = () => {
   return (
     <div className="mx-auto max-w-content space-y-6">
       {/* 等待确认醒目标识 */}
+      {isFailedProject && (
+        <Card className="border-[var(--badge-error-border)] bg-[var(--badge-error-bg)]/20">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <h3 className="text-lg font-semibold text-[var(--badge-error-text)]">生成失败，可以恢复</h3>
+              <p className="mt-1 text-[var(--text-secondary)]">{recoveryMessage}</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="primary" size="sm" onClick={handleResumeGeneration} disabled={generationBlocked || recovering}>
+                {recovering ? '提交中...' : '继续生成'}
+              </Button>
+              <Button variant="secondary" size="sm" onClick={handleTriggerGenerate} disabled={generationBlocked || recovering}>
+                重新生成
+              </Button>
+              {canCleanStuckTask && (
+                <Button variant="secondary" size="sm" onClick={handleCleanStuckTasks} disabled={recovering}>
+                  {recovering ? '清理中...' : '清理卡住任务'}
+                </Button>
+              )}
+            </div>
+          </div>
+        </Card>
+      )}
+
       {isWaitingConfirm && (
-        <Card className="border-[var(--accent-primary)] bg-[var(--accent-primary)]/10">
+        <Card className="border-[var(--accent-primary)] bg-[var(--accent-primary)]/10" data-tour="overview-confirmation">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
               <h3 className="text-lg font-semibold text-[var(--accent-primary)]">{runSummary.headline}</h3>
@@ -449,6 +589,15 @@ export const ProjectOverview: React.FC = () => {
             {tokenStats && tokenStats.total_tokens > 0 && (
               <span>约 ${tokenStats.estimated_cost_usd.toFixed(4)}</span>
             )}
+            {tokenStats && (tokenStats.system_api_tokens ?? 0) > 0 && (
+              <span>平台 API {formatInteger(tokenStats.system_api_tokens)} Token</span>
+            )}
+            {tokenStats && (tokenStats.user_api_tokens ?? 0) > 0 && (
+              <span>自带 Key {formatInteger(tokenStats.user_api_tokens)} Token</span>
+            )}
+            {quotaLabel && <span>{quotaLabel}</span>}
+            {apiSourceLabel && <span>{apiSourceLabel}</span>}
+            {tokenBudgetLabel && <span>{tokenBudgetLabel}</span>}
           </div>
         </div>
 
@@ -460,7 +609,7 @@ export const ProjectOverview: React.FC = () => {
                 <p className="mt-2 text-[var(--text-secondary)]">{config.core_hook}</p>
               )}
             </div>
-            <div className="w-full md:w-96 space-y-4">
+            <div className="w-full md:w-96 space-y-4" data-tour="overview-generate">
               <div className="flex items-center justify-between">
                 <p className="text-sm text-[var(--text-secondary)]">项目进度</p>
                 <p className="text-sm font-medium text-[var(--text-primary)]">{Math.round(workflowProgress)}%</p>
@@ -471,13 +620,18 @@ export const ProjectOverview: React.FC = () => {
                   <Button variant="primary" size="sm" onClick={() => setConfirmModalOpen(true)}>
                     {runSummary.ctaLabel}
                   </Button>
-                ) : runSummary.ctaHref ? (
-                    <Link to={runSummary.ctaHref}>
-                      <Button variant="primary" size="sm">{runSummary.ctaLabel}</Button>
-                    </Link>
+                ) : isFailedProject ? null : runSummary.ctaHref ? (
+                  <Link to={runSummary.ctaHref}>
+                    <Button variant="primary" size="sm">{runSummary.ctaLabel}</Button>
+                  </Link>
                 ) : (
-                  <Button variant="primary" size="sm" onClick={handleTriggerGenerate}>
-                    {runSummary.ctaLabel}
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={handleTriggerGenerate}
+                    disabled={generationBlocked}
+                  >
+                    {generateButtonLabel}
                   </Button>
                 )}
                 {/* 主按钮不是"查看章节"时才显示章节按钮 */}
@@ -492,7 +646,26 @@ export const ProjectOverview: React.FC = () => {
                 <Link to={`/projects/${projectId}/export`}>
                   <Button variant="secondary" size="sm">导出</Button>
                 </Link>
+                {canCancelGeneration && (
+                  <Button variant="secondary" size="sm" onClick={handleCancelGeneration} disabled={cancelling}>
+                    {cancelling ? '取消中...' : '取消生成'}
+                  </Button>
+                )}
               </div>
+              {quotaBlocksGeneration && generationQuota?.reason && (
+                <p className="text-xs text-[var(--badge-error-text)]">{generationQuota.reason}</p>
+              )}
+              {preflightBlocksGeneration && preflightMessage && (
+                <p className="text-xs text-[var(--badge-error-text)]">{preflightMessage}</p>
+              )}
+              {preflightSummary && (
+                <div className="space-y-1 text-xs">
+                  <p className="text-[var(--text-secondary)]">{preflightSummary}</p>
+                  {preflightMessage && (
+                    <p className={preflightMessageClass}>{preflightMessage}</p>
+                  )}
+                </div>
+              )}
           </div>
         </div>
       </Card>

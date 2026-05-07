@@ -20,7 +20,7 @@ export const Login: React.FC = () => {
     onSuccess: (data) => {
       setUser(data.user)
       showToast('登录成功', 'success')
-      navigate('/')
+      navigate('/dashboard', { replace: true })
     },
     onError: (error: unknown) => {
       showToast(getErrorMessage(error, '登录失败'), 'error')

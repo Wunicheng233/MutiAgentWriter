@@ -342,6 +342,85 @@ class ReviewFixRegressionTests(BaseWorkflowTestCase):
         self.assertEqual(result, "成功")
         self.assertFalse(any("Failed to record token usage" in warning for warning in warnings))
 
+    def test_volc_records_provider_and_api_source_on_token_usage(self):
+        class FakeMessage:
+            content = "成功"
+
+        class FakeChoice:
+            message = FakeMessage()
+
+        class FakeUsage:
+            prompt_tokens = 10
+            completion_tokens = 5
+            total_tokens = 15
+
+        class FakeResponse:
+            choices = [FakeChoice()]
+            usage = FakeUsage()
+
+        class FakeCompletions:
+            def create(self, **kwargs):
+                return FakeResponse()
+
+        class FakeClient:
+            def __init__(self):
+                self.chat = SimpleNamespace(completions=FakeCompletions())
+
+        class FakeSession:
+            def __init__(self):
+                self.usage = None
+                self.closed = False
+
+            def add(self, usage):
+                self.usage = usage
+
+            def commit(self):
+                return None
+
+            def rollback(self):
+                return None
+
+            def close(self):
+                self.closed = True
+
+        fake_session = FakeSession()
+        project_config = {
+            "llm": {
+                "api_source": "user",
+                "default_provider": "deepseek",
+                "providers": {
+                    "deepseek": {
+                        "api_key": "sk-user-owned-key",
+                        "base_url": "https://api.deepseek.com",
+                        "model": "deepseek-chat",
+                    },
+                },
+            },
+        }
+
+        original_load_prompt = file_utils.load_prompt
+        original_session_local = database_module.SessionLocal
+        try:
+            file_utils.load_prompt = lambda *args, **kwargs: "system"
+            database_module.SessionLocal = lambda: fake_session
+            result = volc_engine.call_volc_api(
+                agent_role="writer",
+                user_input="input",
+                client=FakeClient(),
+                user_id=1,
+                project_id=1,
+                project_config=project_config,
+            )
+        finally:
+            file_utils.load_prompt = original_load_prompt
+            database_module.SessionLocal = original_session_local
+
+        self.assertEqual(result, "成功")
+        self.assertIsNotNone(fake_session.usage)
+        self.assertEqual(fake_session.usage.provider, "deepseek")
+        self.assertEqual(fake_session.usage.api_source, "user")
+        self.assertTrue(fake_session.closed)
+
     def test_vector_db_writes_use_upsert_for_chapter_and_setting(self):
         class FakeCollection:
             def __init__(self):

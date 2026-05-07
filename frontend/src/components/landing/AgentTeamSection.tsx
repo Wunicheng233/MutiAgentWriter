@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useScrollReveal } from '../../hooks/useScrollReveal'
 
 interface AgentDetail {

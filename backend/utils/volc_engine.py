@@ -4,7 +4,7 @@ from backend.utils.logger import logger
 from backend.utils.file_utils import load_prompt
 from backend.core.llm.model_registry import ModelRoute, resolve_model_route
 from backend.core.llm.router import LLMRouter
-from backend.core.llm.types import LLMRequest
+from backend.core.llm.types import LLMError, LLMRequest
 
 # LLM API 调用超时设置（秒）
 LLM_API_TIMEOUT = 180  # 3分钟，对于长文本生成应该足够
@@ -152,6 +152,8 @@ def call_volc_api(
                             project_id=project_id,
                             agent_name=agent_role,
                             model=route.model,
+                            provider=route.provider,
+                            api_source=route.api_source,
                             prompt_tokens=prompt_tokens,
                             completion_tokens=completion_tokens,
                             total_tokens=total_tokens,
@@ -170,6 +172,8 @@ def call_volc_api(
             return result
         except Exception as e:
             remaining_retries -= 1
+            if isinstance(e, LLMError) and not e.retryable:
+                remaining_retries = 0
             logger.error(f"{agent_role} Agent调用失败：{type(e).__name__}: {e}，剩余重试次数：{remaining_retries}", exc_info=True)
             # 连接出错时清除缓存，下次重新创建
             if agent_role in _client_cache:
@@ -177,6 +181,8 @@ def call_volc_api(
             _runtime_router.reset_provider_cache(route.provider, route.api_key, route.base_url)
             if remaining_retries <= 0:
                 logger.error(f"{agent_role} Agent已重试{max_retries}次仍失败，放弃重试")
+                if isinstance(e, LLMError):
+                    raise RuntimeError(f"{agent_role} Agent调用失败: {e}") from e
                 raise RuntimeError(f"{agent_role} Agent调用失败，已达到最大重试次数: {e}") from e
             time.sleep(2)
 
@@ -191,4 +197,5 @@ def _resolve_model_route(agent_role: str, project_config: dict | None) -> ModelR
         base_url=BASE_URL,
         prompt_price=0.0,
         completion_price=0.0,
+        api_source="system",
     )

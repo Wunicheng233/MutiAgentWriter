@@ -6,25 +6,40 @@
 
 from __future__ import annotations
 
+import datetime
 import logging
 import os
+import secrets
 from pathlib import Path
 from typing import Any, List
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
-from sqlalchemy import desc
+from sqlalchemy import case, desc, func
 from sqlalchemy.exc import IntegrityError
 
 logger = logging.getLogger(__name__)
 
 from backend.database import get_db
-from backend.models import User, Project, Chapter, GenerationTask, WorkflowRun, Artifact
+from backend.models import (
+    User,
+    Project,
+    Chapter,
+    GenerationTask,
+    WorkflowRun,
+    Artifact,
+    ShareLink,
+    TokenUsage,
+    ProjectCollaborator,
+    ReadingProgress,
+)
 from backend.task_dispatch import dispatch_tracked_task, make_task_id
 from backend.task_status import (
     active_project_tasks_query,
+    get_active_user_generation_task,
     get_active_project_task,
     mark_active_project_tasks_terminal,
+    mark_task_terminal,
     ACTIVE_TASK_STATUSES,
 )
 from celery_app import celery_app
@@ -39,11 +54,15 @@ from backend.schemas import (
     WorkflowRunListResponse,
     ChapterSummary,
     GenerationTaskResponse,
+    GenerationPreflightResponse,
     QualityAnalytics,
 )
 from backend.deps import get_current_user
 from backend.workflow_service import create_generation_workflow_run, serialize_workflow_run
 from backend.core.config import settings
+from backend.auth import get_user_llm_config_issues
+from backend.services.generation_preflight import build_generation_preflight
+from backend.services.generation_quota import get_generation_quota_status
 from backend.rate_limiter import limit_requests_by_user
 
 # 导入Celery任务（可选）
@@ -742,6 +761,240 @@ def _validate_project_config(config: dict | None, *, project_name: str | None = 
     _validate_generation_config(config, project_name=project_name)
 
 
+def _get_configured_generation_range(project: Project) -> tuple[int, int]:
+    config = project.config or {}
+    start_chapter = _positive_int(config.get("start_chapter"), default=1)
+    end_chapter = _positive_int(config.get("end_chapter"), default=10)
+    return start_chapter, end_chapter
+
+
+def _ensure_generation_can_start(db: Session, project: Project, current_user: User) -> None:
+    llm_issues = get_user_llm_config_issues(current_user)
+    if llm_issues:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="模型配置不完整：" + "；".join(llm_issues) + "。请到设置页修正后再开始生成。",
+        )
+
+    quota_status = get_generation_quota_status(db, current_user)
+    if not quota_status.allowed:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=quota_status.reason or "今日生成配额不足",
+        )
+
+    running_task = get_active_project_task(db, project.id)
+    if running_task:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"已有运行中的任务 (task_id={running_task.celery_task_id})，请等待完成",
+        )
+
+    active_user_task = get_active_user_generation_task(db, current_user.id)
+    if active_user_task:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="已有生成任务正在运行，请先等待完成或取消当前任务后再开始新的生成。",
+        )
+
+
+def _find_resume_start_chapter(db: Session, project_id: int, start_chapter: int, end_chapter: int) -> int | None:
+    completed_rows = db.query(Chapter.chapter_index).filter(
+        Chapter.project_id == project_id,
+        Chapter.chapter_index >= start_chapter,
+        Chapter.chapter_index <= end_chapter,
+        Chapter.content.isnot(None),
+        Chapter.content != "",
+    ).all()
+    completed_indexes = {chapter_index for (chapter_index,) in completed_rows}
+
+    for chapter_index in range(start_chapter, end_chapter + 1):
+        if chapter_index not in completed_indexes:
+            return chapter_index
+    return None
+
+
+def _create_and_dispatch_generation_task(
+    *,
+    db: Session,
+    project: Project,
+    current_user: User,
+    start_chapter: int,
+    end_chapter: int,
+    regenerate: bool = False,
+    run_metadata_updates: dict[str, Any] | None = None,
+) -> GenerationTask:
+    celery_task_id = make_task_id("generate")
+    task = GenerationTask(
+        project_id=project.id,
+        celery_task_id=celery_task_id,
+        status="pending",
+        progress=0.0,
+        current_chapter=start_chapter,
+    )
+    db.add(task)
+    try:
+        db.flush()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="该项目已有正在运行的生成任务，请等待完成或取消后再试。",
+        )
+
+    workflow_run = create_generation_workflow_run(
+        db=db,
+        project=project,
+        generation_task=task,
+        triggered_by_user_id=current_user.id,
+        regenerate=regenerate,
+    )
+    workflow_run.current_chapter = start_chapter
+    if run_metadata_updates:
+        workflow_run.run_metadata = dict(workflow_run.run_metadata or {}) | run_metadata_updates
+
+    project.status = "generating"
+    db.commit()
+    db.refresh(task)
+
+    dispatch_tracked_task(
+        db=db,
+        task=task,
+        celery_task=generate_novel_task,
+        args=(project.file_path, str(current_user.id), start_chapter, end_chapter),
+        project=project,
+    )
+
+    return task
+
+
+@router.get("/{project_id}/generation-preflight", response_model=GenerationPreflightResponse, summary="获取生成前预检")
+def get_generation_preflight(
+    project_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Estimate the current generation range before dispatching a Celery task."""
+    project = check_project_access(project_id, current_user, db, require_owner=False, min_role="editor")
+    if not project:
+        existing_project = db.query(Project).filter(Project.id == project_id).first()
+        if not existing_project:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="项目不存在",
+            )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="权限不足：需要 editor 或所有者角色才能查看生成预检",
+        )
+
+    _validate_project_config(project.config, project_name=project.name)
+    return build_generation_preflight(db, project, current_user)
+
+
+@router.post("/{project_id}/cancel-generation", summary="取消当前生成任务")
+def cancel_generation(
+    project_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Cooperatively cancel the active generation task for a project."""
+    project = check_project_access(project_id, current_user, db, require_owner=False, min_role="editor")
+    if not project:
+        existing_project = db.query(Project).filter(Project.id == project_id).first()
+        if not existing_project:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="项目不存在",
+            )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="权限不足：需要 editor 或所有者角色才能取消生成任务",
+        )
+
+    active_tasks = active_project_tasks_query(db, project_id).all()
+    if not active_tasks:
+        return {"status": "ok", "message": "没有正在运行的生成任务", "cancelled_count": 0}
+
+    mark_active_project_tasks_terminal(
+        db=db,
+        project_id=project_id,
+        task_status="cancelled",
+        current_step_key="cancelled",
+        error_message="User cancelled this generation task",
+        metadata_updates={"cancelled_by": "user"},
+    )
+
+    for task in active_tasks:
+        try:
+            celery_app.control.revoke(task.celery_task_id)
+        except Exception as exc:
+            logger.warning("Failed to revoke celery task %s: %s", task.celery_task_id, exc)
+
+    remaining_chapters = db.query(Chapter).filter(Chapter.project_id == project_id).count()
+    project.status = "completed" if remaining_chapters > 0 else "draft"
+    db.commit()
+
+    return {
+        "status": "ok",
+        "message": "生成任务已取消",
+        "cancelled_count": len(active_tasks),
+    }
+
+
+@router.post("/{project_id}/resume-generation", response_model=GenerationTaskResponse, summary="从最后成功章节继续生成")
+def resume_generation(
+    project_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Resume a failed or cancelled generation without deleting completed chapters."""
+    if not CELERY_AVAILABLE:
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="Celery 异步任务未配置，请先安装 celery 和 redis",
+        )
+
+    project = check_project_access(project_id, current_user, db, require_owner=False, min_role="editor")
+    if not project:
+        existing_project = db.query(Project).filter(Project.id == project_id).first()
+        if not existing_project:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="项目不存在",
+            )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="权限不足：需要 editor 或所有者角色才能继续生成任务",
+        )
+
+    _validate_project_config(project.config, project_name=project.name)
+    _ensure_generation_can_start(db, project, current_user)
+
+    start_chapter, end_chapter = _get_configured_generation_range(project)
+    resume_start = _find_resume_start_chapter(db, project.id, start_chapter, end_chapter)
+    if resume_start is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="目标章节范围已全部生成，无需继续生成。",
+        )
+
+    return _create_and_dispatch_generation_task(
+        db=db,
+        project=project,
+        current_user=current_user,
+        start_chapter=resume_start,
+        end_chapter=end_chapter,
+        regenerate=False,
+        run_metadata_updates={
+            "resume": True,
+            "resume_from_chapter": resume_start,
+            "resume_to_chapter": end_chapter,
+            "resume_after_chapter": resume_start - 1 if resume_start > start_chapter else None,
+        },
+    )
+
+
 @router.post("/{project_id}/generate", response_model=GenerationTaskResponse, summary="触发生成任务")
 def trigger_generation(
     project_id: int,
@@ -777,14 +1030,7 @@ def trigger_generation(
         )
 
     _validate_project_config(project.config, project_name=project.name)
-
-    # 检查是否已有运行中的任务
-    running_task = get_active_project_task(db, project_id)
-    if running_task:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"已有运行中的任务 (task_id={running_task.celery_task_id})，请等待完成"
-        )
+    _ensure_generation_can_start(db, project, current_user)
 
     # 如果是重新生成，清空所有已生成的章节文件和数据库记录
     if regenerate:
@@ -814,53 +1060,17 @@ def trigger_generation(
                 logger.warning(f"Failed to clear existing chapters for regenerate: {e}")
         db.commit()
 
-    project_dir = project.file_path
-    celery_task_id = make_task_id("generate")
+    # 获取章节范围，确保连续生成所有章节
+    project_start_chapter, project_end_chapter = _get_configured_generation_range(project)
 
-    # 创建任务记录
-    task = GenerationTask(
-        project_id=project.id,
-        celery_task_id=celery_task_id,
-        status="pending",
-        progress=0.0,
-    )
-    db.add(task)
-    try:
-        db.flush()
-    except IntegrityError:
-        # 数据库级别的唯一约束冲突：已有活跃任务
-        # 这是防止 TOCTOU 竞态条件的最后一道防线
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="该项目已有正在运行的生成任务，请等待完成或取消后再试。"
-        )
-
-    create_generation_workflow_run(
+    return _create_and_dispatch_generation_task(
         db=db,
         project=project,
-        generation_task=task,
-        triggered_by_user_id=current_user.id,
+        current_user=current_user,
+        start_chapter=project_start_chapter,
+        end_chapter=project_end_chapter,
         regenerate=regenerate,
     )
-
-    project.status = "generating"
-    db.commit()
-    db.refresh(task)
-
-    # 获取章节范围，确保连续生成所有章节
-    project_start_chapter = project.config.get("start_chapter", 1) if project.config else 1
-    project_end_chapter = project.config.get("end_chapter", 10) if project.config else 10
-
-    dispatch_tracked_task(
-        db=db,
-        task=task,
-        celery_task=generate_novel_task,
-        args=(project_dir, str(current_user.id), project_start_chapter, project_end_chapter),
-        project=project,
-    )
-
-    return task
 
 
 @router.get("/{project_id}/analytics", response_model=QualityAnalytics, summary="获取质量分析")
@@ -1068,11 +1278,6 @@ def download_export(
     )
 
 
-from pydantic import BaseModel
-from backend.models import TokenUsage, ProjectCollaborator
-from backend.core.config import settings
-
-
 def check_project_access(
     project_id: int,
     current_user: User,
@@ -1136,6 +1341,8 @@ class TokenUsageStats(BaseModel):
     total_prompt_tokens: int
     total_completion_tokens: int
     total_tokens: int
+    system_api_tokens: int
+    user_api_tokens: int
     estimated_cost_usd: float
 
 @router.get("/{project_id}/token-stats", response_model=TokenUsageStats, summary="获取项目Token使用统计")
@@ -1152,11 +1359,12 @@ def get_project_token_stats(
             detail="项目不存在"
         )
 
-    from sqlalchemy import func
     stats = db.query(
         func.sum(TokenUsage.prompt_tokens).label("total_prompt"),
         func.sum(TokenUsage.completion_tokens).label("total_completion"),
         func.sum(TokenUsage.total_tokens).label("total"),
+        func.sum(case((TokenUsage.api_source == "user", 0), else_=TokenUsage.total_tokens)).label("system_total"),
+        func.sum(case((TokenUsage.api_source == "user", TokenUsage.total_tokens), else_=0)).label("user_total"),
     ).filter(
         TokenUsage.project_id == project_id,
         TokenUsage.user_id == current_user.id
@@ -1165,6 +1373,8 @@ def get_project_token_stats(
     total_prompt = stats[0] or 0
     total_completion = stats[1] or 0
     total = stats[2] or 0
+    system_api_tokens = stats[3] or 0
+    user_api_tokens = stats[4] or 0
 
     # 计算估算成本
     estimated_cost = (
@@ -1176,23 +1386,79 @@ def get_project_token_stats(
         "total_prompt_tokens": total_prompt,
         "total_completion_tokens": total_completion,
         "total_tokens": total,
+        "system_api_tokens": system_api_tokens,
+        "user_api_tokens": user_api_tokens,
         "estimated_cost_usd": round(estimated_cost, 4),
     }
 
 
-import secrets
-import datetime
-from backend.models import ShareLink, Chapter
-from pydantic import BaseModel
+class CreateShareRequest(BaseModel):
+    expires_in_days: int = Field(default=7, ge=1, le=90)
+
+
+class ShareLinkResponse(BaseModel):
+    exists: bool
+    share_url: str | None = None
+    share_token: str | None = None
+    is_active: bool = False
+    expires_at: str | None = None
+    view_count: int = 0
+    last_viewed_at: str | None = None
+
 
 class CreateShareResponse(BaseModel):
     share_url: str
     share_token: str
-    expires_at: str
+    expires_at: str | None
+    view_count: int = 0
+    last_viewed_at: str | None = None
+
+
+def _format_share_datetime(value: datetime.datetime | None) -> str | None:
+    return value.isoformat() + "Z" if value else None
+
+
+def _build_share_link_payload(share: ShareLink | None) -> dict[str, Any]:
+    if share is None:
+        return {"exists": False}
+    return {
+        "exists": True,
+        "share_url": f"/share/{share.share_token}",
+        "share_token": share.share_token,
+        "is_active": bool(share.is_active),
+        "expires_at": _format_share_datetime(share.expires_at),
+        "view_count": int(share.view_count or 0),
+        "last_viewed_at": _format_share_datetime(share.last_viewed_at),
+    }
+
+
+def _resolve_share_expiration(request: CreateShareRequest | None) -> datetime.datetime:
+    expires_in_days = request.expires_in_days if request is not None else 7
+    return datetime.datetime.utcnow() + datetime.timedelta(days=expires_in_days)
+
+
+@router.get("/{project_id}/share", response_model=ShareLinkResponse, summary="获取分享链接状态")
+def get_share_link_status(
+    project_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Return the owner's current share link and lightweight public-read stats."""
+    project = check_project_access(project_id, current_user, db, require_owner=True)
+    if not project:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="项目不存在",
+        )
+
+    share = db.query(ShareLink).filter(ShareLink.project_id == project_id).first()
+    return _build_share_link_payload(share)
+
 
 @router.post("/{project_id}/share", response_model=CreateShareResponse, summary="创建分享链接")
 def create_share_link(
     project_id: int,
+    share_request: CreateShareRequest | None = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
     _rate_limit: None = Depends(limit_requests_by_user(max_requests=10, window_seconds=60, action_key="share_create")),
@@ -1205,23 +1471,22 @@ def create_share_link(
             detail="项目不存在"
         )
 
-    # 默认过期时间：7 天后
-    default_expires_at = datetime.datetime.utcnow() + datetime.timedelta(days=7)
+    expires_at = _resolve_share_expiration(share_request)
 
     # 检查是否已经存在分享链接
     existing = db.query(ShareLink).filter(ShareLink.project_id == project_id).first()
     if existing:
-        # 如果已存在但被撤销了，重新激活它并重置过期时间
-        if not existing.is_active:
-            existing.is_active = True
-            existing.expires_at = default_expires_at
-            db.commit()
-        # 返回已有链接
-        share_url = f"/share/{existing.share_token}"
+        existing.is_active = True
+        existing.expires_at = expires_at
+        db.commit()
+        db.refresh(existing)
+        payload = _build_share_link_payload(existing)
         return {
-            "share_url": share_url,
-            "share_token": existing.share_token,
-            "expires_at": existing.expires_at.isoformat() + "Z" if existing.expires_at else None
+            "share_url": payload["share_url"],
+            "share_token": payload["share_token"],
+            "expires_at": payload["expires_at"],
+            "view_count": payload["view_count"],
+            "last_viewed_at": payload["last_viewed_at"],
         }
 
     # 创建新分享链接，token使用32字节随机字符串
@@ -1229,16 +1494,19 @@ def create_share_link(
     share_link = ShareLink(
         project_id=project_id,
         share_token=share_token,
-        expires_at=default_expires_at,
+        expires_at=expires_at,
     )
     db.add(share_link)
     db.commit()
+    db.refresh(share_link)
 
-    share_url = f"/share/{share_token}"
+    payload = _build_share_link_payload(share_link)
     return {
-        "share_url": share_url,
-        "share_token": share_token,
-        "expires_at": share_link.expires_at.isoformat() + "Z"
+        "share_url": payload["share_url"],
+        "share_token": payload["share_token"],
+        "expires_at": payload["expires_at"],
+        "view_count": payload["view_count"],
+        "last_viewed_at": payload["last_viewed_at"],
     }
 
 
@@ -1276,9 +1544,6 @@ def revoke_share_link(
 
 
 # ========== Collaborators ==========
-
-from pydantic import BaseModel
-from backend.models import ProjectCollaborator, User
 
 class CollaboratorInfo(BaseModel):
     id: int
@@ -1502,10 +1767,6 @@ def reset_project(
 
 # ========== Reading Progress ==========
 
-import datetime
-from backend.models import ReadingProgress
-from pydantic import BaseModel
-
 class ReadingProgressRequest(BaseModel):
     chapter_index: int
     position: int
@@ -1612,17 +1873,23 @@ def clean_stuck_tasks(
             detail="项目不存在"
         )
 
-    # 查找所有卡住的未完成任务
-    stuck_tasks = mark_active_project_tasks_terminal(
-        db=db,
-        project_id=project_id,
-        task_status="failure",
-        current_step_key="failed",
-        error_message="User manually cleaned up stuck task",
-        metadata_updates={"failed_by": "manual_cleanup"},
-    )
+    # 只清理真正运行中的任务；waiting_confirm 是正常的人在环路状态，不能当作卡住任务处理。
+    stuck_tasks = db.query(GenerationTask).filter(
+        GenerationTask.project_id == project_id,
+        GenerationTask.status.in_(("pending", "started", "progress")),
+    ).all()
+    for task in stuck_tasks:
+        mark_task_terminal(
+            db=db,
+            task=task,
+            task_status="failure",
+            current_step_key="failed",
+            error_message="User manually cleaned up stuck task",
+            metadata_updates={"failed_by": "manual_cleanup"},
+        )
     count = len(stuck_tasks)
     if count > 0:
+        project.status = "failed"
         db.commit()
         return {
             "status": "ok",

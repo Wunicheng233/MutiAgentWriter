@@ -6,7 +6,7 @@ from types import SimpleNamespace
 from backend.core.llm.model_registry import resolve_model_route
 from backend.core.llm.providers.openai_compat import OpenAICompatibleProvider
 from backend.core.llm.router import LLMRouter
-from backend.core.llm.types import LLMRequest
+from backend.core.llm.types import LLMError, LLMRequest
 
 
 class FakeMessage:
@@ -59,6 +59,12 @@ class FakeCompletions:
 class FakeClient:
     def __init__(self, responses):
         self.chat = SimpleNamespace(completions=FakeCompletions(responses))
+
+
+class FakeProviderError(Exception):
+    def __init__(self, message: str, status_code: int | None = None):
+        super().__init__(message)
+        self.status_code = status_code
 
 
 class LLMRuntimeTests(unittest.TestCase):
@@ -187,6 +193,29 @@ class LLMRuntimeTests(unittest.TestCase):
         response = router.complete(self.make_request(max_retries=2), sleep=lambda _: None)
 
         self.assertEqual(response.content, "恢复成功")
+        self.assertEqual(len(client.chat.completions.calls), 2)
+
+    def test_router_classifies_auth_errors_without_retrying(self):
+        client = FakeClient([FakeProviderError("invalid api key", status_code=401), FakeResponse("不应调用")])
+        provider = OpenAICompatibleProvider(client=client)
+        router = LLMRouter(providers={"openai_compatible": provider})
+
+        with self.assertRaises(LLMError) as ctx:
+            router.complete(self.make_request(max_retries=3), sleep=lambda _: None)
+
+        self.assertEqual(ctx.exception.category, "auth")
+        self.assertFalse(ctx.exception.retryable)
+        self.assertIn("API Key", str(ctx.exception))
+        self.assertEqual(len(client.chat.completions.calls), 1)
+
+    def test_router_retries_rate_limit_errors_before_succeeding(self):
+        client = FakeClient([FakeProviderError("rate limit exceeded", status_code=429), FakeResponse("限流后恢复")])
+        provider = OpenAICompatibleProvider(client=client)
+        router = LLMRouter(providers={"openai_compatible": provider})
+
+        response = router.complete(self.make_request(max_retries=2), sleep=lambda _: None)
+
+        self.assertEqual(response.content, "限流后恢复")
         self.assertEqual(len(client.chat.completions.calls), 2)
 
     def test_openai_compatible_provider_can_reset_cached_client_after_transport_failure(self):

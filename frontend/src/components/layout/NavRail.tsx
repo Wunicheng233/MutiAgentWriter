@@ -7,9 +7,10 @@ interface NavItemProps {
   label: string
   active: boolean
   onClick: () => void
+  tourId?: string
 }
 
-const NavItem: React.FC<NavItemProps> = React.memo(({ icon, label, active, onClick }) => {
+const NavItem: React.FC<NavItemProps> = React.memo(({ icon, label, active, onClick, tourId }) => {
   const [showTooltip, setShowTooltip] = useState(false)
 
   return (
@@ -29,6 +30,7 @@ const NavItem: React.FC<NavItemProps> = React.memo(({ icon, label, active, onCli
         aria-label={label}
         aria-current={active ? 'page' : undefined}
         data-testid="nav-item"
+        data-tour={tourId}
       >
         {icon}
       </button>
@@ -95,6 +97,14 @@ const SettingsIcon = () => (
   </svg>
 )
 
+const GuideIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10" />
+    <path d="M9.1 9a3 3 0 1 1 5.8 1c-.5 1.3-1.8 1.7-2.4 2.6-.3.4-.5.8-.5 1.4" />
+    <path d="M12 17h.01" />
+  </svg>
+)
+
 const CollapseIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M15 18l-6-6 6-6" />
@@ -149,6 +159,7 @@ const BibleIcon = () => (
 // 全局导航项
 const globalNavItems: NavConfigItem[] = [
   { id: 'dashboard', label: '书架', path: '/dashboard', icon: <ProjectIcon /> },
+  { id: 'guide', label: '帮助', path: '/guide', icon: <GuideIcon /> },
   { id: 'settings', label: '设置', path: '/settings', icon: <SettingsIcon /> },
 ]
 
@@ -225,6 +236,7 @@ export const NavRail: React.FC<NavRailProps> = React.memo(({ collapsed, onToggle
             label={item.label}
             active={isActive(item.path, item.activePath)}
             onClick={() => handleNavigate(item.path)}
+            tourId={`nav-${item.id}`}
           />
         ))}
       </div>

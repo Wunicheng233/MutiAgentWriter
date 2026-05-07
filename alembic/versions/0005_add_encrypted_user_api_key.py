@@ -34,6 +34,9 @@ def _get_user_api_key_fernet() -> Fernet:
 
 def upgrade() -> None:
     op.add_column("users", sa.Column("encrypted_api_key", sa.Text(), nullable=True))
+    if op.get_context().as_sql:
+        return
+
     bind = op.get_bind()
     users = sa.table(
         "users",
@@ -61,6 +64,10 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    if op.get_context().as_sql:
+        op.drop_column("users", "encrypted_api_key")
+        return
+
     bind = op.get_bind()
     users = sa.table(
         "users",

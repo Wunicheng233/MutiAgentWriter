@@ -4,6 +4,27 @@ from dataclasses import dataclass
 from typing import Any
 
 
+class LLMError(RuntimeError):
+    """Normalized LLM provider error for retry and user-facing recovery."""
+
+    def __init__(
+        self,
+        category: str,
+        message: str,
+        *,
+        retryable: bool,
+        provider: str | None = None,
+        status_code: int | None = None,
+        raw_error: str | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.category = category
+        self.retryable = retryable
+        self.provider = provider
+        self.status_code = status_code
+        self.raw_error = raw_error
+
+
 @dataclass(frozen=True)
 class LLMTokenUsage:
     prompt_tokens: int = 0

@@ -318,7 +318,11 @@ function FeatureOverlay({ feature, gridRect, originRect, onClose }: {
 export default function FeatureCards() {
   const labelRef = useScrollReveal()
   const gridRef = useRef<HTMLDivElement>(null)
-  const [expanded, setExpanded] = useState<{ feature: FeatureDetail; originRect: DOMRect } | null>(null)
+  const [expanded, setExpanded] = useState<{
+    feature: FeatureDetail
+    originRect: DOMRect
+    gridRect: DOMRect
+  } | null>(null)
 
   const handleClose = useCallback(() => setExpanded(null), [])
 
@@ -326,7 +330,8 @@ export default function FeatureCards() {
     const grid = gridRef.current
     if (!grid) return
     const originRect = cardEl.getBoundingClientRect()
-    setExpanded({ feature, originRect })
+    const gridRect = grid.getBoundingClientRect()
+    setExpanded({ feature, originRect, gridRect })
   }
 
   return (
@@ -348,10 +353,10 @@ export default function FeatureCards() {
         ))}
       </div>
 
-      {expanded && gridRef.current && (
+      {expanded && (
         <FeatureOverlay
           feature={expanded.feature}
-          gridRect={gridRef.current.getBoundingClientRect()}
+          gridRect={expanded.gridRect}
           originRect={expanded.originRect}
           onClose={handleClose}
         />

@@ -18,6 +18,7 @@ from backend.api.share import router as share_router
 from backend.api.perspectives import router as perspectives_router
 from backend.api.skills import router as skills_router
 from backend.api.ai import router as ai_router
+from backend.api.feedback import router as feedback_router
 from backend.database import Base, engine
 from backend.core.config import settings
 from backend.rate_limiter import rate_limiter
@@ -85,6 +86,7 @@ app.include_router(tasks_router, prefix="/api")
 app.include_router(share_router, prefix="/api")
 app.include_router(perspectives_router, prefix="/api")
 app.include_router(skills_router, prefix="/api")
+app.include_router(feedback_router, prefix="/api")
 app.include_router(ai_router, prefix="/api/v1")
 
 

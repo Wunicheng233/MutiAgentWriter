@@ -23,12 +23,7 @@ class SharedProjectResponse(BaseModel):
 router = APIRouter(prefix="/share", tags=["share"])
 
 
-@router.get("/{token}", response_model=SharedProjectResponse, summary="获取分享项目信息", dependencies=[Depends(limit_requests(60))])
-def get_shared_project(
-    token: str,
-    db: Session = Depends(get_db)
-):
-    """获取公开分享的项目信息和章节列表"""
+def _get_active_share_link(db: Session, token: str) -> ShareLink:
     share_link = db.query(ShareLink).filter(
         ShareLink.share_token == token
     ).first()
@@ -39,12 +34,26 @@ def get_shared_project(
             detail="分享链接不存在或已过期"
         )
 
-    # 检查是否过期
     if share_link.expires_at and share_link.expires_at < datetime.datetime.utcnow():
         raise HTTPException(
             status_code=status.HTTP_410_GONE,
             detail="分享链接已过期"
         )
+
+    return share_link
+
+
+@router.get("/{token}", response_model=SharedProjectResponse, summary="获取分享项目信息", dependencies=[Depends(limit_requests(60))])
+def get_shared_project(
+    token: str,
+    db: Session = Depends(get_db)
+):
+    """获取公开分享的项目信息和章节列表"""
+    share_link = _get_active_share_link(db, token)
+    share_link.view_count = int(share_link.view_count or 0) + 1
+    share_link.last_viewed_at = datetime.datetime.utcnow()
+    db.commit()
+    db.refresh(share_link)
 
     project = share_link.project
     if not project:
@@ -84,21 +93,7 @@ def get_shared_chapter(
     db: Session = Depends(get_db)
 ):
     """获取公开分享的章节内容"""
-    share_link = db.query(ShareLink).filter(
-        ShareLink.share_token == token
-    ).first()
-
-    if not share_link or not share_link.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="分享链接不存在或已过期"
-        )
-
-    if share_link.expires_at and share_link.expires_at < datetime.datetime.utcnow():
-        raise HTTPException(
-            status_code=status.HTTP_410_GONE,
-            detail="分享链接已过期"
-        )
+    share_link = _get_active_share_link(db, token)
 
     chapter = db.query(Chapter).filter(
         Chapter.project_id == share_link.project_id,

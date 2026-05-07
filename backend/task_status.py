@@ -12,7 +12,7 @@ from datetime import datetime
 
 from sqlalchemy.orm import Query, Session
 
-from backend.models import GenerationTask
+from backend.models import GenerationTask, WorkflowRun
 from backend.workflow_service import update_workflow_run_status
 
 
@@ -36,6 +36,21 @@ def get_active_project_task(db: Session, project_id: int) -> GenerationTask | No
     """Return the active task the UI/API should surface first."""
     return (
         active_project_tasks_query(db, project_id)
+        .order_by(GenerationTask.started_at.desc(), GenerationTask.id.desc())
+        .first()
+    )
+
+
+def get_active_user_generation_task(db: Session, user_id: int) -> GenerationTask | None:
+    """Return an active generation task triggered by the given user."""
+    return (
+        db.query(GenerationTask)
+        .join(WorkflowRun, WorkflowRun.generation_task_id == GenerationTask.id)
+        .filter(
+            GenerationTask.status.in_(ACTIVE_TASK_STATUSES),
+            WorkflowRun.run_kind.in_(("generation", "regeneration")),
+            WorkflowRun.triggered_by_user_id == user_id,
+        )
         .order_by(GenerationTask.started_at.desc(), GenerationTask.id.desc())
         .first()
     )

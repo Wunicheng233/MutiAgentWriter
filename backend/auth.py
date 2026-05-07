@@ -17,6 +17,30 @@ from backend.core.config import settings
 from backend.models import User
 from backend.schemas import UserResponse
 
+LLM_PROVIDER_DEFAULT_BASE_URLS = {
+    "volcengine": "https://ark.cn-beijing.volces.com/api/v3",
+    "openai": "https://api.openai.com/v1",
+    "deepseek": "https://api.deepseek.com",
+    "qwen": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "moonshot": "https://api.moonshot.cn/v1",
+}
+LLM_PROVIDER_ALLOWED_BASE_URL_PREFIXES = {
+    "volcengine": (
+        "https://ark.cn-beijing.volces.com/api/v3",
+        "https://ark.cn-beijing.volces.com/api/coding/v3",
+    ),
+    "openai": ("https://api.openai.com/v1",),
+    "deepseek": ("https://api.deepseek.com",),
+    "qwen": ("https://dashscope.aliyuncs.com/compatible-mode/v1",),
+    "moonshot": ("https://api.moonshot.cn/v1",),
+}
+ALLOWED_LLM_PROVIDERS = {"system", "volcengine", "openai", "deepseek", "qwen", "moonshot", "custom"}
+PLACEHOLDER_BASE_URL_MARKERS = (
+    "api.example.com",
+    "example.com",
+    "example.test",
+)
+
 # 从 core.config 统一读取，确保 .env 已经加载
 SECRET_KEY = settings.jwt_secret_key
 ALGORITHM = "HS256"
@@ -90,14 +114,65 @@ def reset_user_llm_settings(user: User) -> None:
     clear_user_api_key(user)
 
 
+def normalize_llm_base_url(base_url: str | None) -> str:
+    """Normalize a user-entered OpenAI-compatible base URL without changing its path semantics."""
+    return (base_url or "").strip().rstrip("/")
+
+
+def is_placeholder_llm_base_url(base_url: str | None) -> bool:
+    normalized = normalize_llm_base_url(base_url).lower()
+    return any(marker in normalized for marker in PLACEHOLDER_BASE_URL_MARKERS)
+
+
+def is_allowed_provider_base_url(provider: str, base_url: str | None) -> bool:
+    normalized = normalize_llm_base_url(base_url)
+    if provider == "custom":
+        return bool(normalized)
+    allowed_prefixes = LLM_PROVIDER_ALLOWED_BASE_URL_PREFIXES.get(provider)
+    if not allowed_prefixes:
+        return True
+    return any(normalized == prefix or normalized.startswith(f"{prefix}/") for prefix in allowed_prefixes)
+
+
+def get_user_llm_config_issues(user: User | None) -> list[str]:
+    """Return actionable issues that would prevent user-owned model calls from working."""
+    if user is None:
+        return []
+
+    provider = (user.llm_provider or "system").strip().lower() or "system"
+    if provider == "system":
+        return []
+
+    api_key = get_user_api_key(user)
+    base_url = normalize_llm_base_url(user.llm_base_url or LLM_PROVIDER_DEFAULT_BASE_URLS.get(provider, ""))
+    model = (user.llm_model or "").strip()
+
+    issues: list[str] = []
+    if provider not in ALLOWED_LLM_PROVIDERS:
+        issues.append("模型供应商不受支持")
+    if not api_key:
+        issues.append("缺少该供应商的 API Key")
+    if not base_url:
+        issues.append("缺少 API Base URL")
+    elif is_placeholder_llm_base_url(base_url):
+        issues.append("API Base URL 仍是示例占位符")
+    elif not base_url.startswith(("http://", "https://")):
+        issues.append("API Base URL 必须以 http:// 或 https:// 开头")
+    elif not is_allowed_provider_base_url(provider, base_url):
+        issues.append("API Base URL 与当前供应商不匹配，如需其他地址请选择自定义兼容接口")
+    if not model:
+        issues.append("缺少模型 ID")
+    return issues
+
+
 def build_user_llm_config(user: User | None) -> dict[str, Any]:
     """Build a project_config-compatible LLM route from account settings."""
     if user is None:
         return {}
 
-    provider = (user.llm_provider or "system").strip() or "system"
+    provider = (user.llm_provider or "system").strip().lower() or "system"
     api_key = get_user_api_key(user)
-    base_url = (user.llm_base_url or "").strip()
+    base_url = normalize_llm_base_url(user.llm_base_url or LLM_PROVIDER_DEFAULT_BASE_URLS.get(provider, ""))
     model = (user.llm_model or "").strip()
 
     if provider == "system" and not api_key and not base_url and not model:
@@ -113,6 +188,7 @@ def build_user_llm_config(user: User | None) -> dict[str, Any]:
         provider_config["model"] = model
 
     return {
+        "api_source": "user",
         "default_provider": provider_id,
         "providers": {
             provider_id: provider_config,

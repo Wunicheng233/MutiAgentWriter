@@ -40,6 +40,7 @@ class User(Base):
     collaborations = relationship("ProjectCollaborator", back_populates="user", cascade="all, delete-orphan")
     workflow_runs = relationship("WorkflowRun", back_populates="triggered_by_user")
     feedback_items = relationship("FeedbackItem", back_populates="created_by_user")
+    problem_reports = relationship("ProblemReport", back_populates="user")
 
 
 class Project(Base):
@@ -86,6 +87,7 @@ class Project(Base):
     feedback_items = relationship("FeedbackItem", back_populates="project", cascade="all, delete-orphan")
     share_links = relationship("ShareLink", back_populates="project", cascade="all, delete-orphan")
     collaborators = relationship("ProjectCollaborator", back_populates="project", cascade="all, delete-orphan")
+    problem_reports = relationship("ProblemReport", back_populates="project", passive_deletes=True)
 
 
 class Chapter(Base):
@@ -274,6 +276,8 @@ class TokenUsage(Base):
     project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True)
     agent_name = Column(String(30), nullable=False)
     model = Column(String(100), nullable=True)
+    provider = Column(String(50), nullable=True)
+    api_source = Column(String(20), default="system", nullable=False, index=True)
     prompt_tokens = Column(Integer, default=0)
     completion_tokens = Column(Integer, default=0)
     total_tokens = Column(Integer, default=0)
@@ -289,6 +293,8 @@ class ShareLink(Base):
     share_token = Column(String(64), unique=True, index=True, nullable=False)
     is_active = Column(Boolean, default=True)  # 软删除标记
     expires_at = Column(DateTime, nullable=True)  # 可选过期时间
+    view_count = Column(Integer, default=0, nullable=False)
+    last_viewed_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     project = relationship("Project", back_populates="share_links")
@@ -320,3 +326,27 @@ class ReadingProgress(Base):
     position = Column(Integer, nullable=False, default=1)  # 分页模式：页码；滚动模式：scrollTop
     percentage = Column(Float, default=0.0)  # 阅读百分比 0-1
     last_read_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+
+class ProblemReport(Base):
+    """Public-beta user problem report with page and workflow context."""
+    __tablename__ = "problem_reports"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id", ondelete="SET NULL"), nullable=True, index=True)
+    task_id = Column(Integer, nullable=True, index=True)
+    category = Column(String(30), nullable=False, default="bug", index=True)
+    severity = Column(String(20), nullable=False, default="medium", index=True)
+    status = Column(String(20), nullable=False, default="open", index=True)
+    title = Column(String(120), nullable=True)
+    description = Column(Text, nullable=False)
+    page_url = Column(String(500), nullable=True)
+    route = Column(String(240), nullable=True)
+    user_agent = Column(String(500), nullable=True)
+    context = Column(JSON, nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    resolved_at = Column(DateTime, nullable=True)
+
+    user = relationship("User", back_populates="problem_reports")
+    project = relationship("Project", back_populates="problem_reports")

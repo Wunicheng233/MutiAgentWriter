@@ -11,6 +11,7 @@ const Landing = lazy(() => import('./pages/Landing'))
 const Login = lazy(() => import('./pages/Login'))
 const Register = lazy(() => import('./pages/Register'))
 const Settings = lazy(() => import('./pages/Settings'))
+const Guide = lazy(() => import('./pages/Guide'))
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const CreateProject = lazy(() => import('./pages/CreateProject'))
 const ProjectOverview = lazy(() => import('./pages/ProjectOverview'))
@@ -58,6 +59,18 @@ function LegacyWriteRedirect() {
   return <Navigate to={`/projects/${id}/editor/${targetChapter}`} replace />
 }
 
+function RootRoute() {
+  const initialized = useAuthStore(state => state.initialized)
+  const initializing = useAuthStore(state => state.initializing)
+  const isAuthenticated = useAuthStore(state => state.isAuthenticated())
+
+  if (initializing || !initialized) {
+    return <RouteLoader />
+  }
+
+  return isAuthenticated ? <Navigate to="/dashboard" replace /> : <Landing />
+}
+
 // Wrapper for protected routes with app layout
 function ProtectedLayout() {
   return (
@@ -73,7 +86,7 @@ export function AppRoutes() {
     <Suspense fallback={<RouteLoader />}>
       <Routes>
         {/* Public routes */}
-        <Route path="/" element={<Landing />} />
+        <Route path="/" element={<RootRoute />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/share/:token" element={<ShareView />} />
@@ -82,6 +95,7 @@ export function AppRoutes() {
         {/* Protected routes with unified 3-column layout */}
         <Route element={<ProtectedLayout />}>
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/guide" element={<Guide />} />
           <Route path="/projects/new" element={<CreateProject />} />
 
           {/* Nested project routes with unified prefix */}

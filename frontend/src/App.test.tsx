@@ -2,16 +2,26 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Outlet, useLocation } from 'react-router-dom'
 
+const mockAuthState = vi.hoisted(() => ({
+  initializeAuth: vi.fn(),
+  isAuthenticated: vi.fn(() => true),
+  user: { id: 1, email: 'test@example.com' } as { id: number; email: string } | null,
+  initialized: true,
+  initializing: false,
+}))
+
 // Mock the auth store
 vi.mock('./store/useAuthStore', () => ({
-  useAuthStore: () => ({
-    initializeAuth: vi.fn(),
-    isAuthenticated: true,
-    user: { id: 1, email: 'test@example.com' }
-  })
+  useAuthStore: <T,>(selector?: (state: typeof mockAuthState) => T) => (
+    selector ? selector(mockAuthState) : mockAuthState
+  ),
 }))
 
 // Mock lazy components
+vi.mock('./pages/Landing', () => ({
+  default: () => <div data-testid="landing">Landing</div>,
+}))
+
 vi.mock('./pages/ProjectOverview', () => ({
   default: () => <div data-testid="project-overview">Project Overview</div>
 }))
@@ -60,6 +70,10 @@ vi.mock('./pages/Settings', () => ({
   default: () => <div data-testid="settings">Settings</div>
 }))
 
+vi.mock('./pages/Guide', () => ({
+  default: () => <div data-testid="guide">Guide</div>
+}))
+
 vi.mock('./pages/ComponentShowcase', () => ({
   default: () => <div data-testid="component-showcase">Component Showcase</div>
 }))
@@ -91,6 +105,41 @@ function LocationProbe() {
 describe('App Routing', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockAuthState.isAuthenticated.mockReturnValue(true)
+    mockAuthState.user = { id: 1, email: 'test@example.com' }
+    mockAuthState.initialized = true
+    mockAuthState.initializing = false
+  })
+
+  describe('Public Root Route', () => {
+    it('renders Landing at / for unauthenticated first-time visitors', async () => {
+      mockAuthState.isAuthenticated.mockReturnValue(false)
+      mockAuthState.user = null
+
+      render(
+        <MemoryRouter initialEntries={['/']}>
+          <AppRoutes />
+        </MemoryRouter>
+      )
+
+      await waitFor(() => {
+        expect(screen.getByTestId('landing')).toBeInTheDocument()
+      }, { timeout: 2000 })
+    })
+
+    it('redirects authenticated visitors from / to the bookshelf dashboard', async () => {
+      render(
+        <MemoryRouter initialEntries={['/']}>
+          <LocationProbe />
+          <AppRoutes />
+        </MemoryRouter>
+      )
+
+      await waitFor(() => {
+        expect(screen.getByTestId('dashboard')).toBeInTheDocument()
+        expect(screen.getByTestId('location')).toHaveTextContent('/dashboard')
+      }, { timeout: 2000 })
+    })
   })
 
   describe('Project Route Redirects', () => {
@@ -205,6 +254,20 @@ describe('App Routing', () => {
 
       await waitFor(() => {
         expect(screen.getByTestId('quality-dashboard')).toBeInTheDocument()
+      }, { timeout: 2000 })
+    })
+  })
+
+  describe('Global Protected Routes', () => {
+    it('renders Guide at /guide', async () => {
+      render(
+        <MemoryRouter initialEntries={['/guide']}>
+          <AppRoutes />
+        </MemoryRouter>
+      )
+
+      await waitFor(() => {
+        expect(screen.getByTestId('guide')).toBeInTheDocument()
       }, { timeout: 2000 })
     })
   })

@@ -237,7 +237,7 @@ export const CreateProject: React.FC = () => {
         </Card>
 
         <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-          <Card>
+          <Card data-tour="create-project-form">
             <div className="mb-6 flex flex-wrap gap-3">
               {steps.map(step => (
                 <button

@@ -10,9 +10,11 @@ import type { SettingsTab } from '../components/settings/SettingsSidebar'
 import ShortcutList from '../components/settings/ShortcutList'
 import { useAuthStore } from '../store/useAuthStore'
 import { useLayoutStore } from '../store/useLayoutStore'
-import { getUserMonthlyTokenStats, resetLLMSettings, updateLLMSettings } from '../utils/endpoints'
+import { getUserMonthlyTokenStats, resetLLMSettings, testLLMSettings, updateLLMSettings } from '../utils/endpoints'
 import { useToast } from '../components/toastContext'
 import { RewriteMode } from '../utils/selectionAI'
+import { getErrorMessage } from '../utils/errorMessage'
+import type { User } from '../types/api'
 
 const llmProviderOptions = [
   {
@@ -24,32 +26,40 @@ const llmProviderOptions = [
   {
     value: 'volcengine',
     label: '火山引擎',
-    description: 'OpenAI-compatible 火山方舟接口',
-    baseUrl: 'https://ark.cn-beijing.volces.com/api/coding/v3',
+    description: 'OpenAI-compatible 火山方舟接口，模型 ID 填控制台调用示例里的 model 值',
+    baseUrl: 'https://ark.cn-beijing.volces.com/api/v3',
+    allowedBaseUrls: [
+      'https://ark.cn-beijing.volces.com/api/v3',
+      'https://ark.cn-beijing.volces.com/api/coding/v3',
+    ],
   },
   {
     value: 'openai',
     label: 'OpenAI',
     description: 'OpenAI 官方兼容接口',
     baseUrl: 'https://api.openai.com/v1',
+    allowedBaseUrls: ['https://api.openai.com/v1'],
   },
   {
     value: 'deepseek',
     label: 'DeepSeek',
     description: 'DeepSeek 官方兼容接口',
     baseUrl: 'https://api.deepseek.com',
+    allowedBaseUrls: ['https://api.deepseek.com'],
   },
   {
     value: 'qwen',
     label: '通义千问',
     description: 'DashScope 兼容模式接口',
     baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+    allowedBaseUrls: ['https://dashscope.aliyuncs.com/compatible-mode/v1'],
   },
   {
     value: 'moonshot',
     label: 'Moonshot',
     description: 'Moonshot AI 兼容接口',
     baseUrl: 'https://api.moonshot.cn/v1',
+    allowedBaseUrls: ['https://api.moonshot.cn/v1'],
   },
   {
     value: 'custom',
@@ -65,6 +75,252 @@ const rewriteModeOptions = [
   { value: RewriteMode.SHORTEN, label: '缩写' },
   { value: RewriteMode.MORE_DRAMATIC, label: '增强戏剧张力' },
 ]
+
+const SettingItem = ({ label, description, children }: { label: string; description?: string; children: React.ReactNode }) => (
+  <div className="flex items-center justify-between py-3">
+    <div className="flex-1 pr-8">
+      <p className="text-sm text-[var(--text-primary)]">{label}</p>
+      {description && <p className="text-xs text-[var(--text-muted)] mt-0.5">{description}</p>}
+    </div>
+    <div className="flex-shrink-0 w-[120px] flex justify-end">{children}</div>
+  </div>
+)
+
+const SettingSection = ({ title, children }: { title?: string; children: React.ReactNode }) => (
+  <div className="space-y-1">
+    {title && <h3 className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-3">{title}</h3>}
+    {children}
+  </div>
+)
+
+function ModelProviderSettings({
+  user,
+  setUser,
+}: {
+  user: User | null
+  setUser: (user: User | null) => void
+}) {
+  const queryClient = useQueryClient()
+  const { showToast } = useToast()
+  const [loading, setLoading] = useState(false)
+  const [newApiKey, setNewApiKey] = useState('')
+  const [llmProvider, setLlmProvider] = useState(user?.llm_provider || 'system')
+  const [llmBaseUrl, setLlmBaseUrl] = useState(user?.llm_base_url || '')
+  const [llmModel, setLlmModel] = useState(user?.llm_model || '')
+  const [alert, setAlert] = useState<{ variant: 'success' | 'error' | 'warning' | 'info'; message: string } | null>(null)
+  const [testingConnection, setTestingConnection] = useState(false)
+
+  const clearMutation = useMutation({
+    mutationFn: resetLLMSettings,
+    onSuccess: (data) => {
+      setUser(data)
+      queryClient.invalidateQueries({ queryKey: ['me'] })
+      setNewApiKey('')
+      setAlert({ variant: 'success', message: '已恢复系统默认模型配置' })
+      setLoading(false)
+      setTimeout(() => setAlert(null), 3000)
+    },
+    onError: () => {
+      showToast('清除失败', 'error')
+      setLoading(false)
+    },
+  })
+
+  const updateMutation = useMutation({
+    mutationFn: updateLLMSettings,
+    onSuccess: (data) => {
+      setUser(data)
+      queryClient.invalidateQueries({ queryKey: ['me'] })
+      setAlert({ variant: 'success', message: '模型供应商设置已更新' })
+      setNewApiKey('')
+      setLoading(false)
+      setTimeout(() => setAlert(null), 3000)
+    },
+    onError: () => {
+      showToast('更新失败', 'error')
+      setLoading(false)
+    },
+  })
+
+  const selectedProvider = llmProviderOptions.find((option) => option.value === llmProvider) || llmProviderOptions[0]
+  const showModelRequired = llmProvider !== 'system'
+  const normalizedBaseUrl = llmBaseUrl.trim().replace(/\/+$/, '')
+  const baseUrlPlaceholder = selectedProvider.baseUrl || 'https://api.example.com/v1'
+  const modelPlaceholder = llmProvider === 'system'
+    ? '使用系统按 Agent 配置的模型'
+    : llmProvider === 'volcengine'
+      ? '例如 ep-xxxx 或 doubao-seed-1-6-251015'
+      : '例如 deepseek-chat'
+  const baseUrlLooksPlaceholder = /(^|\/\/)(api\.)?example\.(com|test)(\/|$)/i.test(normalizedBaseUrl)
+  const baseUrlMatchesProvider = selectedProvider.value === 'custom' || !normalizedBaseUrl || !('allowedBaseUrls' in selectedProvider)
+    ? true
+    : (selectedProvider.allowedBaseUrls || []).some((prefix) => normalizedBaseUrl === prefix || normalizedBaseUrl.startsWith(`${prefix}/`))
+
+  const displayApiKey = () => {
+    if (!user?.api_key) return '(未设置)'
+    if (user.api_key.length <= 8) return user.api_key
+    return `${user.api_key.slice(0, 4)}...${user.api_key.slice(-4)}`
+  }
+
+  const handleProviderChange = (provider: string) => {
+    const option = llmProviderOptions.find((item) => item.value === provider) || llmProviderOptions[0]
+    setLlmProvider(option.value)
+    setLlmBaseUrl(option.baseUrl)
+    if (option.value === 'system') {
+      setLlmModel('')
+    }
+  }
+
+  const handleClear = () => {
+    setLoading(true)
+    clearMutation.mutate()
+  }
+
+  const validateProviderForm = () => {
+    if (llmProvider === 'custom' && !normalizedBaseUrl) {
+      showToast('自定义兼容接口必须填写 API Base URL', 'error')
+      return false
+    }
+    if (llmProvider !== 'system' && !llmModel.trim()) {
+      showToast('请输入模型 ID', 'error')
+      return false
+    }
+    if (llmProvider !== 'system' && !user?.api_key && !newApiKey.trim()) {
+      showToast('请输入该供应商的 API Key', 'error')
+      return false
+    }
+    if (normalizedBaseUrl && baseUrlLooksPlaceholder) {
+      showToast('API Base URL 不能使用示例占位符', 'error')
+      return false
+    }
+    if (normalizedBaseUrl && !/^https?:\/\//i.test(normalizedBaseUrl)) {
+      showToast('API Base URL 必须以 http:// 或 https:// 开头', 'error')
+      return false
+    }
+    if (!baseUrlMatchesProvider) {
+      showToast('API Base URL 与当前供应商不匹配，如需其他地址请选择自定义兼容接口', 'error')
+      return false
+    }
+    return true
+  }
+
+  const buildLLMSettingsPayload = () => ({
+    provider: llmProvider,
+    base_url: normalizedBaseUrl || null,
+    model: llmModel.trim() || null,
+    ...(newApiKey.trim() ? { api_key: newApiKey.trim() } : {}),
+  })
+
+  const handleUpdate = () => {
+    if (!validateProviderForm()) return
+    setLoading(true)
+    updateMutation.mutate(buildLLMSettingsPayload())
+  }
+
+  const handleTestConnection = async () => {
+    if (!validateProviderForm()) return
+    setTestingConnection(true)
+    setAlert({ variant: 'info', message: '正在测试模型连接...' })
+    try {
+      const result = await testLLMSettings(buildLLMSettingsPayload())
+      setAlert({
+        variant: result.success ? 'success' : 'error',
+        message: result.success
+          ? `模型连接成功${result.latency_ms ? `，耗时 ${result.latency_ms}ms` : ''}`
+          : result.message,
+      })
+    } catch (error: unknown) {
+      setAlert({ variant: 'error', message: getErrorMessage(error, '模型连接测试失败，请检查配置') })
+    } finally {
+      setTestingConnection(false)
+    }
+  }
+
+  return (
+    <div data-tour="settings-api">
+      <SettingSection title="模型供应商">
+        <div className="space-y-4">
+          {alert && <Alert variant={alert.variant}>{alert.message}</Alert>}
+          <div>
+            <label className="text-sm font-medium text-[var(--text-primary)]">模型供应商</label>
+            <p className="text-xs text-[var(--text-muted)] mt-1 mb-2">
+              支持火山、OpenAI、DeepSeek、通义、Moonshot，以及任意 OpenAI-compatible 接口。
+            </p>
+            <Select value={llmProvider} onValueChange={handleProviderChange}>
+              <SelectTrigger>
+                <SelectValue>{selectedProvider.label}</SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {llmProviderOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    <div className="flex flex-col">
+                      <span>{option.label}</span>
+                      <span className="text-xs text-[var(--text-muted)]">{option.description}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <Input
+            label={llmProvider === 'custom' ? 'API Base URL（必填）' : 'API Base URL（可选）'}
+            placeholder={baseUrlPlaceholder}
+            value={llmBaseUrl}
+            onChange={(e) => setLlmBaseUrl(e.target.value)}
+            disabled={llmProvider === 'system'}
+            fullWidth
+          />
+          {llmProvider !== 'system' && (
+            <p className="text-xs text-[var(--text-muted)] -mt-2">
+              {llmProvider === 'custom'
+                ? '自定义兼容接口需要填写完整 Base URL。'
+                : `留空使用默认地址：${selectedProvider.baseUrl}`}
+            </p>
+          )}
+
+          <Input
+            label={showModelRequired ? '模型 ID（必填）' : '模型 ID（可选）'}
+            placeholder={modelPlaceholder}
+            value={llmModel}
+            onChange={(e) => setLlmModel(e.target.value)}
+            disabled={llmProvider === 'system'}
+            fullWidth
+          />
+          {llmProvider === 'volcengine' && (
+            <p className="text-xs text-[var(--text-muted)] -mt-2">
+              火山方舟请打开控制台的调用示例，复制代码里传给 model 的值；自定义推理接入点通常是 Endpoint ID。
+            </p>
+          )}
+
+          <div className="flex items-center py-3">
+            <span className="text-sm text-[var(--text-secondary)] flex-1">当前 Key</span>
+            <code className="text-sm font-mono text-[var(--text-body)] w-[120px] text-right">{displayApiKey()}</code>
+          </div>
+          <Input
+            label="API Key"
+            placeholder={user?.api_key ? '留空则保留当前 Key' : '请输入该供应商的 API Key'}
+            value={newApiKey}
+            onChange={(e) => setNewApiKey(e.target.value)}
+            disabled={llmProvider === 'system'}
+            fullWidth
+          />
+          <div className="flex gap-3 pt-1">
+            <Button variant="primary" size="sm" onClick={handleUpdate} disabled={loading}>
+              {loading ? '保存中...' : '保存模型设置'}
+            </Button>
+            <Button variant="secondary" size="sm" onClick={handleTestConnection} disabled={loading || testingConnection}>
+              {testingConnection ? '测试中...' : '测试连接'}
+            </Button>
+            <Button variant="secondary" size="sm" onClick={handleClear} disabled={loading}>
+              {loading ? '恢复中...' : '恢复系统默认'}
+            </Button>
+          </div>
+        </div>
+      </SettingSection>
+    </div>
+  )
+}
 
 export const Settings: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -106,14 +362,7 @@ export const Settings: React.FC = () => {
     clearAllLocalState: state.clearAllLocalState,
   })))
 
-  const queryClient = useQueryClient()
   const { showToast } = useToast()
-  const [loading, setLoading] = useState(false)
-  const [newApiKey, setNewApiKey] = useState('')
-  const [llmProvider, setLlmProvider] = useState(user?.llm_provider || 'system')
-  const [llmBaseUrl, setLlmBaseUrl] = useState(user?.llm_base_url || '')
-  const [llmModel, setLlmModel] = useState(user?.llm_model || '')
-  const [alert, setAlert] = useState<{ variant: 'success' | 'error' | 'warning' | 'info'; message: string } | null>(null)
   const [showClearConfirm, setShowClearConfirm] = useState(false)
 
   const { data: monthlyStats } = useQuery({
@@ -130,115 +379,11 @@ export const Settings: React.FC = () => {
     setSearchParams({ tab: activeTab })
   }, [activeTab, setSearchParams])
 
-  React.useEffect(() => {
-    setLlmProvider(user?.llm_provider || 'system')
-    setLlmBaseUrl(user?.llm_base_url || '')
-    setLlmModel(user?.llm_model || '')
-  }, [user?.llm_provider, user?.llm_base_url, user?.llm_model])
-
-  const clearMutation = useMutation({
-    mutationFn: resetLLMSettings,
-    onSuccess: (data) => {
-      setUser(data)
-      queryClient.invalidateQueries({ queryKey: ['me'] })
-      setNewApiKey('')
-      setAlert({ variant: 'success', message: '已恢复系统默认模型配置' })
-      setLoading(false)
-      setTimeout(() => setAlert(null), 3000)
-    },
-    onError: () => {
-      showToast('清除失败', 'error')
-      setLoading(false)
-    },
-  })
-
-  const updateMutation = useMutation({
-    mutationFn: updateLLMSettings,
-    onSuccess: (data) => {
-      setUser(data)
-      queryClient.invalidateQueries({ queryKey: ['me'] })
-      setAlert({ variant: 'success', message: '模型供应商设置已更新' })
-      setNewApiKey('')
-      setLoading(false)
-      setTimeout(() => setAlert(null), 3000)
-    },
-    onError: () => {
-      showToast('更新失败', 'error')
-      setLoading(false)
-    },
-  })
-
-  const handleClear = () => {
-    setLoading(true)
-    clearMutation.mutate()
-  }
-
-  const handleUpdate = () => {
-    if (llmProvider !== 'system' && !llmBaseUrl.trim()) {
-      showToast('请输入 API Base URL', 'error')
-      return
-    }
-    if (!['system', 'volcengine'].includes(llmProvider) && !llmModel.trim()) {
-      showToast('请输入模型 ID', 'error')
-      return
-    }
-    if (llmProvider !== 'system' && !user?.api_key && !newApiKey.trim()) {
-      showToast('请输入该供应商的 API Key', 'error')
-      return
-    }
-    if (llmBaseUrl.trim() && !/^https?:\/\//i.test(llmBaseUrl.trim())) {
-      showToast('API Base URL 必须以 http:// 或 https:// 开头', 'error')
-      return
-    }
-    setLoading(true)
-    updateMutation.mutate({
-      provider: llmProvider,
-      base_url: llmBaseUrl.trim() || null,
-      model: llmModel.trim() || null,
-      ...(newApiKey.trim() ? { api_key: newApiKey.trim() } : {}),
-    })
-  }
-
   const handleClearLocalState = () => {
     clearAllLocalState()
     setShowClearConfirm(false)
     showToast('本地缓存已清除，请刷新页面', 'success')
   }
-
-  const displayApiKey = () => {
-    if (!user?.api_key) return '(未设置)'
-    if (user.api_key.length <= 8) return user.api_key
-    return `${user.api_key.slice(0, 4)}...${user.api_key.slice(-4)}`
-  }
-
-  const selectedProvider = llmProviderOptions.find((option) => option.value === llmProvider) || llmProviderOptions[0]
-  const showModelRequired = !['system', 'volcengine'].includes(llmProvider)
-
-  const handleProviderChange = (provider: string) => {
-    const option = llmProviderOptions.find((item) => item.value === provider) || llmProviderOptions[0]
-    setLlmProvider(option.value)
-    setLlmBaseUrl(option.baseUrl)
-    if (option.value === 'system') {
-      setLlmModel('')
-    }
-  }
-
-  const SettingItem = ({ label, description, children }: { label: string; description?: string; children: React.ReactNode }) => (
-    <div className="flex items-center justify-between py-3">
-      <div className="flex-1 pr-8">
-        <p className="text-sm text-[var(--text-primary)]">{label}</p>
-        {description && <p className="text-xs text-[var(--text-muted)] mt-0.5">{description}</p>}
-      </div>
-      <div className="flex-shrink-0 w-[120px] flex justify-end">{children}</div>
-    </div>
-  )
-
-  const SettingSection = ({ title, children }: { title?: string; children: React.ReactNode }) => (
-    <div className="space-y-1">
-      {title && <h3 className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-3">{title}</h3>}
-      {children}
-    </div>
-  )
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -291,70 +436,11 @@ export const Settings: React.FC = () => {
 
             <Divider className="border-[var(--border-subtle)]" />
 
-            <SettingSection title="模型供应商">
-              <div className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium text-[var(--text-primary)]">模型供应商</label>
-                  <p className="text-xs text-[var(--text-muted)] mt-1 mb-2">
-                    支持火山、OpenAI、DeepSeek、通义、Moonshot，以及任意 OpenAI-compatible 接口。
-                  </p>
-                  <Select value={llmProvider} onValueChange={handleProviderChange}>
-                    <SelectTrigger>
-                      <SelectValue>{selectedProvider.label}</SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {llmProviderOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          <div className="flex flex-col">
-                            <span>{option.label}</span>
-                            <span className="text-xs text-[var(--text-muted)]">{option.description}</span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <Input
-                  label="API Base URL"
-                  placeholder="https://api.example.com/v1"
-                  value={llmBaseUrl}
-                  onChange={(e) => setLlmBaseUrl(e.target.value)}
-                  disabled={llmProvider === 'system'}
-                  fullWidth
-                />
-
-                <Input
-                  label={showModelRequired ? '模型 ID（必填）' : '模型 ID（可选）'}
-                  placeholder={llmProvider === 'system' ? '使用系统按 Agent 配置的模型' : '例如 deepseek-chat'}
-                  value={llmModel}
-                  onChange={(e) => setLlmModel(e.target.value)}
-                  disabled={llmProvider === 'system'}
-                  fullWidth
-                />
-
-                <div className="flex items-center py-3">
-                  <span className="text-sm text-[var(--text-secondary)] flex-1">当前 Key</span>
-                  <code className="text-sm font-mono text-[var(--text-body)] w-[120px] text-right">{displayApiKey()}</code>
-                </div>
-                <Input
-                  label="API Key"
-                  placeholder={user?.api_key ? '留空则保留当前 Key' : '请输入该供应商的 API Key'}
-                  value={newApiKey}
-                  onChange={(e) => setNewApiKey(e.target.value)}
-                  disabled={llmProvider === 'system'}
-                  fullWidth
-                />
-                <div className="flex gap-3 pt-1">
-                  <Button variant="primary" size="sm" onClick={handleUpdate} disabled={loading}>
-                    {loading ? '保存中...' : '保存模型设置'}
-                  </Button>
-                  <Button variant="secondary" size="sm" onClick={handleClear} disabled={loading}>
-                    {loading ? '恢复中...' : '恢复系统默认'}
-                  </Button>
-                </div>
-              </div>
-            </SettingSection>
+            <ModelProviderSettings
+              key={`${user?.id ?? 'guest'}-${user?.llm_provider ?? 'system'}-${user?.llm_base_url ?? ''}-${user?.llm_model ?? ''}-${user?.api_key ?? ''}`}
+              user={user}
+              setUser={setUser}
+            />
           </div>
         )
 
@@ -453,12 +539,6 @@ export const Settings: React.FC = () => {
   return (
     <div className="w-[700px] mx-auto">
         <h1 className="text-[clamp(1.5rem,3vw,2rem)] font-medium text-[var(--text-primary)] mb-8">设置</h1>
-
-        {alert && (
-          <Alert variant={alert.variant} className="mb-6">
-            {alert.message}
-          </Alert>
-        )}
 
         <div className="flex">
           <div className="w-40 flex-shrink-0 mr-16">

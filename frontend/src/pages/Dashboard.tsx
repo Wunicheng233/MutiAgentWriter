@@ -90,7 +90,7 @@ export const Dashboard: React.FC = () => {
     <CanvasContainer maxWidth={1200}>
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-serif text-[var(--text-primary)]">我的书架</h1>
-        <Link to="/projects/new">
+        <Link to="/projects/new" data-tour="dashboard-create">
           <Button variant="primary">新建项目</Button>
         </Link>
       </div>
@@ -109,7 +109,7 @@ export const Dashboard: React.FC = () => {
           title="还没有项目"
           description="创建第一个项目开始创作吧"
           action={
-            <Link to="/projects/new">
+            <Link to="/projects/new" data-tour="dashboard-create">
               <Button variant="primary">创建新项目</Button>
             </Link>
           }

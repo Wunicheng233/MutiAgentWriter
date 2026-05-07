@@ -1,10 +1,17 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import React from 'react'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { Settings } from '../pages/Settings'
 import { useLayoutStore } from '../store/useLayoutStore'
 import { RewriteMode } from '../utils/selectionAI'
 import type { SettingsTab } from '../components/settings/types'
+
+const mockEndpoints = vi.hoisted(() => ({
+  testLLMSettings: vi.fn(),
+  updateLLMSettings: vi.fn(),
+  resetLLMSettings: vi.fn(),
+  getUserMonthlyTokenStats: vi.fn(),
+}))
 
 interface InputMockProps {
   label: string
@@ -42,11 +49,13 @@ vi.mock('@tanstack/react-query', () => ({
   useQueryClient: () => ({ invalidateQueries: vi.fn() }),
 }))
 
+vi.mock('../utils/endpoints', () => mockEndpoints)
+
 // Mock components
 vi.mock('../components/v2', () => ({
   Card: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  Button: ({ children, onClick, variant }: { children: React.ReactNode; onClick?: () => void; variant?: string }) => (
-    <button onClick={onClick} data-variant={variant}>{children}</button>
+  Button: ({ children, onClick, variant, disabled }: { children: React.ReactNode; onClick?: () => void; variant?: string; disabled?: boolean }) => (
+    <button onClick={onClick} data-variant={variant} disabled={disabled}>{children}</button>
   ),
   Input: ({ label, value, onChange }: InputMockProps) => (
     <div>
@@ -110,6 +119,15 @@ vi.mock('../components/toastContext', () => ({
 
 describe('Settings Page', () => {
   beforeEach(() => {
+    vi.clearAllMocks()
+    mockEndpoints.testLLMSettings.mockResolvedValue({
+      success: true,
+      message: '模型连接成功，可以开始生成。',
+      provider: 'deepseek',
+      model: 'deepseek-chat',
+      base_url: 'https://api.deepseek.com',
+      latency_ms: 42,
+    })
     // Reset store state
     useLayoutStore.setState({
       typewriterMode: false,
@@ -177,8 +195,24 @@ describe('Settings Page', () => {
 
     expect(screen.getAllByText('模型供应商').length).toBeGreaterThan(0)
     expect(screen.getAllByText('DeepSeek').length).toBeGreaterThan(0)
-    expect(screen.getByText('API Base URL')).toBeTruthy()
+    expect(screen.getByText(/API Base URL/)).toBeTruthy()
     expect(screen.getByDisplayValue('https://api.deepseek.com')).toBeTruthy()
     expect(screen.getByDisplayValue('deepseek-chat')).toBeTruthy()
+  })
+
+  it('ai tab should allow users to test the configured model connection', async () => {
+    render(<Settings />)
+    fireEvent.click(screen.getByTestId('settings-tab-ai'))
+
+    fireEvent.click(screen.getByRole('button', { name: '测试连接' }))
+
+    await waitFor(() => {
+      expect(mockEndpoints.testLLMSettings).toHaveBeenCalledWith({
+        provider: 'deepseek',
+        base_url: 'https://api.deepseek.com',
+        model: 'deepseek-chat',
+      })
+      expect(screen.getByText('模型连接成功，耗时 42ms')).toBeTruthy()
+    })
   })
 })

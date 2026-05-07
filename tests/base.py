@@ -12,6 +12,7 @@ from backend.database import Base, get_db
 from backend.deps import get_current_user
 from backend.main import app
 from backend.models import Project, User
+from backend.rate_limiter import rate_limiter
 from backend.utils.runtime_context import set_current_output_dir
 
 
@@ -19,6 +20,7 @@ class BaseWorkflowTestCase(unittest.TestCase):
     """Base test case with common fixtures for workflow and review tests."""
 
     def setUp(self):
+        rate_limiter.reset()
         self.temp_dir = tempfile.TemporaryDirectory()
         self.workspace = Path(self.temp_dir.name)
         self.db_path = self.workspace / "test.db"
@@ -35,6 +37,7 @@ class BaseWorkflowTestCase(unittest.TestCase):
 
     def tearDown(self):
         app.dependency_overrides.clear()
+        rate_limiter.reset()
         set_current_output_dir(None)
         self.engine.dispose()
         self.temp_dir.cleanup()

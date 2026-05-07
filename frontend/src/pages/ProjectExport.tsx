@@ -11,6 +11,7 @@ import {
   createShareLink,
   downloadExportFile,
   getProject,
+  getShareLinkStatus,
   getTaskStatus,
   listCollaborators,
   removeCollaborator,
@@ -58,6 +59,7 @@ export const ProjectExport: React.FC = () => {
   const [exportProgress, setExportProgress] = useState(0)
   const [creatingShare, setCreatingShare] = useState(false)
   const [shareUrl, setShareUrl] = useState<string | null>(null)
+  const [shareExpiryDays, setShareExpiryDays] = useState(7)
   const [newCollaboratorUsername, setNewCollaboratorUsername] = useState('')
   const [addingCollaborator, setAddingCollaborator] = useState(false)
 
@@ -87,6 +89,15 @@ export const ProjectExport: React.FC = () => {
 
     return () => window.clearInterval(interval)
   }, [data, refetch])
+
+  const isOwner = !!data && !!user && data.user_id === user.id
+  const canExport = data?.status === 'completed'
+
+  const { data: shareStatus } = useQuery({
+    queryKey: ['share-link-status', projectId],
+    queryFn: () => getShareLinkStatus(projectId),
+    enabled: isValidProjectId && isOwner,
+  })
 
   const handleAddCollaborator = async () => {
     if (!newCollaboratorUsername.trim()) {
@@ -132,11 +143,16 @@ export const ProjectExport: React.FC = () => {
   const handleCreateShare = async () => {
     try {
       setCreatingShare(true)
-      const result = await createShareLink(projectId)
+      const result = await createShareLink(projectId, shareExpiryDays)
       const fullUrl = `${window.location.origin}${result.share_url}`
       setShareUrl(fullUrl)
-      await navigator.clipboard.writeText(fullUrl)
-      showToast('分享链接已创建并复制到剪贴板', 'success')
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(fullUrl)
+        showToast('分享链接已创建并复制到剪贴板', 'success')
+      } else {
+        showToast('分享链接已创建，请手动复制', 'success')
+      }
+      queryClient.invalidateQueries({ queryKey: ['share-link-status', projectId] })
     } catch (error: unknown) {
       console.error('Share link creation error:', error)
       const message = error && typeof error === 'object' && 'response' in error
@@ -192,8 +208,20 @@ export const ProjectExport: React.FC = () => {
     return <p className="text-[var(--text-secondary)]">项目不存在</p>
   }
 
-  const isOwner = !!data && !!user && data.user_id === user.id
-  const canExport = data.status === 'completed'
+  const effectiveShareUrl = shareUrl || (shareStatus?.exists && shareStatus.share_url
+    ? `${window.location.origin}${shareStatus.share_url}`
+    : null)
+  const shareExpiresLabel = shareStatus?.expires_at
+    ? `有效期至 ${new Date(shareStatus.expires_at).toLocaleDateString()}`
+    : '未创建分享链接'
+  const shareViewLabel = shareStatus?.exists ? `访问 ${shareStatus.view_count} 次` : '访问 0 次'
+  const shareButtonLabel = creatingShare
+    ? '创建中...'
+    : shareUrl
+      ? '已复制'
+      : shareStatus?.exists
+        ? '刷新分享链接'
+        : '分享链接'
 
   return (
     <div className="mx-auto max-w-content space-y-8">
@@ -210,7 +238,7 @@ export const ProjectExport: React.FC = () => {
         <Progress value={exportProgress} />
       )}
 
-      <Card className="p-6">
+      <Card className="p-6" data-tour="export-panel">
         <p className="font-medium text-xs uppercase tracking-[0.24em] text-[var(--text-secondary)]">Delivery</p>
         <h2 className="mt-2 text-2xl font-medium">导出分享</h2>
 
@@ -221,12 +249,30 @@ export const ProjectExport: React.FC = () => {
           </div>
           <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-3">
             <p className="text-sm text-[var(--text-secondary)]">链接状态</p>
-            <p className="mt-1 font-medium">{shareUrl ? '已生成' : '未创建'}</p>
+            <p className="mt-1 font-medium">{effectiveShareUrl ? '已生成' : '未创建'}</p>
+            {shareStatus?.exists && (
+              <p className="mt-1 text-xs text-[var(--text-muted)]">{shareViewLabel}</p>
+            )}
           </div>
         </div>
 
         {canExport ? (
           <div className="mt-5 space-y-4">
+            {isOwner && (
+              <div className="flex flex-wrap items-center gap-2 text-sm">
+                <span className="text-[var(--text-secondary)]">分享有效期</span>
+                {[7, 30, 90].map((days) => (
+                  <Button
+                    key={days}
+                    variant={shareExpiryDays === days ? 'primary' : 'secondary'}
+                    size="sm"
+                    onClick={() => setShareExpiryDays(days)}
+                  >
+                    {days} 天
+                  </Button>
+                ))}
+              </div>
+            )}
             <div className="flex flex-wrap gap-3">
               <Button variant="secondary" size="sm" onClick={() => handleTriggerExport('epub')} disabled={!!exportPollingId}>
                 EPUB
@@ -237,13 +283,21 @@ export const ProjectExport: React.FC = () => {
               <Button variant="secondary" size="sm" onClick={() => handleTriggerExport('html')} disabled={!!exportPollingId}>
                 HTML
               </Button>
-              <Button variant="secondary" size="sm" onClick={handleCreateShare} disabled={creatingShare}>
-                {creatingShare ? '创建中...' : shareUrl ? '已复制' : '分享链接'}
-              </Button>
+              {isOwner && (
+                <Button variant="secondary" size="sm" onClick={handleCreateShare} disabled={creatingShare}>
+                  {shareButtonLabel}
+                </Button>
+              )}
             </div>
-            {shareUrl && (
+            {shareStatus?.exists && (
+              <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-3 text-sm text-[var(--text-secondary)]">
+                <div>{shareExpiresLabel}</div>
+                <div className="mt-1">公开{shareViewLabel}</div>
+              </div>
+            )}
+            {effectiveShareUrl && (
               <div className="rounded-standard border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-3 text-sm text-[var(--text-secondary)] break-all">
-                {shareUrl}
+                {effectiveShareUrl}
               </div>
             )}
           </div>

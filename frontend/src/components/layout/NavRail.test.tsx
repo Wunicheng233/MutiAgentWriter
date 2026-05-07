@@ -42,11 +42,11 @@ describe('NavRail', () => {
       })
     })
 
-    it('显示全局导航项（书架、设置）', () => {
+    it('显示全局导航项（书架、帮助、设置）', () => {
       renderWithRouter(<NavRail collapsed={false} onToggleCollapse={mockToggleCollapse} />)
 
       const navItems = screen.getAllByTestId('nav-item')
-      expect(navItems).toHaveLength(2)
+      expect(navItems).toHaveLength(3)
     })
 
     it('点击"书架"导航项跳转到 /dashboard', async () => {
@@ -191,7 +191,7 @@ describe('NavRail', () => {
       expect(collapseButton).toBeInTheDocument()
 
       const navItems = screen.getAllByTestId('nav-item')
-      expect(navItems).toHaveLength(2)
+      expect(navItems).toHaveLength(3)
     })
 
     it('收起时宽度为 56px，只显示图标', () => {
@@ -207,7 +207,7 @@ describe('NavRail', () => {
       const navItems = screen.getAllByTestId('nav-item')
       const collapseButton = screen.getByTestId('collapse-button')
 
-      expect(navItems).toHaveLength(2)
+      expect(navItems).toHaveLength(3)
       expect(collapseButton).toBeInTheDocument()
     })
 

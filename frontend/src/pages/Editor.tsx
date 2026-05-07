@@ -685,6 +685,7 @@ export const Editor: React.FC = () => {
                 <div
                   className={`editor-container pb-12 ${focusMode ? 'editor-container-focus' : ''} ${inspectorOpen ? 'flex-1 overflow-y-auto min-h-0' : 'h-[70vh] min-h-[500px] overflow-y-auto'} rounded-comfortable border border-[var(--border-default)] bg-[var(--bg-secondary)] editor-paper transition-all duration-200 hover:border-[var(--border-strong)]`}
                   data-editor-scroll-container="true"
+                  data-tour="editor-paper"
                 >
                   {editor && (
                     <EditorContent

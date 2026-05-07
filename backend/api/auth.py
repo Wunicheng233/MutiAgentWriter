@@ -4,6 +4,7 @@
 """
 
 import datetime
+import time
 from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -12,14 +13,22 @@ from sqlalchemy import func
 from pydantic import BaseModel
 from backend.models import TokenUsage
 from backend.core.config import settings
+from backend.core.llm.router import LLMRouter
+from backend.core.llm.types import LLMError, LLMRequest
+from backend.services.generation_quota import get_generation_quota_status
 
 from backend.database import get_db
 from backend.models import User
-from backend.schemas import UserCreate, UserLogin, Token, UserResponse
+from backend.schemas import GenerationQuotaResponse, UserCreate, UserLogin, Token, UserResponse
 from backend.auth import (
     build_user_response,
     clear_user_api_key as clear_persisted_user_api_key,
+    ALLOWED_LLM_PROVIDERS,
+    LLM_PROVIDER_DEFAULT_BASE_URLS,
     get_user_api_key,
+    is_allowed_provider_base_url,
+    is_placeholder_llm_base_url,
+    normalize_llm_base_url,
     reset_user_llm_settings,
     verify_password,
     get_password_hash,
@@ -32,16 +41,7 @@ from backend.deps import get_current_user
 from backend.rate_limiter import limit_requests
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-
-LLM_PROVIDER_DEFAULT_BASE_URLS = {
-    "volcengine": "https://ark.cn-beijing.volces.com/api/coding/v3",
-    "openai": "https://api.openai.com/v1",
-    "deepseek": "https://api.deepseek.com",
-    "qwen": "https://dashscope.aliyuncs.com/compatible-mode/v1",
-    "moonshot": "https://api.moonshot.cn/v1",
-}
-ALLOWED_LLM_PROVIDERS = {"system", "volcengine", "openai", "deepseek", "qwen", "moonshot", "custom"}
-
+_llm_router = LLMRouter()
 
 def _get_persistent_current_user(db: Session, current_user: User) -> User:
     """Load the current user into the active DB session before mutating it."""
@@ -134,6 +134,12 @@ def get_me(current_user: User = Depends(get_current_user)):
     return build_user_response(current_user)
 
 
+@router.get("/me/generation-quota", response_model=GenerationQuotaResponse, summary="获取当前用户生成配额")
+def get_generation_quota(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Return the current user's public-beta generation quota status."""
+    return get_generation_quota_status(db, current_user)
+
+
 @router.post("/refresh-api-key", response_model=UserResponse, summary="清除用户自定义API Key")
 def refresh_api_key(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """兼容旧前端入口：清除用户自定义模型 API Key，恢复使用系统统一配置。"""
@@ -174,13 +180,22 @@ class UpdateLLMSettingsRequest(BaseModel):
     api_key: str | None = None
 
 
-@router.put("/llm-settings", response_model=UserResponse, summary="更新用户模型供应商设置")
-def update_llm_settings(
+class LLMConnectionTestResponse(BaseModel):
+    success: bool
+    message: str
+    provider: str
+    model: str
+    base_url: str | None = None
+    latency_ms: int | None = None
+    error_category: str | None = None
+
+
+def _normalize_llm_settings_request(
     request: UpdateLLMSettingsRequest,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    """Update a user's account-level OpenAI-compatible model route."""
+    persisted_user: User,
+    *,
+    require_connection_ready: bool = False,
+) -> tuple[str, str | None, str | None, str | None]:
     provider = (request.provider or "system").strip().lower() or "system"
     if provider not in ALLOWED_LLM_PROVIDERS:
         raise HTTPException(
@@ -188,14 +203,19 @@ def update_llm_settings(
             detail="不支持的模型供应商",
         )
 
-    base_url = (request.base_url or "").strip()
+    base_url = normalize_llm_base_url(request.base_url)
     model = (request.model or "").strip()
     if provider == "system":
-        base_url = ""
-        model = ""
+        base_url = normalize_llm_base_url(settings.base_url)
+        model = settings.get_model_for_agent("assistant")
     elif not base_url:
         base_url = LLM_PROVIDER_DEFAULT_BASE_URLS.get(provider, "")
 
+    if base_url and is_placeholder_llm_base_url(base_url):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="API Base URL 不能使用示例占位符，请填写真实供应商地址或留空使用默认地址",
+        )
     if base_url and not (base_url.startswith("https://") or base_url.startswith("http://")):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -206,28 +226,107 @@ def update_llm_settings(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="自定义供应商必须填写 API Base URL",
         )
-    if provider not in {"system", "volcengine"} and not model:
+    if provider != "system" and not is_allowed_provider_base_url(provider, base_url):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="该供应商需要填写模型 ID",
+            detail="API Base URL 与当前供应商不匹配；如需使用其他兼容地址，请选择“自定义兼容接口”",
+        )
+    if provider != "system" and not model:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="该供应商需要填写模型 ID（火山方舟请填写控制台调用示例里的 model 值，例如 ep-xxxx 或 doubao-seed-...）",
         )
 
-    persisted_user = _get_persistent_current_user(db, current_user)
-    next_api_key = (request.api_key or "").strip() if request.api_key is not None else get_user_api_key(persisted_user)
-    if provider != "system" and not next_api_key:
+    api_key = (request.api_key or "").strip() if request.api_key is not None else get_user_api_key(persisted_user)
+    if provider == "system" and not api_key:
+        api_key = settings.get_api_key_for_agent("assistant")
+    if (provider != "system" or require_connection_ready) and not api_key:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="请选择系统默认，或填写该供应商的 API Key",
         )
 
+    return provider, base_url or None, model or None, api_key
+
+
+@router.put("/llm-settings", response_model=UserResponse, summary="更新用户模型供应商设置")
+def update_llm_settings(
+    request: UpdateLLMSettingsRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Update a user's account-level OpenAI-compatible model route."""
+    persisted_user = _get_persistent_current_user(db, current_user)
+    provider, base_url, model, _api_key = _normalize_llm_settings_request(request, persisted_user)
+
     persisted_user.llm_provider = provider
-    persisted_user.llm_base_url = base_url or None
-    persisted_user.llm_model = model or None
+    persisted_user.llm_base_url = None if provider == "system" else base_url
+    persisted_user.llm_model = None if provider == "system" else model
     if request.api_key is not None:
         set_user_api_key(persisted_user, request.api_key)
     db.commit()
     db.refresh(persisted_user)
     return build_user_response(persisted_user)
+
+
+@router.post("/llm-settings/test", response_model=LLMConnectionTestResponse, summary="测试当前模型供应商连接")
+def test_llm_settings(
+    request: UpdateLLMSettingsRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Run a lightweight real provider call without persisting the submitted settings."""
+    persisted_user = _get_persistent_current_user(db, current_user)
+    provider, base_url, model, api_key = _normalize_llm_settings_request(
+        request,
+        persisted_user,
+        require_connection_ready=True,
+    )
+    if not model:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="缺少模型 ID",
+        )
+
+    started = time.perf_counter()
+    provider_id = "openai_compatible" if provider == "system" else provider
+    try:
+        _llm_router.complete(
+            LLMRequest(
+                agent_role="assistant",
+                system_prompt="你是连接测试助手。请只回答 OK。",
+                user_input="连接测试：请只回复 OK。",
+                model=model,
+                provider=provider_id,
+                api_key=api_key,
+                base_url=base_url,
+                temperature=0.0,
+                max_tokens=8,
+                timeout=20,
+                max_retries=1,
+                retry_delay_seconds=0,
+            ),
+            sleep=lambda _: None,
+        )
+    except LLMError as exc:
+        return LLMConnectionTestResponse(
+            success=False,
+            message=exc.args[0] if exc.args else "模型连接测试失败，请检查配置。",
+            provider=provider,
+            model=model,
+            base_url=base_url,
+            latency_ms=int((time.perf_counter() - started) * 1000),
+            error_category=exc.category,
+        )
+
+    return LLMConnectionTestResponse(
+        success=True,
+        message="模型连接成功，可以开始生成。",
+        provider=provider,
+        model=model,
+        base_url=base_url,
+        latency_ms=int((time.perf_counter() - started) * 1000),
+    )
 
 
 @router.delete("/llm-settings", response_model=UserResponse, summary="恢复系统默认模型供应商设置")

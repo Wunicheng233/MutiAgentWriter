@@ -3,7 +3,10 @@ import api from './api'
 import type {
   User,
   Token,
+  LLMConnectionTestResult,
   UpdateLLMSettingsPayload,
+  GenerationQuota,
+  GenerationPreflight,
   Project,
   ArtifactDetail,
   ArtifactListResponse,
@@ -19,6 +22,8 @@ import type {
   EnabledSkillConfig,
   ChatRequest,
   ChatResponse,
+  ProblemReport,
+  ProblemReportCreate,
 } from '../types/api'
 
 // ========== Auth ==========
@@ -45,6 +50,11 @@ export async function getMe(): Promise<User> {
   return res.data
 }
 
+export async function getGenerationQuota(): Promise<GenerationQuota> {
+  const res = await api.get<GenerationQuota>('/auth/me/generation-quota')
+  return res.data
+}
+
 export async function clearApiKey(): Promise<User> {
   const res = await api.delete<User>('/auth/api-key')
   return res.data
@@ -65,6 +75,18 @@ export async function resetLLMSettings(): Promise<User> {
   return res.data
 }
 
+export async function testLLMSettings(data: UpdateLLMSettingsPayload): Promise<LLMConnectionTestResult> {
+  const res = await api.post<LLMConnectionTestResult>('/auth/llm-settings/test', data)
+  return res.data
+}
+
+// ========== Feedback ==========
+
+export async function submitProblemReport(data: ProblemReportCreate): Promise<ProblemReport> {
+  const res = await api.post<ProblemReport>('/feedback/problem-reports', data)
+  return res.data
+}
+
 // ========== Projects ==========
 
 export async function listProjects(params?: { skip?: number; limit?: number }): Promise<{ total: number; items: Project[] }> {
@@ -79,6 +101,11 @@ export async function createProject(data: ProjectCreate): Promise<Project> {
 
 export async function getProject(projectId: number): Promise<Project> {
   const res = await api.get<Project>(`/projects/${projectId}`)
+  return res.data
+}
+
+export async function getGenerationPreflight(projectId: number): Promise<GenerationPreflight> {
+  const res = await api.get<GenerationPreflight>(`/projects/${projectId}/generation-preflight`)
   return res.data
 }
 
@@ -150,6 +177,16 @@ export async function deleteProject(projectId: number): Promise<{ status: string
 
 export async function triggerGenerate(projectId: number, regenerate: boolean = false): Promise<GenerationTask> {
   const res = await api.post<GenerationTask>(`/projects/${projectId}/generate?regenerate=${regenerate}`)
+  return res.data
+}
+
+export async function cancelGeneration(projectId: number): Promise<{ status: string; message: string; cancelled_count: number }> {
+  const res = await api.post<{ status: string; message: string; cancelled_count: number }>(`/projects/${projectId}/cancel-generation`)
+  return res.data
+}
+
+export async function resumeGeneration(projectId: number): Promise<GenerationTask> {
+  const res = await api.post<GenerationTask>(`/projects/${projectId}/resume-generation`)
   return res.data
 }
 
@@ -283,6 +320,8 @@ export interface TokenStats {
   total_prompt_tokens: number
   total_completion_tokens: number
   total_tokens: number
+  system_api_tokens?: number
+  user_api_tokens?: number
   estimated_cost_usd: number
 }
 
@@ -321,8 +360,31 @@ export interface SharedChapterDetail {
   content: string
 }
 
-export async function createShareLink(projectId: number): Promise<{share_url: string; share_token: string}> {
-  const res = await api.post(`/projects/${projectId}/share`)
+export interface ShareLinkStatus {
+  exists: boolean
+  share_url: string | null
+  share_token: string | null
+  is_active: boolean
+  expires_at: string | null
+  view_count: number
+  last_viewed_at: string | null
+}
+
+export interface CreateShareLinkResult {
+  share_url: string
+  share_token: string
+  expires_at: string | null
+  view_count: number
+  last_viewed_at: string | null
+}
+
+export async function getShareLinkStatus(projectId: number): Promise<ShareLinkStatus> {
+  const res = await api.get<ShareLinkStatus>(`/projects/${projectId}/share`)
+  return res.data
+}
+
+export async function createShareLink(projectId: number, expiresInDays: number = 7): Promise<CreateShareLinkResult> {
+  const res = await api.post<CreateShareLinkResult>(`/projects/${projectId}/share`, { expires_in_days: expiresInDays })
   return res.data
 }
 

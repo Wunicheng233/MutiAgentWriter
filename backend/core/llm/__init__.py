@@ -2,9 +2,10 @@
 
 from .model_registry import ModelRoute, resolve_model_route
 from .router import LLMRouter
-from .types import LLMRequest, LLMResponse, LLMTokenUsage
+from .types import LLMError, LLMRequest, LLMResponse, LLMTokenUsage
 
 __all__ = [
+    "LLMError",
     "LLMRequest",
     "LLMResponse",
     "LLMTokenUsage",

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { expect, describe, test, vi, beforeEach } from 'vitest'
@@ -60,6 +60,27 @@ vi.mock('../utils/endpoints', () => ({
   listCollaborators: vi.fn().mockResolvedValue([
     { id: 1, username: 'collab1', email: 'collab1@test.com', role: 'editor' },
   ]),
+  getShareLinkStatus: vi.fn().mockResolvedValue({
+    exists: true,
+    share_url: '/share/existing-token',
+    share_token: 'existing-token',
+    is_active: true,
+    expires_at: '2026-05-30T00:00:00Z',
+    view_count: 4,
+    last_viewed_at: '2026-05-02T00:00:00Z',
+  }),
+  createShareLink: vi.fn().mockResolvedValue({
+    share_url: '/share/new-token',
+    share_token: 'new-token',
+    expires_at: '2026-06-06T00:00:00Z',
+    view_count: 0,
+    last_viewed_at: null,
+  }),
+  triggerExport: vi.fn().mockResolvedValue({ id: 1, celery_task_id: 'export-task' }),
+  getTaskStatus: vi.fn(),
+  downloadExportFile: vi.fn(),
+  addCollaborator: vi.fn(),
+  removeCollaborator: vi.fn(),
   getProjectTokenStats: vi.fn().mockResolvedValue({ total_tokens: 0, estimated_cost_usd: 0 }),
 }))
 
@@ -160,6 +181,29 @@ describe('ProjectExport - 导出分享页面', () => {
     await waitFor(() => {
       expect(screen.getByText(/可导出/i)).toBeInTheDocument()
       expect(screen.getByText(/分享链接/i)).toBeInTheDocument()
+    })
+  })
+
+  test('应该显示分享链接访问统计和过期时间', async () => {
+    renderWithProviders(<ProjectExport />)
+
+    await waitFor(() => {
+      expect(screen.getByText('访问 4 次')).toBeInTheDocument()
+      expect(screen.getByText(/有效期至/)).toBeInTheDocument()
+    })
+  })
+
+  test('创建分享链接时应该把选择的有效期传给后端', async () => {
+    const endpoints = await import('../utils/endpoints')
+    const createShareLink = endpoints.createShareLink as vi.Mock
+    renderWithProviders(<ProjectExport />)
+
+    const thirtyDaysButton = await screen.findByRole('button', { name: '30 天' })
+    fireEvent.click(thirtyDaysButton)
+    fireEvent.click(screen.getByRole('button', { name: /分享链接|刷新链接|已复制/ }))
+
+    await waitFor(() => {
+      expect(createShareLink).toHaveBeenCalledWith(1, 30)
     })
   })
 })

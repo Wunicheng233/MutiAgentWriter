@@ -113,6 +113,12 @@ class Settings(BaseSettings):
     default_prompt_price: float = Field(0.002, description="提示词价格，美元 per 1K tokens")
     default_completion_price: float = Field(0.006, description="完成词价格，美元 per 1K tokens")
 
+    # ========== 公测配额配置 ==========
+    # 0 表示不限制；默认 3 次完整生成足够演示与试用，同时避免公测误烧 token。
+    public_beta_daily_generation_limit: int = Field(3, description="公测用户每日可提交的生成任务次数，0表示不限制")
+    # 0 表示不限制；该值基于实际已消耗 token 做硬拦截，后续可扩展为套餐等级。
+    public_beta_monthly_token_limit: int = Field(0, description="公测用户每月Token预算，0表示不限制")
+
     # ========== JWT 认证配置 ==========
     jwt_secret_key: str = Field(
         "",

@@ -14,6 +14,7 @@ class ModelRoute:
     base_url: str
     prompt_price: float
     completion_price: float
+    api_source: str = "system"
 
 
 def resolve_model_route(
@@ -46,6 +47,7 @@ def resolve_model_route(
     completion_price = _float_value(
         agent_override.get("completion_price", provider_config.get("completion_price", getattr(settings, "default_completion_price", 0.0)))
     )
+    api_source = str(agent_override.get("api_source") or provider_config.get("api_source") or llm_config.get("api_source") or "system")
 
     return ModelRoute(
         provider=provider_id,
@@ -54,6 +56,7 @@ def resolve_model_route(
         base_url=base_url,
         prompt_price=prompt_price,
         completion_price=completion_price,
+        api_source=api_source,
     )
 
 

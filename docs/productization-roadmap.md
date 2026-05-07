@@ -16,7 +16,7 @@ The main gap is not the creative workflow itself. The gap is product-grade opera
 
 ### 1. LLM Runtime And Provider Governance
 
-Status: started in `backend/core/llm/`; account-level provider settings are now exposed in the Settings page.
+Status: provider-neutral runtime is in place; account-level provider settings are exposed in the Settings page; provider failures are now normalized before they reach workflow/task code.
 
 Goal:
 - Route all model calls through a provider-neutral runtime.
@@ -30,13 +30,19 @@ Acceptance criteria:
 - Runtime returns normalized content, usage, provider id, model id, and raw response.
 - Provider failures are classified into retryable, quota, auth, content-filter, and permanent errors.
 
+Current implementation:
+- `LLMRouter` routes requests through OpenAI-compatible providers and returns normalized response/usage objects.
+- Account-level provider, model, base URL, and API key settings are available in Settings and feed the runtime route.
+- Provider failures are classified into auth, quota, rate limit, timeout, content filter, provider unavailable, bad request, or unknown.
+
 Remaining steps:
-- Extend `LLMRouter` with error classification.
 - Add provider-level fallback lists.
 - Store provider and model on every token usage row.
 - Add per-agent advanced overrides after the simple account-level provider setting proves stable.
 
 ### 2. Quota And Cost Governance
+
+Status: started with a public-beta daily generation quota preflight.
 
 Goal:
 - Prevent public beta users from accidentally burning unlimited tokens.
@@ -56,7 +62,24 @@ Acceptance criteria:
 - If quota is low, UI shows an understandable message and suggests reducing chapter range or word count.
 - Token usage includes provider, model, agent, workflow run, and project.
 
+Current implementation:
+- Backend exposes `/auth/me/generation-quota`.
+- Project generation is blocked before Celery dispatch when the daily generation quota is exhausted.
+- Project overview shows today's remaining generation count and disables the generate button when exhausted.
+- Monthly platform token budget is checked only when the user is using the system default API.
+- Users with their own model API key are not blocked by the platform token budget; the overview page states that their key does not consume platform token budget.
+- Project overview now calls a generation preflight endpoint and shows estimated chapters, words, token usage, and platform-budget warnings before task dispatch.
+- Token usage rows now persist provider and API source, so platform API cost and user-owned-key usage can be reported separately.
+- Project token stats and overview metadata split actual usage into platform API tokens and user-owned-key tokens.
+
+Remaining steps:
+- Add plan tiers and admin overrides.
+- Convert the rough token estimate into provider-specific cost estimates once model price metadata is reliable.
+- Extend the same API-source split to account-level monthly stats and future admin dashboards.
+
 ### 3. Reliable Failure Recovery
+
+Status: started with safer stuck-task cleanup and project overview recovery actions.
 
 Goal:
 - Users should not be stuck after a failed generation.
@@ -71,6 +94,15 @@ Acceptance criteria:
 - Project overview displays a failure card with reason, last successful chapter, and recovery actions.
 - Retrying a task does not create duplicate active tasks.
 - Failed model calls preserve enough metadata for diagnosis without leaking API keys.
+
+Current implementation:
+- Project overview displays a recovery card for failed projects/tasks, including the user-facing error reason and a retry action.
+- Manual stuck-task cleanup no longer clears `waiting_confirm`, so chapter/plan confirmation cannot be skipped by accident.
+- Cleaning a genuinely stuck running task marks the project failed, making it recoverable instead of leaving it visually stuck in `generating`.
+- LLM provider errors are categorized as auth, quota, rate limit, timeout, content filter, provider unavailable, bad request, or unknown. Non-retryable errors stop immediately; retryable failures keep bounded retry behavior.
+- A user can only run one active generation task at a time across projects.
+- Project overview exposes a cancel action for active generation tasks; cancellation marks the task/workflow run as cancelled and releases the project state.
+- Failed or cancelled projects can continue from the first unfinished chapter in the configured range without deleting completed chapters. The destructive path is now explicitly labeled as regeneration.
 
 ### 4. Production-Grade Rate Limiting And Concurrency Control
 
@@ -134,9 +166,12 @@ Suggested UI:
 
 Next improvements:
 - PDF export.
-- Share link view counts.
-- Share link expiry controls.
 - Public reader polish for shared projects.
+
+Current implementation:
+- Public share links are owner-only to create/revoke.
+- Share links have selectable public-beta expiry windows and can be refreshed without rotating the token.
+- Public project page views are counted, and owners can see view count plus last-viewed/expiry metadata from the export/share page.
 
 ### 4. Admin And Analytics
 
@@ -163,8 +198,8 @@ Recommended after public beta feedback:
 ## Execution Order
 
 1. Finish LLM Runtime compatibility and tests.
-2. Add quota preflight for generation.
-3. Add user-facing failure recovery UI.
+2. Extend quota preflight from daily generation count to monthly token budget.
+3. Add user-facing failure recovery UI and resume-from-unfinished-chapter behavior.
 4. Move rate limiting to Redis when deployment topology is clear.
 5. Add policy/legal pages and report flow.
 6. Add onboarding.

@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import { useScrollReveal } from '../../hooks/useScrollReveal'
 
 function CountUp({ target, suffix = '' }: { target: number; suffix?: string }) {
   const ref = useRef<HTMLDivElement>(null)

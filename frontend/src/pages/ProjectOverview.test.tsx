@@ -72,7 +72,40 @@ vi.mock('../utils/endpoints', () => ({
     updated_at: '2026-04-25T00:00:00',
   }),
   getProjectTokenStats: vi.fn().mockResolvedValue({ total_tokens: 0, prompt_tokens: 0, completion_tokens: 0, total_cost: 0 }),
+  getGenerationQuota: vi.fn().mockResolvedValue({
+    daily_limit: 3,
+    used_today: 0,
+    remaining_today: 3,
+    reset_at: '2026-04-26T00:00:00',
+    api_source: 'system',
+    platform_token_budget_applies: true,
+    monthly_token_limit: 100000,
+    monthly_tokens_used: 0,
+    monthly_tokens_remaining: 100000,
+    monthly_reset_at: '2026-05-01T00:00:00',
+    allowed: true,
+    reason: null,
+  }),
+  getGenerationPreflight: vi.fn().mockResolvedValue({
+    start_chapter: 1,
+    end_chapter: 10,
+    chapter_count: 10,
+    target_words_per_chapter: 2000,
+    estimated_output_words: 20000,
+    estimated_token_count: 105000,
+    api_source: 'system',
+    platform_token_budget_applies: true,
+    monthly_token_limit: 100000,
+    monthly_tokens_remaining: 100000,
+    daily_remaining: 3,
+    quota_allowed: true,
+    risk_level: 'warning',
+    messages: ['预计本次生成可能超过本月平台 Token 预算，建议减少章节范围或改用自带 Key。'],
+  }),
   triggerGenerate: vi.fn().mockResolvedValue({}),
+  cancelGeneration: vi.fn().mockResolvedValue({ status: 'ok', message: '生成任务已取消', cancelled_count: 1 }),
+  resumeGeneration: vi.fn().mockResolvedValue({}),
+  cleanStuckTasks: vi.fn().mockResolvedValue({ status: 'ok', message: '已清理 1 个卡住的任务', cleaned_count: 1 }),
   confirmTask: vi.fn().mockResolvedValue({ success: true, new_task_id: 'continue-1' }),
 }))
 
@@ -110,6 +143,335 @@ describe('ProjectOverview - UI 优化', () => {
 
     expect(outlineButton.closest('a')).toHaveAttribute('href', '/projects/1/outline')
     expect(exportButton.closest('a')).toHaveAttribute('href', '/projects/1/export')
+  })
+
+  test('每日生成配额用尽时应在概览页禁用生成入口', async () => {
+    const endpoints = await import('../utils/endpoints')
+    const getGenerationQuota = endpoints.getGenerationQuota as vi.Mock
+
+    getGenerationQuota.mockResolvedValueOnce({
+      daily_limit: 3,
+      used_today: 3,
+      remaining_today: 0,
+      reset_at: '2026-04-26T00:00:00',
+      api_source: 'system',
+      platform_token_budget_applies: true,
+      monthly_token_limit: 100000,
+      monthly_tokens_used: 0,
+      monthly_tokens_remaining: 100000,
+      monthly_reset_at: '2026-05-01T00:00:00',
+      allowed: false,
+      reason: '今日生成次数已用完，请明天再试。',
+    })
+
+    const queryClient2 = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <ToastContext.Provider value={{ showToast: vi.fn() }}>
+        <QueryClientProvider client={queryClient2}>
+          <MemoryRouter initialEntries={['/projects/1/overview']}>
+            <Routes>
+              <Route path="/projects/:id/overview" element={<ProjectOverview />} />
+            </Routes>
+          </MemoryRouter>
+        </QueryClientProvider>
+      </ToastContext.Provider>
+    )
+
+    expect(await screen.findByText('今日生成 0 / 3')).toBeInTheDocument()
+    const button = await screen.findByRole('button', { name: '今日生成次数已用完' })
+    expect(button).toBeDisabled()
+  })
+
+  test('月度 token 预算用尽时应在概览页禁用生成入口', async () => {
+    const endpoints = await import('../utils/endpoints')
+    const getGenerationQuota = endpoints.getGenerationQuota as vi.Mock
+
+    getGenerationQuota.mockResolvedValueOnce({
+      daily_limit: 3,
+      used_today: 0,
+      remaining_today: 3,
+      reset_at: '2026-04-26T00:00:00',
+      api_source: 'system',
+      platform_token_budget_applies: true,
+      monthly_token_limit: 10000,
+      monthly_tokens_used: 10000,
+      monthly_tokens_remaining: 0,
+      monthly_reset_at: '2026-05-01T00:00:00',
+      allowed: false,
+      reason: '本月 Token 预算已用完，请下月再试。',
+    })
+
+    const queryClient2 = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <ToastContext.Provider value={{ showToast: vi.fn() }}>
+        <QueryClientProvider client={queryClient2}>
+          <MemoryRouter initialEntries={['/projects/1/overview']}>
+            <Routes>
+              <Route path="/projects/:id/overview" element={<ProjectOverview />} />
+            </Routes>
+          </MemoryRouter>
+        </QueryClientProvider>
+      </ToastContext.Provider>
+    )
+
+    expect(await screen.findByText('本月 Token 0 / 10,000')).toBeInTheDocument()
+    const button = await screen.findByRole('button', { name: '本月 Token 预算已用完' })
+    expect(button).toBeDisabled()
+  })
+
+  test('用户自带 API Key 时应提示不占用平台 token 预算', async () => {
+    const endpoints = await import('../utils/endpoints')
+    const getGenerationQuota = endpoints.getGenerationQuota as vi.Mock
+
+    getGenerationQuota.mockResolvedValueOnce({
+      daily_limit: 3,
+      used_today: 1,
+      remaining_today: 2,
+      reset_at: '2026-04-26T00:00:00',
+      api_source: 'user',
+      platform_token_budget_applies: false,
+      monthly_token_limit: null,
+      monthly_tokens_used: 10000,
+      monthly_tokens_remaining: null,
+      monthly_reset_at: '2026-05-01T00:00:00',
+      allowed: true,
+      reason: null,
+    })
+
+    const queryClient2 = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <ToastContext.Provider value={{ showToast: vi.fn() }}>
+        <QueryClientProvider client={queryClient2}>
+          <MemoryRouter initialEntries={['/projects/1/overview']}>
+            <Routes>
+              <Route path="/projects/:id/overview" element={<ProjectOverview />} />
+            </Routes>
+          </MemoryRouter>
+        </QueryClientProvider>
+      </ToastContext.Provider>
+    )
+
+    expect(await screen.findByText('自带 Key，不占用平台 Token 预算')).toBeInTheDocument()
+    expect(screen.queryByText(/本月 Token/)).not.toBeInTheDocument()
+  })
+
+  test('概览页应该展示生成前 token 估算和预算风险', async () => {
+    const endpoints = await import('../utils/endpoints')
+    const getGenerationPreflight = endpoints.getGenerationPreflight as vi.Mock
+
+    getGenerationPreflight.mockResolvedValueOnce({
+      start_chapter: 2,
+      end_chapter: 3,
+      chapter_count: 2,
+      target_words_per_chapter: 1000,
+      estimated_output_words: 2000,
+      estimated_token_count: 14100,
+      api_source: 'system',
+      platform_token_budget_applies: true,
+      monthly_token_limit: 5000,
+      monthly_tokens_remaining: 4100,
+      daily_remaining: 3,
+      quota_allowed: true,
+      risk_level: 'warning',
+      messages: ['预计本次生成可能超过本月平台 Token 预算，建议减少章节范围或改用自带 Key。'],
+    })
+
+    const queryClient2 = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <ToastContext.Provider value={{ showToast: vi.fn() }}>
+        <QueryClientProvider client={queryClient2}>
+          <MemoryRouter initialEntries={['/projects/1/overview']}>
+            <Routes>
+              <Route path="/projects/:id/overview" element={<ProjectOverview />} />
+            </Routes>
+          </MemoryRouter>
+        </QueryClientProvider>
+      </ToastContext.Provider>
+    )
+
+    expect(await screen.findByText('生成预估：2 章 · 约 2,000 字 · 约 14,100 Token')).toBeInTheDocument()
+    expect(screen.getByText(/预计本次生成可能超过本月平台 Token 预算/)).toBeInTheDocument()
+  })
+
+  test('概览页应该区分平台 API 和自带 Key 的实际 token 用量', async () => {
+    const endpoints = await import('../utils/endpoints')
+    const getProjectTokenStats = endpoints.getProjectTokenStats as vi.Mock
+
+    getProjectTokenStats.mockResolvedValueOnce({
+      total_prompt_tokens: 700,
+      total_completion_tokens: 1300,
+      total_tokens: 2000,
+      system_api_tokens: 900,
+      user_api_tokens: 1100,
+      estimated_cost_usd: 0.0038,
+    })
+
+    const queryClient2 = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <ToastContext.Provider value={{ showToast: vi.fn() }}>
+        <QueryClientProvider client={queryClient2}>
+          <MemoryRouter initialEntries={['/projects/1/overview']}>
+            <Routes>
+              <Route path="/projects/:id/overview" element={<ProjectOverview />} />
+            </Routes>
+          </MemoryRouter>
+        </QueryClientProvider>
+      </ToastContext.Provider>
+    )
+
+    expect(await screen.findByText('平台 API 900 Token')).toBeInTheDocument()
+    expect(screen.getByText('自带 Key 1,100 Token')).toBeInTheDocument()
+  })
+
+  test('失败项目应该显示恢复操作而不是只展示技术错误', async () => {
+    const endpoints = await import('../utils/endpoints')
+    const getProject = endpoints.getProject as vi.Mock
+
+    getProject.mockResolvedValueOnce({
+      id: 1,
+      user_id: 1,
+      name: 'Failed Project',
+      description: 'Test',
+      content_type: 'full_novel',
+      status: 'failed',
+      overall_quality_score: 0,
+      created_at: '2026-04-25T00:00:00',
+      updated_at: '2026-04-25T00:00:00',
+      config: { start_chapter: 1, end_chapter: 4 },
+      current_generation_task: {
+        id: 13,
+        project_id: 1,
+        celery_task_id: 'task-failed',
+        status: 'failure',
+        progress: 0.2,
+        current_chapter: 1,
+        current_step: 'Writer Agent调用失败',
+        error_message: '模型 API Key 为空',
+        started_at: '2026-04-25T00:00:00',
+      },
+      chapters: [],
+    })
+
+    const queryClient2 = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <ToastContext.Provider value={{ showToast: vi.fn() }}>
+        <QueryClientProvider client={queryClient2}>
+          <MemoryRouter initialEntries={['/projects/1/overview']}>
+            <Routes>
+              <Route path="/projects/:id/overview" element={<ProjectOverview />} />
+            </Routes>
+          </MemoryRouter>
+        </QueryClientProvider>
+      </ToastContext.Provider>
+    )
+
+    expect(await screen.findByText('生成失败，可以恢复')).toBeInTheDocument()
+    expect(screen.getAllByText('模型 API Key 为空').length).toBeGreaterThan(0)
+    expect(screen.getByRole('button', { name: '继续生成' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '重新生成' })).toBeInTheDocument()
+  })
+
+  test('失败项目应该允许从最后成功章节继续生成', async () => {
+    const endpoints = await import('../utils/endpoints')
+    const getProject = endpoints.getProject as vi.Mock
+    const resumeGeneration = endpoints.resumeGeneration as vi.Mock
+
+    getProject.mockResolvedValueOnce({
+      id: 1,
+      user_id: 1,
+      name: 'Failed Partial Project',
+      description: 'Test',
+      content_type: 'full_novel',
+      status: 'failed',
+      overall_quality_score: 0,
+      created_at: '2026-04-25T00:00:00',
+      updated_at: '2026-04-25T00:00:00',
+      config: { start_chapter: 1, end_chapter: 4 },
+      current_generation_task: {
+        id: 14,
+        project_id: 1,
+        celery_task_id: 'task-failed-partial',
+        status: 'failure',
+        progress: 0.5,
+        current_chapter: 2,
+        error_message: '第 3 章生成失败',
+        started_at: '2026-04-25T00:00:00',
+      },
+      chapters: [
+        { id: 1, project_id: 1, chapter_index: 1, title: '第一章', content: '1', word_count: 1000, quality_score: 8, status: 'generated', created_at: '2026-04-25T00:00:00', updated_at: '2026-04-25T00:00:00' },
+        { id: 2, project_id: 1, chapter_index: 2, title: '第二章', content: '2', word_count: 1000, quality_score: 8, status: 'generated', created_at: '2026-04-25T00:00:00', updated_at: '2026-04-25T00:00:00' },
+      ],
+    })
+
+    const queryClient2 = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <ToastContext.Provider value={{ showToast: vi.fn() }}>
+        <QueryClientProvider client={queryClient2}>
+          <MemoryRouter initialEntries={['/projects/1/overview']}>
+            <Routes>
+              <Route path="/projects/:id/overview" element={<ProjectOverview />} />
+            </Routes>
+          </MemoryRouter>
+        </QueryClientProvider>
+      </ToastContext.Provider>
+    )
+
+    const button = await screen.findByRole('button', { name: '继续生成' })
+    fireEvent.click(button)
+
+    await waitFor(() => {
+      expect(resumeGeneration).toHaveBeenCalledWith(1)
+    })
+  })
+
+  test('生成中项目应该允许用户取消当前生成任务', async () => {
+    const endpoints = await import('../utils/endpoints')
+    const getProject = endpoints.getProject as vi.Mock
+    const cancelGeneration = endpoints.cancelGeneration as vi.Mock
+
+    getProject.mockResolvedValueOnce({
+      id: 1,
+      user_id: 1,
+      name: 'Generating Project',
+      description: 'Test',
+      content_type: 'full_novel',
+      status: 'generating',
+      overall_quality_score: 0,
+      created_at: '2026-04-25T00:00:00',
+      updated_at: '2026-04-25T00:00:00',
+      config: { start_chapter: 1, end_chapter: 4 },
+      current_generation_task: {
+        id: 15,
+        project_id: 1,
+        celery_task_id: 'task-running',
+        status: 'progress',
+        progress: 0.4,
+        current_chapter: 2,
+        current_step: 'writer',
+        started_at: '2026-04-25T00:00:00',
+      },
+      chapters: [],
+    })
+
+    const queryClient2 = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <ToastContext.Provider value={{ showToast: vi.fn() }}>
+        <QueryClientProvider client={queryClient2}>
+          <MemoryRouter initialEntries={['/projects/1/overview']}>
+            <Routes>
+              <Route path="/projects/:id/overview" element={<ProjectOverview />} />
+            </Routes>
+          </MemoryRouter>
+        </QueryClientProvider>
+      </ToastContext.Provider>
+    )
+
+    const button = await screen.findByRole('button', { name: '取消生成' })
+    fireEvent.click(button)
+
+    await waitFor(() => {
+      expect(cancelGeneration).toHaveBeenCalledWith(1)
+    })
   })
 
   test('策划确认状态应该留在概览页弹窗处理，而不是跳转到空的第1章编辑器', async () => {

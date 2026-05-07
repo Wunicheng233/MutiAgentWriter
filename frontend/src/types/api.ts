@@ -64,10 +64,81 @@ export interface UpdateLLMSettingsPayload {
   api_key?: string
 }
 
+export interface LLMConnectionTestResult {
+  success: boolean
+  message: string
+  provider: string
+  model: string
+  base_url?: string | null
+  latency_ms?: number | null
+  error_category?: string | null
+}
+
+export interface ProblemReportCreate {
+  category?: string
+  severity?: string
+  title?: string | null
+  description: string
+  page_url?: string | null
+  route?: string | null
+  project_id?: number | null
+  task_id?: number | null
+  user_agent?: string | null
+  context?: Record<string, JsonValue>
+}
+
+export interface ProblemReport {
+  id: number
+  user_id?: number | null
+  project_id?: number | null
+  task_id?: number | null
+  category: string
+  severity: string
+  status: string
+  title?: string | null
+  description: string
+  page_url?: string | null
+  route?: string | null
+  context?: Record<string, JsonValue> | null
+  created_at: string
+}
+
 export interface Token {
   access_token: string
   token_type: string
   user: User
+}
+
+export interface GenerationQuota {
+  daily_limit: number | null
+  used_today: number
+  remaining_today: number | null
+  reset_at: string
+  api_source: 'system' | 'user'
+  platform_token_budget_applies: boolean
+  monthly_token_limit: number | null
+  monthly_tokens_used: number
+  monthly_tokens_remaining: number | null
+  monthly_reset_at: string
+  allowed: boolean
+  reason?: string | null
+}
+
+export interface GenerationPreflight {
+  start_chapter: number
+  end_chapter: number
+  chapter_count: number
+  target_words_per_chapter: number
+  estimated_output_words: number
+  estimated_token_count: number
+  api_source: 'system' | 'user'
+  platform_token_budget_applies: boolean
+  monthly_token_limit: number | null
+  monthly_tokens_remaining: number | null
+  daily_remaining: number | null
+  quota_allowed: boolean
+  risk_level: 'ok' | 'warning' | 'blocked'
+  messages: string[]
 }
 
 export interface Project {
